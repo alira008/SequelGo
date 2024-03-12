@@ -7,9 +7,9 @@ const (
 	TSyntaxError
 
 	TLocalVariable
-	TKeyword
 
 	// Literals
+	TIdentifier
 	TNumericLiteral
 	TStringLiteral
 	TQuotedStringLiteral
@@ -439,9 +439,8 @@ var Keywords = map[string]TokenType{
 
 type Lexer struct {
 	input   string
+	read    int
 	current int
-	start   int
-	end     int
 	ch      byte
 }
 
@@ -450,26 +449,28 @@ type Token struct {
 	Value string
 }
 
-func NewLexer(input string) *Lexer {
+func New(input string) *Lexer {
 	lexer := &Lexer{input: input}
 	lexer.readChar()
 	return lexer
 }
 
 func (l *Lexer) readChar() {
-	if l.current >= len(l.input) {
-		return
+	if l.read >= len(l.input) {
+		l.ch = 0
+	} else {
+		l.ch = l.input[l.read]
 	}
 
-	l.ch = l.input[l.current]
-	l.current++
+	l.current = l.read
+	l.read += 1
 }
 
 func (l *Lexer) peekChar() byte {
-	if l.current >= len(l.input) {
+	if l.read >= len(l.input) {
 		return 0
 	}
-	return l.input[l.current]
+	return l.input[l.read]
 }
 
 func (l *Lexer) skipWhitespace() {
@@ -478,23 +479,316 @@ func (l *Lexer) skipWhitespace() {
 	}
 }
 
+func (l *Lexer) isLetter(ch byte) bool {
+	return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_'
+}
+
+func (l *Lexer) isDigit(ch byte) bool {
+	return '0' <= ch && ch <= '9'
+}
+
+func (l *Lexer) isAlphaNumeric(ch byte) bool {
+	return l.isLetter(ch) || l.isDigit(ch)
+}
+
+func (l *Lexer) readQuotedIdentifier() string {
+	// skip the quote character
+	l.readChar()
+
+	// read the identifier until next quote
+	start := l.current
+
+	for {
+		peekChar := l.peekChar()
+		if peekChar == ']' || peekChar == 0 {
+			break
+		}
+		l.readChar()
+	}
+
+	// go to the quote character
+	l.readChar()
+
+	return l.input[start:l.current]
+}
+
+func (l *Lexer) readQuotedString() string {
+	// skip the quote character
+	l.readChar()
+
+	// read the identifier until next quote
+	start := l.current
+
+	for {
+		peekChar := l.peekChar()
+		if peekChar == '\'' || peekChar == 0 {
+			break
+		}
+		l.readChar()
+	}
+
+	// go to the quote character
+	l.readChar()
+
+	return l.input[start:l.current]
+}
+
+func (l *Lexer) readLocalVariable() string {
+	start := l.current
+
+	for {
+		peekChar := l.peekChar()
+		if l.isAlphaNumeric(peekChar) || peekChar != '_' || peekChar == '@' {
+			l.readChar()
+		} else {
+			break
+		}
+	}
+
+	if l.current+1 >= len(l.input) {
+		return l.input[start:]
+	}
+	return l.input[start : l.current+1]
+}
+
+func (l *Lexer) readNumber() string {
+	start := l.current
+	for l.isDigit(l.peekChar()) {
+		l.readChar()
+	}
+
+	// check for floating point
+	if l.peekChar() == '.' {
+		l.readChar()
+
+		for l.isDigit(l.peekChar()) {
+			l.readChar()
+		}
+	}
+
+	if l.current+1 >= len(l.input) {
+		return l.input[start:]
+	}
+	return l.input[start : l.current+1]
+}
+
+func (l *Lexer) readIdentifier() string {
+	start := l.current
+	peekChar := l.peekChar()
+	for l.isAlphaNumeric(peekChar) || peekChar == '_' {
+		l.readChar()
+		peekChar = l.peekChar()
+	}
+
+	if l.current+1 >= len(l.input) {
+		return l.input[start:]
+	}
+	return l.input[start : l.current+1]
+}
+
 func (l *Lexer) NextToken() Token {
 	l.skipWhitespace()
 	token := Token{}
 	switch l.ch {
+	case ',':
+		token.Type = TComma
+		token.Value = ","
+	case '(':
+		token.Type = TLeftParen
+		token.Value = "("
+	case ')':
+		token.Type = TRightParen
+		token.Value = ")"
 	case '=':
 		if l.peekChar() == '=' {
 			l.readChar()
 			token.Type = TDoubleEqual
 			token.Value = "=="
 		} else {
-			token.Type = TDoubleEqual
+			token.Type = TEqual
 			token.Value = "="
 		}
+	case '!':
+		if l.peekChar() == '=' {
+			l.readChar()
+			token.Type = TNotEqual
+			token.Value = "!="
+		} else {
+			token.Type = TExclamationMark
+			token.Value = "!"
+		}
+	case '<':
+		if l.peekChar() == '=' {
+			l.readChar()
+			token.Type = TLessThanEqual
+			token.Value = "<="
+		} else {
+			token.Type = TLessThan
+			token.Value = "<"
+		}
+	case '>':
+		if l.peekChar() == '=' {
+			l.readChar()
+			token.Type = TGreaterThanEqual
+			token.Value = ">="
+		} else {
+			token.Type = TGreaterThan
+			token.Value = ">"
+		}
+	case '+':
+		if l.peekChar() == '=' {
+			l.readChar()
+			token.Type = TPlusEqual
+			token.Value = "+="
+		} else {
+			token.Type = TPlus
+			token.Value = "+"
+		}
+	case '-':
+		if l.peekChar() == '=' {
+			l.readChar()
+			token.Type = TMinusEqual
+			token.Value = "-="
+		} else {
+			token.Type = TPlus
+			token.Value = "-"
+		}
+	case '/':
+		if l.peekChar() == '=' {
+			l.readChar()
+			token.Type = TDivideEqual
+			token.Value = "/="
+		} else {
+			token.Type = TDivide
+			token.Value = "/"
+		}
+	case '*':
+		if l.peekChar() == '=' {
+			l.readChar()
+			token.Type = TMultiplyEqual
+			token.Value = "*="
+		} else {
+			token.Type = TAsterisk
+			token.Value = "*"
+		}
+	case '%':
+		if l.peekChar() == '=' {
+			l.readChar()
+			token.Type = TPercentEqual
+			token.Value = "%="
+		} else {
+			token.Type = TPercent
+			token.Value = "*"
+		}
+	case '^':
+		if l.peekChar() == '=' {
+			l.readChar()
+			token.Type = TCaretEqual
+			token.Value = "^="
+		} else {
+			token.Type = TSyntaxError
+			token.Value = "^"
+		}
+	case '|':
+		if l.peekChar() == '=' {
+			l.readChar()
+			token.Type = TOrEqual
+			token.Value = "|="
+		} else {
+			token.Type = TOr
+			token.Value = "|"
+		}
+	case '&':
+		if l.peekChar() == '=' {
+			l.readChar()
+			token.Type = TAndEqual
+			token.Value = "&="
+		} else {
+			token.Type = TAnd
+			token.Value = "&"
+		}
+	case '.':
+		token.Type = TPeriod
+		token.Value = "."
+	case ';':
+		token.Type = TSemiColon
+		token.Value = ";"
+	case '[':
+		peekChar := l.peekChar()
+		if l.isAlphaNumeric(peekChar) {
+			// Read identifier until ']'
+			quotedIdentifier := l.readQuotedIdentifier()
+			// if the last character is not ']', then it's a syntax error
+			if l.ch == 0 {
+				token.Type = TSyntaxError
+				token.Value = quotedIdentifier
+			} else {
+				token.Type = TQuotedStringLiteral
+				token.Value = quotedIdentifier
+			}
+		} else {
+			token.Type = TLeftBracket
+			token.Value = "["
+		}
+	case ']':
+		token.Type = TRightBracket
+		token.Value = "]"
+	case '\'':
+		peekChar := l.peekChar()
+		if l.isAlphaNumeric(peekChar) {
+			// Read identifier until '\''
+			stringLiteral := l.readQuotedString()
+			// if the last character is not '\'', then it's a syntax error
+			if l.ch == 0 {
+				token.Type = TSyntaxError
+				token.Value = stringLiteral
+			} else {
+				token.Type = TStringLiteral
+				token.Value = stringLiteral
+			}
+		} else {
+			token.Type = TSyntaxError
+			token.Value = "'"
+		}
+	case '{':
+		token.Type = TLeftBrace
+		token.Value = "{"
+	case '}':
+		token.Type = TRightBrace
+		token.Value = "}"
+	case '~':
+		token.Type = TTilde
+		token.Value = "~"
+	case '@':
+		localVariable := l.readLocalVariable()
+		token.Type = TLocalVariable
+		token.Value = localVariable
+	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+		number := l.readNumber()
+		token.Type = TNumericLiteral
+		token.Value = number
+	case 0:
+		token.Type = TEndOfFile
+		token.Value = ""
 	default:
-		token.Type = TSyntaxError
-		token.Value = string(l.ch)
+		if l.isLetter(l.ch) || l.ch == '_' {
+			identifier := l.readIdentifier()
+			keyword, ok := Keywords[identifier]
+			if ok {
+				token.Type = keyword
+				token.Value = identifier
+			} else {
+
+				token.Type = TIdentifier
+				token.Value = identifier
+			}
+		} else {
+			token.Type = TSyntaxError
+			token.Value = string(l.ch)
+		}
 	}
+
+	l.readChar()
 
 	return token
 }
