@@ -1,7 +1,9 @@
 package lexer
 
+type TokenType uint8
+
 const (
-	TEndOfFile uint8 = iota
+	TEndOfFile TokenType = iota
 	TSyntaxError
 
 	TLocalVariable
@@ -88,7 +90,7 @@ const (
 	TDegrees
 	TDefault
 	TDelete
-	TDense_rank
+	TDenseRank
 	TDesc
 	TDescribe
 	TDistinct
@@ -104,7 +106,7 @@ const (
 	TFalse
 	TFetch
 	TFirst
-	TFirst_value
+	TFirstValue
 	TFloat
 	TFloor
 	TFollowing
@@ -133,7 +135,7 @@ const (
 	TKey
 	TLag
 	TLast
-	TLast_value
+	TLastValue
 	TLead
 	TLeft
 	TLike
@@ -186,7 +188,7 @@ const (
 	TRow
 	TRowid
 	TRows
-	TRow_number
+	TRowNumber
 	TSecond
 	TSelect
 	TSet
@@ -239,7 +241,7 @@ const (
 	TYear
 )
 
-var Keywords = map[string]uint8{
+var Keywords = map[string]TokenType{
 	// Reserved Keywords
 	"abs":           TAbs,
 	"acos":          TAcos,
@@ -284,7 +286,7 @@ var Keywords = map[string]uint8{
 	"degrees":       TDegrees,
 	"default":       TDefault,
 	"delete":        TDelete,
-	"dense_rank":    TDense_rank,
+	"dense_rank":    TDenseRank,
 	"desc":          TDesc,
 	"describe":      TDescribe,
 	"distinct":      TDistinct,
@@ -300,7 +302,7 @@ var Keywords = map[string]uint8{
 	"false":         TFalse,
 	"fetch":         TFetch,
 	"first":         TFirst,
-	"first_value":   TFirst_value,
+	"first_value":   TFirstValue,
 	"float":         TFloat,
 	"floor":         TFloor,
 	"following":     TFollowing,
@@ -329,7 +331,7 @@ var Keywords = map[string]uint8{
 	"key":           TKey,
 	"lag":           TLag,
 	"last":          TLast,
-	"last_value":    TLast_value,
+	"last_value":    TLastValue,
 	"lead":          TLead,
 	"left":          TLeft,
 	"like":          TLike,
@@ -382,7 +384,7 @@ var Keywords = map[string]uint8{
 	"row":           TRow,
 	"rowid":         TRowid,
 	"rows":          TRows,
-	"row_number":    TRow_number,
+	"row_number":    TRowNumber,
 	"second":        TSecond,
 	"select":        TSelect,
 	"set":           TSet,
@@ -441,11 +443,11 @@ type Lexer struct {
 	start   int
 	end     int
 	ch      byte
+}
 
-	Token         uint8
-	Number        float64
-	StringLiteral string
-	Identifier    string
+type Token struct {
+	Type  TokenType
+	Value string
 }
 
 func NewLexer(input string) *Lexer {
@@ -476,17 +478,23 @@ func (l *Lexer) skipWhitespace() {
 	}
 }
 
-func (l *Lexer) NextToken() {
+func (l *Lexer) NextToken() Token {
 	l.skipWhitespace()
+	token := Token{}
 	switch l.ch {
 	case '=':
 		if l.peekChar() == '=' {
 			l.readChar()
-			l.Token = TDoubleEqual
+			token.Type = TDoubleEqual
+			token.Value = "=="
 		} else {
-			l.Token = TEqual
+			token.Type = TDoubleEqual
+			token.Value = "="
 		}
 	default:
-		l.Token = TSyntaxError
+		token.Type = TSyntaxError
+		token.Value = string(l.ch)
 	}
+
+	return token
 }
