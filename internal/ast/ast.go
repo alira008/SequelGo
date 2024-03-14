@@ -26,16 +26,35 @@ func (q *Query) TokenLiteral() string {
 	}
 }
 
+type DeclareStatement struct {
+}
+
+type ExecuteStatement struct {
+}
+
+type SetLocalVariableStatement struct {
+}
+
 type SelectStatement struct {
-	Distinct bool
-    Top *TopStatement
 }
 
-type TopStatement struct {
-    WithTies bool
-    Percent bool
-    Quantity int
+type InsertleteStatement struct {
 }
 
-func (ss *SelectStatement) statementNode()       {}
-func (ss *SelectStatement) TokenLiteral() string { return "SELECT" }
+type UpdateStatement struct {
+}
+
+type DeleteStatement struct {
+}
+
+type CTESelectStatement struct {
+}
+
+type CTEInsertleteStatement struct {
+}
+
+type CTEUpdateStatement struct {
+}
+
+type CTEDeleteStatement struct {
+}
