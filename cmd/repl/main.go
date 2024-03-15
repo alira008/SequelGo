@@ -2,16 +2,14 @@ package main
 
 import (
 	"SequelGo/internal/lexer"
-	"bufio"
 	"fmt"
-	"os"
 )
 
 func main() {
 	input := "select * from 'helloworld' where"
-	l := lexer.New(input)
-	reader := bufio.NewReader(os.Stdin)
-    reader.ReadString('\n')
+	l := lexer.NewLexer(input)
+	// reader := bufio.NewReader(os.Stdin)
+	//    reader.ReadString('\n')
 
 	for {
 		token := l.NextToken()

@@ -29,6 +29,11 @@ func (q *Query) TokenLiteral() string {
 type DeclareStatement struct {
 }
 
+func (ds *DeclareStatement) statementNode() {}
+func (ds *DeclareStatement) TokenLiteral() string {
+	return ""
+}
+
 type ExecuteStatement struct {
 }
 
@@ -36,6 +41,13 @@ type SetLocalVariableStatement struct {
 }
 
 type SelectStatement struct {
+	SelectItems *[]*Expr
+	whereClause *Expr
+}
+
+func (ss *SelectStatement) statementNode() {}
+func (ss *SelectStatement) TokenLiteral() string {
+	return ""
 }
 
 type InsertleteStatement struct {

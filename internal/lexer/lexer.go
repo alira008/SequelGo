@@ -449,7 +449,7 @@ type Token struct {
 	Value string
 }
 
-func New(input string) *Lexer {
+func NewLexer(input string) *Lexer {
 	lexer := &Lexer{input: input}
 	lexer.readChar()
 	return lexer
