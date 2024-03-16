@@ -59,9 +59,12 @@ func (p *Parser) Parse() ast.Query {
 
 	for p.currentToken.Type != lexer.TEndOfFile {
 		stmt := p.parseStatement()
+
 		if stmt != nil {
 			query.Statements = append(query.Statements, stmt)
 		}
+
+		p.nextToken()
 	}
 
 	return query
@@ -77,6 +80,44 @@ func (p *Parser) parseStatement() ast.Statement {
 }
 
 func (p *Parser) parseSelectStatement() *ast.SelectStatement {
-	stmt := &ast.SelectStatement{}
+	p.nextToken()
+	expr := p.parseExpression(PrecedenceLowest)
+	stmt := &ast.SelectStatement{SelectItems: &[]*ast.Expr{expr}}
 	return stmt
+}
+
+func (p *Parser) parseExpression(precedence Precedence) *ast.Expr {
+	leftExpr := p.parsePrefixExpression()
+
+	// parse infix sql expressions using stacks to keep track of precedence
+	for precedence < checkPrecedence(p.peekToken.Type) {
+		p.nextToken()
+
+		leftExpr = p.parseInfixExpression(leftExpr)
+	}
+
+	return leftExpr
+}
+
+func (p *Parser) parsePrefixExpression() *ast.Expr {
+	switch p.currentToken.Type {
+	case lexer.TIdentifier:
+		fallthrough
+	case lexer.TNumericLiteral:
+		fallthrough
+	case lexer.TStringLiteral:
+		fallthrough
+	case lexer.TAsterisk:
+		fallthrough
+	case lexer.TLocalVariable:
+		fallthrough
+	case lexer.TQuotedStringLiteral:
+		return &ast.Expr{ExprType: ast.ExprLiteralString, StringLiteral: p.currentToken.Value}
+	}
+
+	return nil
+}
+
+func (p *Parser) parseInfixExpression(left ast.Expression) *ast.Expr {
+	return nil
 }

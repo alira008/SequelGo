@@ -1,5 +1,7 @@
 package ast
 
+import "fmt"
+
 type ExprType uint8
 
 const (
@@ -77,5 +79,5 @@ type Expr struct {
 }
 
 func (e *Expr) expressionNode()         {}
-func (e *Expr) TokenLiteral() string    { return "" }
+func (e *Expr) TokenLiteral() string    { return fmt.Sprintf("'%s'", e.StringLiteral) }
 func (e *Expr) IsType(et ExprType) bool { return e.ExprType == et }

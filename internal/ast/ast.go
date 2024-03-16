@@ -1,5 +1,10 @@
 package ast
 
+import (
+	"fmt"
+	"strings"
+)
+
 type Node interface {
 	TokenLiteral() string
 }
@@ -47,7 +52,13 @@ type SelectStatement struct {
 
 func (ss *SelectStatement) statementNode() {}
 func (ss *SelectStatement) TokenLiteral() string {
-	return ""
+	var str strings.Builder
+	for _, s := range *ss.SelectItems {
+		if s != nil {
+			str.WriteString(s.TokenLiteral())
+		}
+	}
+	return fmt.Sprintf("SELECT %v", str.String())
 }
 
 type InsertleteStatement struct {

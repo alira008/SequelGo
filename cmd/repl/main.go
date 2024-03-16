@@ -2,25 +2,19 @@ package main
 
 import (
 	"SequelGo/internal/lexer"
+	"SequelGo/internal/parser"
 	"fmt"
 )
 
 func main() {
-	input := "select * from 'helloworld' where"
+	input := "select 'hello'"
 	l := lexer.NewLexer(input)
+	p := parser.NewParser(l)
 	// reader := bufio.NewReader(os.Stdin)
 	//    reader.ReadString('\n')
 
-	for {
-		token := l.NextToken()
-		if token.Type == lexer.TEndOfFile {
-			break
-		}
-
-		if token.Type == lexer.TSyntaxError {
-			fmt.Printf("Syntax Error: %s\n", token.Value)
-		} else {
-			fmt.Printf("Token: %s\n", token.Value)
-		}
+	q := p.Parse()
+	for _, s := range q.Statements {
+		fmt.Printf("%v", s.TokenLiteral())
 	}
 }
