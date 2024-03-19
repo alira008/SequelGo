@@ -4,6 +4,7 @@ import (
 	"SequelGo/internal/ast"
 	"SequelGo/internal/lexer"
 	"fmt"
+	"strconv"
 )
 
 type Parser struct {
@@ -112,6 +113,37 @@ func (p *Parser) parsePrefixExpression() *ast.Expr {
 	case lexer.TLocalVariable:
 		fallthrough
 	case lexer.TQuotedStringLiteral:
+		// start of a array of expressions
+		if p.peekTokenIs(lexer.TComma) {
+			exprList := []*ast.Expr{}
+
+			for p.peekTokenIs(lexer.TComma) {
+				p.nextToken()
+
+				newExpr := &ast.Expr{}
+				switch p.peekToken.Type {
+				case lexer.TStringLiteral:
+					newExpr.ExprType = ast.ExprLiteralString
+					newExpr.StringLiteral = p.peekToken.Value
+				case lexer.TNumericLiteral:
+					newExpr.ExprType = ast.ExprLiteralNumber
+					n, err := strconv.ParseFloat(p.peekToken.Value, 64)
+					if err != nil {
+						return nil
+					}
+					newExpr.NumberLiteral = n
+				case lexer.TIdentifier:
+					newExpr.ExprType = ast.ExprIdentifier
+					newExpr.Identifier = p.peekToken.Value
+				default:
+					return nil
+				}
+				p.nextToken()
+
+				exprList = append(exprList, newExpr)
+			}
+			return &ast.Expr{ExprType: ast.ExprExpressionList, ExprList: exprList}
+		}
 		return &ast.Expr{ExprType: ast.ExprLiteralString, StringLiteral: p.currentToken.Value}
 	}
 

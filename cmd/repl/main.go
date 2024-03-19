@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	input := "select 'hello'"
+	input := "select 'hello', yes, 1"
 	l := lexer.NewLexer(input)
 	p := parser.NewParser(l)
 	// reader := bufio.NewReader(os.Stdin)
@@ -15,6 +15,6 @@ func main() {
 
 	q := p.Parse()
 	for _, s := range q.Statements {
-		fmt.Printf("%v", s.TokenLiteral())
+		fmt.Printf("%s", s.TokenLiteral())
 	}
 }
