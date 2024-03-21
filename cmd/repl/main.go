@@ -3,7 +3,6 @@ package main
 import (
 	"SequelGo/internal/lexer"
 	"SequelGo/internal/parser"
-	"fmt"
 )
 
 func main() {
@@ -14,7 +13,5 @@ func main() {
 	//    reader.ReadString('\n')
 
 	q := p.Parse()
-	for _, s := range q.Statements {
-		fmt.Printf("%s", s.TokenLiteral())
-	}
+	q.TokenLiteral()
 }

@@ -24,11 +24,16 @@ type Query struct {
 }
 
 func (q *Query) TokenLiteral() string {
-	if len(q.Statements) > 0 {
-		return q.Statements[0].TokenLiteral()
-	} else {
-		return ""
+	str := strings.Builder{}
+
+	for _, s := range q.Statements {
+        if s != nil {
+            fmt.Printf("yessir")
+        }
+		str.WriteString(s.TokenLiteral())
 	}
+
+	return str.String()
 }
 
 type DeclareStatement struct {
@@ -47,18 +52,26 @@ type SetLocalVariableStatement struct {
 
 type SelectStatement struct {
 	SelectItems *[]*Expr
+	TableObject *Expr
 	whereClause *Expr
 }
 
 func (ss *SelectStatement) statementNode() {}
 func (ss *SelectStatement) TokenLiteral() string {
 	var str strings.Builder
-	for _, s := range *ss.SelectItems {
-		if s != nil {
-			str.WriteString(s.TokenLiteral())
-		}
+	str.WriteString("SELECT ")
+
+	if ss.SelectItems == nil {
+		return ""
 	}
-	return fmt.Sprintf("SELECT %v", str.String())
+	for i, s := range *ss.SelectItems {
+		if i > 0 {
+			str.WriteString(", ")
+		}
+
+		str.WriteString(s.TokenLiteral())
+	}
+	return str.String()
 }
 
 type InsertleteStatement struct {
