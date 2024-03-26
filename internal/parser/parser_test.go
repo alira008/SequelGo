@@ -12,13 +12,16 @@ func TestParseBasicSelectQuery(t *testing.T) {
 			SelectItems: &[]ast.Expression{
 				&ast.ExprStar{},
 				&ast.ExprIdentifier{Value: "hello"},
+				&ast.ExprStringLiteral{Value: "yes"},
+				&ast.ExprQuotedIdentifier{Value: "yessir"},
+				&ast.ExprLocalVariable{Value: "nosir"},
 			},
 			TableObject: &ast.ExprIdentifier{Value: "testtable"},
 		},
 	}
 	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
 
-	l := lexer.NewLexer("select *, hello FROM testtable")
+	l := lexer.NewLexer("select *, hello, 'yes', [yessir], @nosir FROM testtable")
 	p := NewParser(l)
 	query := p.Parse()
 
