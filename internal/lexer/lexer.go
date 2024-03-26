@@ -1,5 +1,7 @@
 package lexer
 
+import "strings"
+
 type TokenType uint8
 
 const (
@@ -12,7 +14,7 @@ const (
 	TIdentifier
 	TNumericLiteral
 	TStringLiteral
-	TQuotedStringLiteral
+	TQuotedIdentifier
 
 	TComma
 	TLeftParen
@@ -723,7 +725,7 @@ func (l *Lexer) NextToken() Token {
 				token.Type = TSyntaxError
 				token.Value = quotedIdentifier
 			} else {
-				token.Type = TQuotedStringLiteral
+				token.Type = TQuotedIdentifier
 				token.Value = quotedIdentifier
 			}
 		} else {
@@ -773,7 +775,8 @@ func (l *Lexer) NextToken() Token {
 	default:
 		if l.isLetter(l.ch) || l.ch == '_' {
 			identifier := l.readIdentifier()
-			keyword, ok := Keywords[identifier]
+			lowerIdentifier := strings.ToLower(identifier)
+			keyword, ok := Keywords[lowerIdentifier]
 			if ok {
 				token.Type = keyword
 				token.Value = identifier

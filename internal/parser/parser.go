@@ -4,7 +4,6 @@ import (
 	"SequelGo/internal/ast"
 	"SequelGo/internal/lexer"
 	"fmt"
-	"strconv"
 )
 
 type Parser struct {
@@ -46,9 +45,10 @@ func (p *Parser) expectPeek(t lexer.TokenType) bool {
 	}
 }
 
-func (p *Parser) expectMany(ts []lexer.TokenType) bool {
+func (p *Parser) expectPeekMany(ts []lexer.TokenType) bool {
 	for _, t := range ts {
 		if p.peekToken.Type == t {
+			p.nextToken()
 			return true
 		}
 	}
@@ -72,9 +72,9 @@ func (p *Parser) Parse() ast.Query {
 		stmt, err := p.parseStatement()
 
 		if err != nil {
+			p.nextToken()
 			continue
 		}
-		fmt.Printf("yayayayaya\n")
 
 		query.Statements = append(query.Statements, stmt)
 
@@ -86,39 +86,43 @@ func (p *Parser) Parse() ast.Query {
 func (p *Parser) parseStatement() (ast.Statement, error) {
 	switch p.currentToken.Type {
 	case lexer.TSelect:
-		stmt := p.parseSelectStatement()
-		if stmt == nil {
-			return nil, fmt.Errorf("error parsing select statement")
+		body := p.parseSelectBody()
+		if body != nil {
+			return &ast.SelectStatement{SelectBody: body}, nil
 		}
-		return stmt, nil
+
+		return nil, fmt.Errorf("error parsing select statement")
 	default:
 		return nil, fmt.Errorf("unknown statement type")
 	}
 }
 
 func (p *Parser) parseSelectStatement() *ast.SelectStatement {
+
+	return &ast.SelectStatement{}
+}
+
+func (p *Parser) parseSelectBody() *ast.SelectBody {
 	selectItems := p.parseSelectItems()
 	tableObject := p.parseTableObject()
-	if tableObject == nil {
-		fmt.Printf("expected identifier, got %s\n", p.currentToken.Value)
-		fmt.Printf("expected identifier, got %v\n", p.peekToken.Type)
-		return nil
-	}
+	// if tableObject == nil {
+	// 	fmt.Printf("expected identifier, got %s\n", p.currentToken.Value)
+	// 	fmt.Printf("expected identifier, got %v\n", p.peekToken.Type)
+	// 	return nil
+	// }
 
-	stmt := &ast.SelectStatement{SelectItems: selectItems, TableObject: tableObject}
+	stmt := &ast.SelectBody{SelectItems: selectItems, TableObject: tableObject}
 	return stmt
 }
 
-func (p *Parser) parseSelectItems() *[]*ast.Expr {
-	items := &[]*ast.Expr{}
+func (p *Parser) parseSelectItems() *[]ast.Expression {
+	items := &[]ast.Expression{}
 
 	for {
-
-		if !p.expectMany([]lexer.TokenType{lexer.TIdentifier, lexer.TNumericLiteral, lexer.TStringLiteral, lexer.TAsterisk, lexer.TLocalVariable, lexer.TQuotedStringLiteral}) {
+		if !p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier, lexer.TNumericLiteral, lexer.TStringLiteral, lexer.TAsterisk, lexer.TLocalVariable, lexer.TQuotedIdentifier, lexer.TAsterisk}) {
 			fmt.Printf("expected identifier, got %s\n", p.peekToken.Value)
 			return nil
 		}
-		p.nextToken()
 
 		expr := p.parseExpression(PrecedenceLowest)
 		*items = append(*items, expr)
@@ -126,21 +130,29 @@ func (p *Parser) parseSelectItems() *[]*ast.Expr {
 		if p.peekToken.Type != lexer.TComma {
 			break
 		}
+
 		p.nextToken()
 	}
 
 	return items
 }
 
-func (p *Parser) parseTableObject() *ast.Expr {
+func (p *Parser) parseTableObject() ast.Expression {
 	if !p.expectPeek(lexer.TFrom) {
+		fmt.Printf("expected FROM, got %s\n", p.peekToken.Value)
 		return nil
 	}
 
-	return nil
+	if !p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier, lexer.TLocalVariable}) {
+		fmt.Printf("expected identifier, got %s\n", p.peekToken.Value)
+	}
+
+	tableObject := p.parseExpression(PrecedenceLowest)
+
+	return tableObject
 }
 
-func (p *Parser) parseExpression(precedence Precedence) *ast.Expr {
+func (p *Parser) parseExpression(precedence Precedence) ast.Expression {
 	leftExpr := p.parsePrefixExpression()
 
 	// parse infix sql expressions using stacks to keep track of precedence
@@ -153,41 +165,34 @@ func (p *Parser) parseExpression(precedence Precedence) *ast.Expr {
 	return leftExpr
 }
 
-func (p *Parser) parsePrefixExpression() *ast.Expr {
+func (p *Parser) parsePrefixExpression() ast.Expression {
+	fmt.Printf("parsing prefix expression\n")
+	fmt.Printf("current token: %v\n", p.currentToken)
+	var newExpr ast.Expression
 	switch p.currentToken.Type {
-	case lexer.TIdentifier, lexer.TNumericLiteral, lexer.TStringLiteral, lexer.TAsterisk, lexer.TLocalVariable, lexer.TQuotedStringLiteral:
-		newExpr := &ast.Expr{}
+	case lexer.TIdentifier, lexer.TNumericLiteral, lexer.TStringLiteral, lexer.TAsterisk, lexer.TLocalVariable, lexer.TQuotedIdentifier:
 		switch p.currentToken.Type {
 		case lexer.TLocalVariable:
-			newExpr.ExprType = ast.ExprLocalVar
-			newExpr.Identifier = p.currentToken.Value
-		case lexer.TQuotedStringLiteral:
-			newExpr.ExprType = ast.ExprLiteralQuotedString
-			newExpr.QuotedStringLiteral = p.currentToken.Value
+			newExpr = &ast.ExprLocalVariable{Value: p.currentToken.Value}
+		case lexer.TQuotedIdentifier:
+			newExpr = &ast.ExprQuotedIdentifier{Value: p.currentToken.Value}
 		case lexer.TStringLiteral:
-			newExpr.ExprType = ast.ExprLiteralString
-			newExpr.StringLiteral = p.currentToken.Value
+			newExpr = &ast.ExprStringLiteral{Value: p.currentToken.Value}
 		case lexer.TNumericLiteral:
-			newExpr.ExprType = ast.ExprLiteralNumber
-			n, err := strconv.ParseFloat(p.currentToken.Value, 64)
-			if err != nil {
-				return nil
-			}
-			newExpr.NumberLiteral = n
+			newExpr = &ast.ExprNumberLiteral{Value: p.currentToken.Value}
 		case lexer.TIdentifier:
-			newExpr.ExprType = ast.ExprIdentifier
-			newExpr.Identifier = p.currentToken.Value
+			newExpr = &ast.ExprIdentifier{Value: p.currentToken.Value}
 		case lexer.TAsterisk:
-			newExpr.ExprType = ast.ExprStar
+			newExpr = &ast.ExprStar{}
 		default:
 			return nil
 		}
-		return newExpr
 	}
 
-	return nil
+	return newExpr
+
 }
 
-func (p *Parser) parseInfixExpression(left ast.Expression) *ast.Expr {
+func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
 	return nil
 }

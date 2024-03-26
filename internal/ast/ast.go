@@ -51,30 +51,46 @@ type SetLocalVariableStatement struct {
 }
 
 type SelectStatement struct {
-	SelectItems *[]*Expr
-	TableObject *Expr
-	whereClause *Expr
+    CTE *CommmonTableExpression
+    SelectBody *SelectBody
 }
 
 func (ss *SelectStatement) statementNode() {}
 func (ss *SelectStatement) TokenLiteral() string {
+    fmt.Printf("select statement %s\n", ss.SelectBody.TokenLiteral())
+	return ss.SelectBody.TokenLiteral()
+}
+
+type CommmonTableExpression struct {
+}
+type SelectBody struct {
+	SelectItems *[]Expression
+	TableObject Expression
+	WhereClause Expression
+}
+
+func (sb *SelectBody) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString("SELECT ")
 
-	if ss.SelectItems == nil {
+	if sb.SelectItems == nil {
 		return ""
 	}
-	for i, s := range *ss.SelectItems {
+	for i, s := range *sb.SelectItems {
 		if i > 0 {
 			str.WriteString(", ")
 		}
 
 		str.WriteString(s.TokenLiteral())
 	}
+
+    str.WriteString(" FROM ")
+    str.WriteString(sb.TableObject.TokenLiteral())
+
 	return str.String()
 }
 
-type InsertleteStatement struct {
+type InsertStatement struct {
 }
 
 type UpdateStatement struct {
