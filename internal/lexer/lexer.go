@@ -535,24 +535,6 @@ func (l *Lexer) readQuotedString() string {
 	return l.input[start:l.current]
 }
 
-func (l *Lexer) readLocalVariable() string {
-	start := l.current
-
-	for {
-		peekChar := l.peekChar()
-		if l.isAlphaNumeric(peekChar) || peekChar != '_' || peekChar == '@' {
-			l.readChar()
-		} else {
-			break
-		}
-	}
-
-	if l.current+1 >= len(l.input) {
-		return l.input[start:]
-	}
-	return l.input[start : l.current+1]
-}
-
 func (l *Lexer) readNumber() string {
 	start := l.current
 	for l.isDigit(l.peekChar()) {
@@ -762,7 +744,9 @@ func (l *Lexer) NextToken() Token {
 		token.Type = TTilde
 		token.Value = "~"
 	case '@':
-		localVariable := l.readLocalVariable()
+        // skip the @ character 
+        l.readChar()
+		localVariable := l.readIdentifier()
 		token.Type = TLocalVariable
 		token.Value = localVariable
 	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
