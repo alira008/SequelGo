@@ -43,7 +43,6 @@ const (
 	OpExists
 )
 
-
 type ExprStringLiteral struct {
 	Value string
 }
@@ -89,22 +88,36 @@ func (e *ExprQuotedIdentifier) TokenLiteral() string {
 	return fmt.Sprintf("[%s]", e.Value)
 }
 
-type ExprStar struct {
-}
+type ExprStar struct{}
 
 func (e *ExprStar) expressionNode() {}
 func (e *ExprStar) TokenLiteral() string {
 	return "*"
 }
 
+type ExprCompoundIdentifier struct {
+    Identifiers []*ExprIdentifier
+}
+func (e *ExprCompoundIdentifier) expressionNode() {}
+func (e *ExprCompoundIdentifier) TokenLiteral() string {
+    var str strings.Builder
+    for i, item := range e.Identifiers {
+        if i > 0 {
+            str.WriteString(".")
+        }
+        str.WriteString((*item).TokenLiteral())
+    }
+    return str.String()
+}
+
 type ExprExpressionList struct {
-	list []*Expression
+	List []*Expression
 }
 
 func (e *ExprExpressionList) expressionNode() {}
 func (e *ExprExpressionList) TokenLiteral() string {
 	var str strings.Builder
-	for i, item := range e.list {
+	for i, item := range e.List {
 		if i > 0 {
 			str.WriteString(", ")
 		}

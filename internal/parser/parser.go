@@ -187,6 +187,33 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 		default:
 			return nil
 		}
+
+		if p.peekToken.Type == lexer.TPeriod {
+			// we are dealing with a qualified identifier
+			compound := &[]ast.Expression{newExpr}
+
+			// go to period token
+			p.nextToken()
+
+			// for {
+			// 	if !p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier, lexer.TNumericLiteral, lexer.TStringLiteral, lexer.TAsterisk, lexer.TLocalVariable, lexer.TQuotedIdentifier, lexer.TAsterisk}) {
+			// 		fmt.Printf("expected identifier, got %s\n", p.peekToken.Value)
+			// 		return nil
+			// 	}
+			//
+			// 	expr := p.parseExpression(PrecedenceLowest)
+			// 	*compound = append(*compound, expr)
+			//
+			// 	if p.peekToken.Type != lexer.TComma {
+			// 		break
+			// 	}
+			//
+			// 	p.nextToken()
+			// }
+		}
+
+	default:
+		return nil
 	}
 
 	return newExpr
