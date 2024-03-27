@@ -27,9 +27,9 @@ func (q *Query) TokenLiteral() string {
 	str := strings.Builder{}
 
 	for _, s := range q.Statements {
-        if s != nil {
-            fmt.Printf("yessir")
-        }
+		if s != nil {
+			fmt.Printf("yessir")
+		}
 		str.WriteString(s.TokenLiteral())
 	}
 
@@ -51,13 +51,13 @@ type SetLocalVariableStatement struct {
 }
 
 type SelectStatement struct {
-    CTE *CommmonTableExpression
-    SelectBody *SelectBody
+	CTE        *CommmonTableExpression
+	SelectBody *SelectBody
 }
 
 func (ss *SelectStatement) statementNode() {}
 func (ss *SelectStatement) TokenLiteral() string {
-    fmt.Printf("select statement %s\n", ss.SelectBody.TokenLiteral())
+	fmt.Printf("select statement %s\n", ss.SelectBody.TokenLiteral())
 	return ss.SelectBody.TokenLiteral()
 }
 
@@ -83,9 +83,15 @@ func (sb *SelectBody) TokenLiteral() string {
 
 		str.WriteString(s.TokenLiteral())
 	}
+	if sb.TableObject != nil {
+		str.WriteString(" FROM ")
+		str.WriteString(sb.TableObject.TokenLiteral())
+	}
 
-    str.WriteString(" FROM ")
-    str.WriteString(sb.TableObject.TokenLiteral())
+	if sb.WhereClause != nil {
+		str.WriteString(" WHERE ")
+		str.WriteString(sb.WhereClause.TokenLiteral())
+	}
 
 	return str.String()
 }

@@ -126,3 +126,57 @@ func (e *ExprExpressionList) TokenLiteral() string {
 	}
 	return str.String()
 }
+
+type ExprBinary struct {
+    Left Expression
+    Right Expression
+    Operator OperatorType
+}
+
+func (e *ExprBinary) expressionNode() {}
+func (e *ExprBinary) TokenLiteral() string {
+    var str strings.Builder
+    str.WriteString(e.Left.TokenLiteral())
+    switch e.Operator {
+    case OpPlus:
+        str.WriteString(" + ")
+    case OpMinus:
+        str.WriteString(" - ")
+    case OpMult:
+        str.WriteString(" * ")
+    case OpDiv:
+        str.WriteString(" / ")
+    case OpMod:
+        str.WriteString(" % ")
+    case OpEqual:
+        str.WriteString(" = ")
+    case OpGreater:
+        str.WriteString(" > ")
+    case OpGreaterEqual:
+        str.WriteString(" >= ")
+    case OpLess:
+        str.WriteString(" < ")
+    case OpLessEqual:
+        str.WriteString(" <= ")
+    case OpAnd:
+        str.WriteString(" AND ")
+    case OpOr:
+        str.WriteString(" OR ")
+    case OpLike:
+        str.WriteString(" LIKE ")
+    case OpIn:
+        str.WriteString(" IN ")
+    // case OpBetween:
+    //     str.WriteString(" BETWEEN ")
+    // case OpAny:
+    //     str.WriteString(" ANY ")
+    // case OpAll:
+    //     str.WriteString(" ALL ")
+    // case OpSome:
+    //     str.WriteString(" SOME ")
+    default:
+        str.WriteString(" ??? ")
+    }
+    str.WriteString(e.Right.TokenLiteral())
+    return str.String()
+}

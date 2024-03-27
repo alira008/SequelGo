@@ -105,13 +105,10 @@ func (p *Parser) parseSelectStatement() *ast.SelectStatement {
 func (p *Parser) parseSelectBody() *ast.SelectBody {
 	selectItems := p.parseSelectItems()
 	tableObject := p.parseTableObject()
-	// if tableObject == nil {
-	// 	fmt.Printf("expected identifier, got %s\n", p.currentToken.Value)
-	// 	fmt.Printf("expected identifier, got %v\n", p.peekToken.Type)
-	// 	return nil
-	// }
+	whereExpression := p.parseWhereExpression()
+	_ = whereExpression
 
-	stmt := &ast.SelectBody{SelectItems: selectItems, TableObject: tableObject}
+	stmt := &ast.SelectBody{SelectItems: selectItems, TableObject: tableObject, WhereClause: nil}
 	return stmt
 }
 
@@ -152,6 +149,19 @@ func (p *Parser) parseTableObject() ast.Expression {
 	return tableObject
 }
 
+func (p *Parser) parseWhereExpression() ast.Expression {
+	fmt.Printf("parsing where")
+	if !p.peekTokenIs(lexer.TWhere) {
+		return nil
+	}
+
+	// go to where token
+	p.nextToken()
+	p.nextToken()
+
+	return p.parseExpression(PrecedenceLowest)
+}
+
 func (p *Parser) parseExpression(precedence Precedence) ast.Expression {
 	leftExpr := p.parsePrefixExpression()
 
@@ -159,6 +169,7 @@ func (p *Parser) parseExpression(precedence Precedence) ast.Expression {
 	for precedence < checkPrecedence(p.peekToken.Type) {
 		p.nextToken()
 
+		fmt.Printf("hello guys")
 		leftExpr = p.parseInfixExpression(leftExpr)
 	}
 
@@ -191,19 +202,19 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 		if p.peekToken.Type == lexer.TPeriod {
 			// we are dealing with a qualified identifier
 			compound := &[]ast.Expression{newExpr}
-            fmt.Printf("parsing compound identifier\n")
+			fmt.Printf("parsing compound identifier\n")
 
-                fmt.Printf("current token: %v\n", p.currentToken)
+			fmt.Printf("current token: %v\n", p.currentToken)
 			// go to period token
 			p.nextToken()
-            fmt.Printf("current token: %v\n", p.currentToken)
+			fmt.Printf("current token: %v\n", p.currentToken)
 
 			for {
 				if !p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier, lexer.TQuotedIdentifier, lexer.TAsterisk}) {
 					fmt.Printf("expected identifier, got %s\n", p.peekToken.Value)
 					return nil
 				}
-                fmt.Printf("current token: %v\n", p.currentToken)
+				fmt.Printf("current token: %v\n", p.currentToken)
 
 				if p.currentToken.Type == lexer.TAsterisk {
 					expr := &ast.ExprStar{}
@@ -224,7 +235,7 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 				p.nextToken()
 			}
 
-            newExpr = &ast.ExprCompoundIdentifier{Identifiers: *compound}
+			newExpr = &ast.ExprCompoundIdentifier{Identifiers: *compound}
 		}
 
 	default:
@@ -236,5 +247,58 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 }
 
 func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
+	switch p.currentToken.Type {
+	case lexer.TPlus,
+		lexer.TMinus,
+		lexer.TAsterisk,
+		lexer.TDivide,
+		// lexer.TPlusEqual,
+		// lexer.TMinusEqual,
+		// lexer.TMultiplyEqual,
+		// lexer.TDivideEqual,
+		// lexer.TPercentEqual,
+		// lexer.TAndEqual,
+		// lexer.TOrEqual,
+		// lexer.TCaretEqual,
+		lexer.TAnd,
+		lexer.TOr:
+		var operator ast.OperatorType
+		switch p.currentToken.Type {
+		case lexer.TPlus:
+			operator = ast.OpPlus
+		case lexer.TMinus:
+			operator = ast.OpMinus
+		case lexer.TAsterisk:
+			operator = ast.OpMult
+		case lexer.TDivide:
+			operator = ast.OpDiv
+		// case lexer.TPlusEqual:
+		// case lexer.TMinusEqual:
+		// case lexer.TMultiplyEqual:
+		// case lexer.TDivideEqual:
+		// case lexer.TPercentEqual:
+		// case lexer.TAndEqual:
+		// case lexer.TOrEqual:
+		// case lexer.TCaretEqual:
+		case lexer.TAnd:
+			operator = ast.OpAnd
+		case lexer.TOr:
+			operator = ast.OpOr
+		}
+		precedence := checkPrecedence(p.currentToken.Type)
+		p.nextToken()
+		p.nextToken()
+        fmt.Printf("current token: %v\n", p.currentToken)
+
+		right := p.parseExpression(precedence)
+		if right == nil {
+			return nil
+		}
+		return &ast.ExprBinary{
+			Left:     left,
+			Operator: operator,
+			Right:    right,
+		}
+	}
 	return nil
 }
