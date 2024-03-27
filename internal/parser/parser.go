@@ -191,25 +191,40 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 		if p.peekToken.Type == lexer.TPeriod {
 			// we are dealing with a qualified identifier
 			compound := &[]ast.Expression{newExpr}
+            fmt.Printf("parsing compound identifier\n")
 
+                fmt.Printf("current token: %v\n", p.currentToken)
 			// go to period token
 			p.nextToken()
+            fmt.Printf("current token: %v\n", p.currentToken)
 
-			// for {
-			// 	if !p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier, lexer.TNumericLiteral, lexer.TStringLiteral, lexer.TAsterisk, lexer.TLocalVariable, lexer.TQuotedIdentifier, lexer.TAsterisk}) {
-			// 		fmt.Printf("expected identifier, got %s\n", p.peekToken.Value)
-			// 		return nil
-			// 	}
-			//
-			// 	expr := p.parseExpression(PrecedenceLowest)
-			// 	*compound = append(*compound, expr)
-			//
-			// 	if p.peekToken.Type != lexer.TComma {
-			// 		break
-			// 	}
-			//
-			// 	p.nextToken()
-			// }
+			for {
+				if !p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier, lexer.TQuotedIdentifier, lexer.TAsterisk}) {
+					fmt.Printf("expected identifier, got %s\n", p.peekToken.Value)
+					return nil
+				}
+                fmt.Printf("current token: %v\n", p.currentToken)
+
+				if p.currentToken.Type == lexer.TAsterisk {
+					expr := &ast.ExprStar{}
+					*compound = append(*compound, expr)
+					break
+				} else if p.currentToken.Type == lexer.TQuotedIdentifier {
+					expr := &ast.ExprQuotedIdentifier{Value: p.currentToken.Value}
+					*compound = append(*compound, expr)
+				} else {
+					expr := &ast.ExprIdentifier{Value: p.currentToken.Value}
+					*compound = append(*compound, expr)
+				}
+
+				if p.peekToken.Type != lexer.TPeriod {
+					break
+				}
+
+				p.nextToken()
+			}
+
+            newExpr = &ast.ExprCompoundIdentifier{Identifiers: *compound}
 		}
 
 	default:

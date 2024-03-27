@@ -96,7 +96,7 @@ func (e *ExprStar) TokenLiteral() string {
 }
 
 type ExprCompoundIdentifier struct {
-    Identifiers []*ExprIdentifier
+    Identifiers []Expression
 }
 func (e *ExprCompoundIdentifier) expressionNode() {}
 func (e *ExprCompoundIdentifier) TokenLiteral() string {
@@ -105,7 +105,7 @@ func (e *ExprCompoundIdentifier) TokenLiteral() string {
         if i > 0 {
             str.WriteString(".")
         }
-        str.WriteString((*item).TokenLiteral())
+        str.WriteString(item.TokenLiteral())
     }
     return str.String()
 }
