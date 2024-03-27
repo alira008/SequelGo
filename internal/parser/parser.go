@@ -106,9 +106,8 @@ func (p *Parser) parseSelectBody() *ast.SelectBody {
 	selectItems := p.parseSelectItems()
 	tableObject := p.parseTableObject()
 	whereExpression := p.parseWhereExpression()
-	_ = whereExpression
 
-	stmt := &ast.SelectBody{SelectItems: selectItems, TableObject: tableObject, WhereClause: nil}
+	stmt := &ast.SelectBody{SelectItems: selectItems, TableObject: tableObject, WhereClause: whereExpression}
 	return stmt
 }
 
@@ -150,13 +149,15 @@ func (p *Parser) parseTableObject() ast.Expression {
 }
 
 func (p *Parser) parseWhereExpression() ast.Expression {
-	fmt.Printf("parsing where")
+	fmt.Printf("parsing where\n")
 	if !p.peekTokenIs(lexer.TWhere) {
 		return nil
 	}
 
 	// go to where token
 	p.nextToken()
+			fmt.Printf("current token: %v\n", p.currentToken)
+			fmt.Printf("peek token: %v\n", p.peekToken)
 	p.nextToken()
 
 	return p.parseExpression(PrecedenceLowest)
@@ -164,12 +165,12 @@ func (p *Parser) parseWhereExpression() ast.Expression {
 
 func (p *Parser) parseExpression(precedence Precedence) ast.Expression {
 	leftExpr := p.parsePrefixExpression()
+    fmt.Printf("left expression: %v\n", leftExpr)
 
 	// parse infix sql expressions using stacks to keep track of precedence
 	for precedence < checkPrecedence(p.peekToken.Type) {
 		p.nextToken()
 
-		fmt.Printf("hello guys")
 		leftExpr = p.parseInfixExpression(leftExpr)
 	}
 
@@ -178,7 +179,6 @@ func (p *Parser) parseExpression(precedence Precedence) ast.Expression {
 
 func (p *Parser) parsePrefixExpression() ast.Expression {
 	fmt.Printf("parsing prefix expression\n")
-	fmt.Printf("current token: %v\n", p.currentToken)
 	var newExpr ast.Expression
 	switch p.currentToken.Type {
 	case lexer.TIdentifier, lexer.TNumericLiteral, lexer.TStringLiteral, lexer.TAsterisk, lexer.TLocalVariable, lexer.TQuotedIdentifier:
@@ -204,7 +204,6 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 			compound := &[]ast.Expression{newExpr}
 			fmt.Printf("parsing compound identifier\n")
 
-			fmt.Printf("current token: %v\n", p.currentToken)
 			// go to period token
 			p.nextToken()
 			fmt.Printf("current token: %v\n", p.currentToken)
@@ -247,19 +246,12 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 }
 
 func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
+	fmt.Printf("parsing infix expression\n")
 	switch p.currentToken.Type {
 	case lexer.TPlus,
 		lexer.TMinus,
 		lexer.TAsterisk,
 		lexer.TDivide,
-		// lexer.TPlusEqual,
-		// lexer.TMinusEqual,
-		// lexer.TMultiplyEqual,
-		// lexer.TDivideEqual,
-		// lexer.TPercentEqual,
-		// lexer.TAndEqual,
-		// lexer.TOrEqual,
-		// lexer.TCaretEqual,
 		lexer.TAnd,
 		lexer.TOr:
 		var operator ast.OperatorType
@@ -272,14 +264,6 @@ func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
 			operator = ast.OpMult
 		case lexer.TDivide:
 			operator = ast.OpDiv
-		// case lexer.TPlusEqual:
-		// case lexer.TMinusEqual:
-		// case lexer.TMultiplyEqual:
-		// case lexer.TDivideEqual:
-		// case lexer.TPercentEqual:
-		// case lexer.TAndEqual:
-		// case lexer.TOrEqual:
-		// case lexer.TCaretEqual:
 		case lexer.TAnd:
 			operator = ast.OpAnd
 		case lexer.TOr:
@@ -287,18 +271,53 @@ func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
 		}
 		precedence := checkPrecedence(p.currentToken.Type)
 		p.nextToken()
-		p.nextToken()
-        fmt.Printf("current token: %v\n", p.currentToken)
+		fmt.Printf("current token: %v\n", p.currentToken)
+		fmt.Printf("peek token: %v\n", p.peekToken)
 
 		right := p.parseExpression(precedence)
 		if right == nil {
 			return nil
 		}
+        fmt.Printf("left expression: %v\n", left)
+        fmt.Printf("right expression: %v\n", right)
 		return &ast.ExprBinary{
 			Left:     left,
 			Operator: operator,
 			Right:    right,
 		}
+	case lexer.TEqual,
+		lexer.TNotEqual,
+		lexer.TGreaterThan,
+		lexer.TLessThan,
+		lexer.TGreaterThanEqual,
+		lexer.TLessThanEqual:
+
+		var operator ast.OperatorType
+		switch p.currentToken.Type {
+		case lexer.TEqual:
+			operator = ast.OpEqual
+		case lexer.TNotEqual:
+			operator = ast.OpNotEqual
+		case lexer.TGreaterThan:
+			operator = ast.OpGreater
+		case lexer.TLessThan:
+			operator = ast.OpLess
+		case lexer.TGreaterThanEqual:
+			operator = ast.OpGreaterEqual
+		case lexer.TLessThanEqual:
+			operator = ast.OpLessEqual
+		}
+		precedence := checkPrecedence(p.currentToken.Type)
+		p.nextToken()
+
+		// parse the expression of the operator
+		right := p.parseExpression(precedence)
+		return &ast.ExprBinary{
+			Left:     left,
+			Operator: operator,
+			Right:    right,
+		}
+
 	}
 	return nil
 }

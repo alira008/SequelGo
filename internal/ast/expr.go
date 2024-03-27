@@ -20,6 +20,7 @@ const (
 	OpDiv
 	OpMod
 	OpEqual
+	OpNotEqual
 	OpGreater
 	OpGreaterEqual
 	OpLess

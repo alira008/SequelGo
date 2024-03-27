@@ -21,10 +21,12 @@ func TestBasic(t *testing.T) {
 		{Type: TFrom, Value: "from"},
 		{Type: TIdentifier, Value: "testtable"},
 		{Type: TWhere, Value: "where"},
+		{Type: TAnd, Value: "and"},
+		{Type: TStringLiteral, Value: "no"},
 	}
 	_ = expected
 
-	lexer := NewLexer(" SELect     distinct *, @hello, [yes], 3.555, 'literal' FROM testtable where ")
+	lexer := NewLexer(" SELect     distinct *, @hello, [yes], 3.555, 'literal' FROM testtable where aND 'no'")
 
 	lexed := []Token{}
 	current := lexer.NextToken()
