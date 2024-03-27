@@ -115,7 +115,14 @@ func (p *Parser) parseSelectItems() *[]ast.Expression {
 	items := &[]ast.Expression{}
 
 	for {
-		if !p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier, lexer.TNumericLiteral, lexer.TStringLiteral, lexer.TAsterisk, lexer.TLocalVariable, lexer.TQuotedIdentifier, lexer.TAsterisk}) {
+		if !p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier,
+			lexer.TNumericLiteral,
+			lexer.TStringLiteral,
+			lexer.TAsterisk,
+			lexer.TLocalVariable,
+            // rework checking keywords
+			lexer.TSum,
+			lexer.TQuotedIdentifier}) {
 			fmt.Printf("expected identifier, got %s\n", p.peekToken.Value)
 			return nil
 		}
@@ -163,7 +170,6 @@ func (p *Parser) parseWhereExpression() ast.Expression {
 
 func (p *Parser) parseExpression(precedence Precedence) ast.Expression {
 	leftExpr := p.parsePrefixExpression()
-    fmt.Printf("left expression: %v\n", leftExpr)
 
 	// parse infix sql expressions using stacks to keep track of precedence
 	for precedence < checkPrecedence(p.peekToken.Type) {
@@ -234,6 +240,179 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 
 			newExpr = &ast.ExprCompoundIdentifier{Identifiers: *compound}
 		}
+	case lexer.TDenseRank,
+		lexer.TRank,
+		lexer.TRowNumber,
+		lexer.TAbs,
+		lexer.TAcos,
+		lexer.TAsin,
+		lexer.TAtan,
+		lexer.TCeiling,
+		lexer.TCos,
+		lexer.TCot,
+		lexer.TDegrees,
+		lexer.TExp,
+		lexer.TFloor,
+		lexer.TLog,
+		lexer.TLog10,
+		lexer.TPi,
+		lexer.TPower,
+		lexer.TRadians,
+		lexer.TRands,
+		lexer.TRound,
+		lexer.TSign,
+		lexer.TSin,
+		lexer.TSqrt,
+		lexer.TSquare,
+		lexer.TTan,
+		lexer.TFirstValue,
+		lexer.TLastValue,
+		lexer.TLag,
+		lexer.TLead,
+		lexer.TAvg,
+		lexer.TCount,
+		lexer.TMax,
+		lexer.TMin,
+		lexer.TStdev,
+		lexer.TStdevp,
+		lexer.TSum,
+		lexer.TVar,
+		lexer.TVarp,
+		lexer.TGetdate:
+		var funcType ast.FuncType
+		switch p.currentToken.Type {
+		case lexer.TDenseRank:
+			funcType = ast.FuncDenseRank
+		case lexer.TRank:
+			funcType = ast.FuncRank
+		case lexer.TRowNumber:
+			funcType = ast.FuncRowNumber
+		case lexer.TAbs:
+			funcType = ast.FuncAbs
+		case lexer.TAcos:
+			funcType = ast.FuncAcos
+		case lexer.TAsin:
+			funcType = ast.FuncAsin
+		case lexer.TAtan:
+			funcType = ast.FuncAtan
+		case lexer.TCeiling:
+			funcType = ast.FuncCeiling
+		case lexer.TCos:
+			funcType = ast.FuncCos
+		case lexer.TCot:
+			funcType = ast.FuncCot
+		case lexer.TDegrees:
+			funcType = ast.FuncDegrees
+		case lexer.TExp:
+			funcType = ast.FuncExp
+		case lexer.TFloor:
+			funcType = ast.FuncFloor
+		case lexer.TLog:
+			funcType = ast.FuncLog
+		case lexer.TLog10:
+			funcType = ast.FuncLog10
+		case lexer.TPi:
+			funcType = ast.FuncPi
+		case lexer.TPower:
+			funcType = ast.FuncPower
+		case lexer.TRadians:
+			funcType = ast.FuncRadians
+		case lexer.TRands:
+			funcType = ast.FuncRands
+		case lexer.TRound:
+			funcType = ast.FuncRound
+		case lexer.TSign:
+			funcType = ast.FuncSign
+		case lexer.TSin:
+			funcType = ast.FuncSin
+		case lexer.TSqrt:
+			funcType = ast.FuncSqrt
+		case lexer.TSquare:
+			funcType = ast.FuncSquare
+		case lexer.TTan:
+			funcType = ast.FuncTan
+		case lexer.TFirstValue:
+			funcType = ast.FuncFirstValue
+		case lexer.TLastValue:
+			funcType = ast.FuncLastValue
+		case lexer.TLag:
+			funcType = ast.FuncLag
+		case lexer.TLead:
+			funcType = ast.FuncLead
+		case lexer.TAvg:
+			funcType = ast.FuncAvg
+		case lexer.TCount:
+			funcType = ast.FuncCount
+		case lexer.TMax:
+			funcType = ast.FuncMax
+		case lexer.TMin:
+			funcType = ast.FuncMin
+		case lexer.TStdev:
+			funcType = ast.FuncStdev
+		case lexer.TStdevp:
+			funcType = ast.FuncStdevp
+		case lexer.TSum:
+			funcType = ast.FuncSum
+		case lexer.TVar:
+			funcType = ast.FuncVar
+		case lexer.TVarp:
+			funcType = ast.FuncVarp
+		case lexer.TGetdate:
+			funcType = ast.FuncGetdate
+		}
+		function := &ast.ExprFunction{Type: funcType, Name: &ast.ExprIdentifier{Value: p.currentToken.Value}}
+		// parse function arguments
+		if !p.expectPeek(lexer.TLeftParen) {
+			fmt.Printf("expected left parenthesis, got %s\n", p.peekToken.Value)
+			return nil
+		}
+		args := []ast.Expression{}
+		if p.peekTokenIs(lexer.TRightParen) {
+			p.nextToken()
+			return &ast.ExprFunctionCall{
+				Name: function,
+				Args: args,
+			}
+		}
+
+		for {
+			if !p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier,
+				lexer.TNumericLiteral,
+				lexer.TStringLiteral,
+				lexer.TLocalVariable,
+				lexer.TQuotedIdentifier,
+			}) {
+				fmt.Printf("expected argument, got %s\n", p.peekToken.Value)
+				return nil
+			}
+
+			if p.currentToken.Type == lexer.TLocalVariable {
+				args = append(args, &ast.ExprLocalVariable{Value: p.currentToken.Value})
+			} else if p.currentToken.Type == lexer.TQuotedIdentifier {
+				args = append(args, &ast.ExprQuotedIdentifier{Value: p.currentToken.Value})
+			} else if p.currentToken.Type == lexer.TStringLiteral {
+				args = append(args, &ast.ExprStringLiteral{Value: p.currentToken.Value})
+			} else if p.currentToken.Type == lexer.TNumericLiteral {
+				args = append(args, &ast.ExprNumberLiteral{Value: p.currentToken.Value})
+			} else {
+				args = append(args, &ast.ExprIdentifier{Value: p.currentToken.Value})
+			}
+
+			if p.peekTokenIs(lexer.TRightParen) || p.peekTokenIs(lexer.TComma) {
+				break
+			}
+			p.nextToken()
+		}
+
+		if !p.expectPeek(lexer.TRightParen) {
+			fmt.Printf("expected right parenthesis, got %s\n", p.peekToken.Value)
+			return nil
+		}
+
+		return &ast.ExprFunctionCall{
+			Name: function,
+			Args: args,
+		}
 
 	default:
 		return nil
@@ -274,8 +453,8 @@ func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
 		if right == nil {
 			return nil
 		}
-        fmt.Printf("left expression: %v\n", left)
-        fmt.Printf("right expression: %v\n", right)
+		fmt.Printf("left expression: %v\n", left)
+		fmt.Printf("right expression: %v\n", right)
 		return &ast.ExprBinary{
 			Left:     left,
 			Operator: operator,
