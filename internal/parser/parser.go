@@ -156,8 +156,6 @@ func (p *Parser) parseWhereExpression() ast.Expression {
 
 	// go to where token
 	p.nextToken()
-			fmt.Printf("current token: %v\n", p.currentToken)
-			fmt.Printf("peek token: %v\n", p.peekToken)
 	p.nextToken()
 
 	return p.parseExpression(PrecedenceLowest)
@@ -271,8 +269,6 @@ func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
 		}
 		precedence := checkPrecedence(p.currentToken.Type)
 		p.nextToken()
-		fmt.Printf("current token: %v\n", p.currentToken)
-		fmt.Printf("peek token: %v\n", p.peekToken)
 
 		right := p.parseExpression(precedence)
 		if right == nil {
