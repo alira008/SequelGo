@@ -72,6 +72,7 @@ func (p *Parser) Parse() ast.Query {
 		stmt, err := p.parseStatement()
 
 		if err != nil {
+			fmt.Printf("[Error Line: %d Col: %d]: %s\n", p.currentToken.End.Line, p.currentToken.End.Col+1, err.Error())
 			p.nextToken()
 			continue
 		}
@@ -91,7 +92,7 @@ func (p *Parser) parseStatement() (ast.Statement, error) {
 			return &ast.SelectStatement{SelectBody: &body}, nil
 		}
 
-		return nil, fmt.Errorf("error parsing select statement")
+		return nil, err
 	default:
 		return nil, fmt.Errorf("unknown statement type")
 	}
@@ -106,21 +107,18 @@ func (p *Parser) parseSelectBody() (ast.SelectBody, error) {
 	stmt := ast.SelectBody{}
 	selectItems, err := p.parseSelectItems()
 	if err != nil {
-        fmt.Printf("Err: %s", err);
 		return stmt, err
 	}
 	stmt.SelectItems = selectItems
 
 	tableObject, err := p.parseTableObject()
 	if err != nil {
-        fmt.Printf("Err: %s", err);
 		return stmt, err
 	}
 	stmt.TableObject = tableObject
 
 	whereExpression, err := p.parseWhereExpression()
 	if err != nil {
-        fmt.Printf("Err: %s", err);
 		return stmt, err
 	}
 	stmt.WhereClause = whereExpression
