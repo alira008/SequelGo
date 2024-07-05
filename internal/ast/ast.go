@@ -64,7 +64,7 @@ func (ss *SelectStatement) TokenLiteral() string {
 type CommmonTableExpression struct {
 }
 type SelectBody struct {
-	SelectItems *[]Expression
+	SelectItems []Expression
 	TableObject Expression
 	WhereClause Expression
 }
@@ -76,7 +76,7 @@ func (sb *SelectBody) TokenLiteral() string {
 	if sb.SelectItems == nil {
 		return ""
 	}
-	for i, s := range *sb.SelectItems {
+	for i, s := range sb.SelectItems {
 		if i > 0 {
 			str.WriteString(", ")
 		}

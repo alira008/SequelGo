@@ -1,6 +1,9 @@
 package lexer
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 type TokenType uint8
 
@@ -444,11 +447,28 @@ type Lexer struct {
 	read    int
 	current int
 	ch      byte
+	line    int
+	col     int
 }
 
 type Token struct {
 	Type  TokenType
 	Value string
+	Start Position
+	End   Position
+}
+
+type Position struct {
+	Line int
+	Col  int
+}
+
+func NewPosition(line, col int) Position {
+	return Position{Line: line, Col: col}
+}
+
+func (p *Position) String() string {
+	return fmt.Sprintf("{Line: %d Col: %d}", p.Line, p.Col)
 }
 
 func NewLexer(input string) *Lexer {
@@ -462,6 +482,15 @@ func (l *Lexer) readChar() {
 		l.ch = 0
 	} else {
 		l.ch = l.input[l.read]
+	}
+
+	if l.ch == '\n' || l.ch == '\r' {
+		l.line++
+		l.col = 0
+	} else if l.ch == '\t' {
+		l.col += 4
+	} else {
+		l.col++
 	}
 
 	l.current = l.read
@@ -573,6 +602,8 @@ func (l *Lexer) readIdentifier() string {
 func (l *Lexer) NextToken() Token {
 	l.skipWhitespace()
 	token := Token{}
+	token.Start.Col = l.col
+	token.Start.Line = l.line
 	switch l.ch {
 	case ',':
 		token.Type = TComma
@@ -744,8 +775,8 @@ func (l *Lexer) NextToken() Token {
 		token.Type = TTilde
 		token.Value = "~"
 	case '@':
-        // skip the @ character 
-        l.readChar()
+		// skip the @ character
+		l.readChar()
 		localVariable := l.readIdentifier()
 		token.Type = TLocalVariable
 		token.Value = localVariable
@@ -775,7 +806,14 @@ func (l *Lexer) NextToken() Token {
 		}
 	}
 
+	token.End.Col = l.col
+	token.End.Line = l.line
+
 	l.readChar()
 
 	return token
+}
+
+func (t *Token) String() string {
+	return fmt.Sprintf("{Value: %s, Start line: %d, Start col: %d,  End line: %d, End col: %d}", strings.ToLower(t.Value), t.Start.Line, t.Start.Col, t.End.Line, t.End.Col)
 }

@@ -86,9 +86,9 @@ func (p *Parser) Parse() ast.Query {
 func (p *Parser) parseStatement() (ast.Statement, error) {
 	switch p.currentToken.Type {
 	case lexer.TSelect:
-		body := p.parseSelectBody()
-		if body != nil {
-			return &ast.SelectStatement{SelectBody: body}, nil
+		body, err := p.parseSelectBody()
+		if err == nil {
+			return &ast.SelectStatement{SelectBody: &body}, nil
 		}
 
 		return nil, fmt.Errorf("error parsing select statement")
@@ -102,17 +102,34 @@ func (p *Parser) parseSelectStatement() *ast.SelectStatement {
 	return &ast.SelectStatement{}
 }
 
-func (p *Parser) parseSelectBody() *ast.SelectBody {
-	selectItems := p.parseSelectItems()
-	tableObject := p.parseTableObject()
-	whereExpression := p.parseWhereExpression()
+func (p *Parser) parseSelectBody() (ast.SelectBody, error) {
+	stmt := ast.SelectBody{}
+	selectItems, err := p.parseSelectItems()
+	if err != nil {
+        fmt.Printf("Err: %s", err);
+		return stmt, err
+	}
+	stmt.SelectItems = selectItems
 
-	stmt := &ast.SelectBody{SelectItems: selectItems, TableObject: tableObject, WhereClause: whereExpression}
-	return stmt
+	tableObject, err := p.parseTableObject()
+	if err != nil {
+        fmt.Printf("Err: %s", err);
+		return stmt, err
+	}
+	stmt.TableObject = tableObject
+
+	whereExpression, err := p.parseWhereExpression()
+	if err != nil {
+        fmt.Printf("Err: %s", err);
+		return stmt, err
+	}
+	stmt.WhereClause = whereExpression
+
+	return stmt, nil
 }
 
-func (p *Parser) parseSelectItems() *[]ast.Expression {
-	items := &[]ast.Expression{}
+func (p *Parser) parseSelectItems() ([]ast.Expression, error) {
+	items := []ast.Expression{}
 
 	for {
 		if !p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier,
@@ -120,15 +137,15 @@ func (p *Parser) parseSelectItems() *[]ast.Expression {
 			lexer.TStringLiteral,
 			lexer.TAsterisk,
 			lexer.TLocalVariable,
-            // rework checking keywords
+			// rework checking keywords
 			lexer.TSum,
 			lexer.TQuotedIdentifier}) {
-			fmt.Printf("expected identifier, got %s\n", p.peekToken.Value)
-			return nil
+			// fmt.Printf("expected identifier, got %s\n", p.peekToken.Value)
+			return items, fmt.Errorf("expected identifier, got %s\n", p.peekToken.Value)
 		}
 
 		expr := p.parseExpression(PrecedenceLowest)
-		*items = append(*items, expr)
+		items = append(items, expr)
 
 		if p.peekToken.Type != lexer.TComma {
 			break
@@ -137,35 +154,38 @@ func (p *Parser) parseSelectItems() *[]ast.Expression {
 		p.nextToken()
 	}
 
-	return items
+	return items, nil
 }
 
-func (p *Parser) parseTableObject() ast.Expression {
+func (p *Parser) parseTableObject() (ast.Expression, error) {
 	if !p.expectPeek(lexer.TFrom) {
-		fmt.Printf("expected FROM, got %s\n", p.peekToken.Value)
-		return nil
+		return nil, fmt.Errorf("expected FROM, got %s\n", p.peekToken.Value)
 	}
 
 	if !p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier, lexer.TLocalVariable}) {
-		fmt.Printf("expected identifier, got %s\n", p.peekToken.Value)
+		return nil, fmt.Errorf("expected identifier, got %s\n", p.peekToken.Value)
 	}
 
 	tableObject := p.parseExpression(PrecedenceLowest)
 
-	return tableObject
+	return tableObject, nil
 }
 
-func (p *Parser) parseWhereExpression() ast.Expression {
+func (p *Parser) parseWhereExpression() (ast.Expression, error) {
 	fmt.Printf("parsing where\n")
 	if !p.peekTokenIs(lexer.TWhere) {
-		return nil
+		return nil, nil
 	}
 
 	// go to where token
 	p.nextToken()
 	p.nextToken()
+	expr := p.parseExpression(PrecedenceLowest)
 
-	return p.parseExpression(PrecedenceLowest)
+	if expr == nil {
+		return nil, fmt.Errorf("Expected an expression after where")
+	}
+	return expr, nil
 }
 
 func (p *Parser) parseExpression(precedence Precedence) ast.Expression {

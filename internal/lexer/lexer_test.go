@@ -7,22 +7,22 @@ import (
 
 func TestBasic(t *testing.T) {
 	expected := []Token{
-		{Type: TSelect, Value: "select"},
-		{Type: TDistinct, Value: "distinct"},
-		{Type: TAsterisk, Value: "*"},
-		{Type: TComma, Value: ","},
-		{Type: TLocalVariable, Value: "hello"},
-		{Type: TComma, Value: ","},
-		{Type: TQuotedIdentifier, Value: "yes"},
-		{Type: TComma, Value: ","},
-		{Type: TNumericLiteral, Value: "3.555"},
-		{Type: TComma, Value: ","},
-		{Type: TStringLiteral, Value: "literal"},
-		{Type: TFrom, Value: "from"},
-		{Type: TIdentifier, Value: "testtable"},
-		{Type: TWhere, Value: "where"},
-		{Type: TAnd, Value: "and"},
-		{Type: TStringLiteral, Value: "no"},
+		{Type: TSelect, Value: "select", Start: Position{Line: 0, Col: 2}, End: Position{Line: 0, Col: 7}},
+		{Type: TDistinct, Value: "distinct", Start: Position{Line: 0, Col: 13}, End: Position{Line: 0, Col: 20}},
+		{Type: TAsterisk, Value: "*", Start: Position{Line: 0, Col: 22}, End: Position{Line: 0, Col: 22}},
+		{Type: TComma, Value: ",", Start: Position{Line: 0, Col: 23}, End: Position{Line: 0, Col: 23}},
+		{Type: TLocalVariable, Value: "hello", Start: Position{Line: 0, Col: 25}, End: Position{Line: 0, Col: 30}},
+		{Type: TComma, Value: ",", Start: Position{Line: 0, Col: 31}, End: Position{Line: 0, Col: 31}},
+		{Type: TQuotedIdentifier, Value: "yes", Start: Position{Line: 0, Col: 33}, End: Position{Line: 0, Col: 37}},
+		{Type: TComma, Value: ",", Start: Position{Line: 0, Col: 38}, End: Position{Line: 0, Col: 38}},
+		{Type: TNumericLiteral, Value: "3.555", Start: Position{Line: 0, Col: 40}, End: Position{Line: 0, Col: 44}},
+		{Type: TComma, Value: ",", Start: Position{Line: 0, Col: 45}, End: Position{Line: 0, Col: 45}},
+		{Type: TStringLiteral, Value: "literal", Start: Position{Line: 0, Col: 47}, End: Position{Line: 0, Col: 55}},
+		{Type: TFrom, Value: "from", Start: Position{Line: 0, Col: 57}, End: Position{Line: 0, Col: 60}},
+		{Type: TIdentifier, Value: "testtable", Start: Position{Line: 0, Col: 62}, End: Position{Line: 0, Col: 70}},
+		{Type: TWhere, Value: "where", Start: Position{Line: 0, Col: 72}, End: Position{Line: 0, Col: 76}},
+		{Type: TAnd, Value: "and", Start: Position{Line: 0, Col: 78}, End: Position{Line: 0, Col: 80}},
+		{Type: TStringLiteral, Value: "no", Start: Position{Line: 0, Col: 82}, End: Position{Line: 0, Col: 85}},
 	}
 	_ = expected
 
@@ -46,9 +46,12 @@ func TestBasic(t *testing.T) {
 		if token.Type != expected[i].Type {
 			t.Fatalf("expected %v, got %v", expected[i].Type, token.Type)
 		}
-        lowercase := strings.ToLower(token.Value)
+		lowercase := strings.ToLower(token.Value)
 		if lowercase != expected[i].Value {
 			t.Fatalf("expected %s, got %s", expected[i].Value, lowercase)
+		}
+		if token.String() != expected[i].String() {
+			t.Fatalf("expected %s, got %s", expected[i].String(), token.String())
 		}
 	}
 

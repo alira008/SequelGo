@@ -9,7 +9,7 @@ import (
 func TestParseBasicSelectQuery(t *testing.T) {
 	select_statement := ast.SelectStatement{
 		SelectBody: &ast.SelectBody{
-			SelectItems: &[]ast.Expression{
+			SelectItems: []ast.Expression{
 				&ast.ExprStar{},
 				&ast.ExprIdentifier{Value: "hello"},
 				&ast.ExprStringLiteral{Value: "yes"},
@@ -46,7 +46,7 @@ func TestParseBuiltinFunctionCall(t *testing.T) {
 
 	select_statement := ast.SelectStatement{
 		SelectBody: &ast.SelectBody{
-			SelectItems: &[]ast.Expression{
+			SelectItems: []ast.Expression{
 				&ast.ExprIdentifier{Value: "hello"},
 				&ast.ExprFunctionCall{Name: &ast.ExprFunction{Type: ast.FuncSum,
 					Name: &ast.ExprIdentifier{Value: "sum"}},
