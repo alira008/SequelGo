@@ -35,30 +35,40 @@ func (p *Parser) peekTokenIs(t lexer.TokenType) bool {
 	return p.peekToken.Type == t
 }
 
-func (p *Parser) expectPeek(t lexer.TokenType) bool {
+func (p *Parser) expectPeek(t lexer.TokenType) error {
 	if p.peekToken.Type == t {
 		p.nextToken()
-		return true
-	} else {
-		p.peekError(t)
-		return false
+		return nil
 	}
+
+	return p.peekError(t)
 }
 
-func (p *Parser) expectPeekMany(ts []lexer.TokenType) bool {
+func (p *Parser) expectPeekMany(ts []lexer.TokenType) error {
 	for _, t := range ts {
 		if p.peekToken.Type == t {
 			p.nextToken()
-			return true
+			return nil
 		}
 	}
 
-	return false
+	return p.peekErrorMany(ts)
 }
 
-func (p *Parser) peekError(t lexer.TokenType) {
-	msg := fmt.Sprintf("expected next token to be %d, got %d instead", t, p.peekToken.Type)
-	p.errors = append(p.errors, msg)
+func (p *Parser) peekError(t lexer.TokenType) error {
+	return fmt.Errorf("expected (%s) got (%s) instead", t.String(), p.peekToken.Type.String())
+}
+
+func (p *Parser) peekErrorMany(ts []lexer.TokenType) error {
+	expectedTokenTypes := ""
+	for i, t := range ts {
+		expectedTokenTypes += fmt.Sprintf("%s", t.String())
+		if i < len(ts)-1 {
+			expectedTokenTypes += " or "
+		}
+	}
+
+	return fmt.Errorf("expected (%s) got (%s) instead", expectedTokenTypes, p.peekToken.Type.String())
 }
 
 func (p *Parser) Errors() []string {
@@ -128,16 +138,16 @@ func (p *Parser) parseSelectBody() (ast.SelectBody, error) {
 
 func (p *Parser) parseSelectSubquery() (ast.ExprSubquery, error) {
 	stmt := ast.ExprSubquery{}
-	if !p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier,
+	err := p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier,
 		lexer.TNumericLiteral,
 		lexer.TStringLiteral,
 		lexer.TAsterisk,
 		lexer.TLocalVariable,
 		// rework checking keywords
 		lexer.TSum,
-		lexer.TQuotedIdentifier}) {
-		// fmt.Printf("expected identifier, got %s\n", p.peekToken.Value)
-		return stmt, fmt.Errorf("expected identifier, got %s\n", p.peekToken.Value)
+		lexer.TQuotedIdentifier})
+	if err != nil {
+		return stmt, err
 	}
 
 	stmt.SelectItem = p.parseExpression(PrecedenceLowest)
@@ -161,7 +171,7 @@ func (p *Parser) parseSelectItems() ([]ast.Expression, error) {
 	items := []ast.Expression{}
 
 	for {
-		if !p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier,
+		err := p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier,
 			lexer.TNumericLiteral,
 			lexer.TStringLiteral,
 			lexer.TAsterisk,
@@ -169,8 +179,9 @@ func (p *Parser) parseSelectItems() ([]ast.Expression, error) {
 			lexer.TLeftParen,
 			// rework checking keywords
 			lexer.TSum,
-			lexer.TQuotedIdentifier}) {
-			return items, fmt.Errorf("expected identifier, got %s\n", p.peekToken.Value)
+			lexer.TQuotedIdentifier})
+		if err != nil {
+			return items, err
 		}
 
 		expr := p.parseExpression(PrecedenceLowest)
@@ -187,12 +198,14 @@ func (p *Parser) parseSelectItems() ([]ast.Expression, error) {
 }
 
 func (p *Parser) parseTableObject() (ast.Expression, error) {
-	if !p.expectPeek(lexer.TFrom) {
-		return nil, fmt.Errorf("expected FROM, got %s\n", p.peekToken.Value)
+	err := p.expectPeek(lexer.TFrom)
+	if err != nil {
+		return nil, err
 	}
 
-	if !p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier, lexer.TLocalVariable}) {
-		return nil, fmt.Errorf("expected identifier, got %s\n", p.peekToken.Value)
+	err = p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier, lexer.TLocalVariable})
+	if err != nil {
+		return nil, err
 	}
 
 	tableObject := p.parseExpression(PrecedenceLowest)
@@ -222,12 +235,13 @@ func (p *Parser) parseExpressionList() (ast.ExprExpressionList, error) {
 	expressionList := ast.ExprExpressionList{List: items}
 
 	for {
-		if !p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier,
+		err := p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier,
 			lexer.TIdentifier,
 			lexer.TNumericLiteral,
 			lexer.TStringLiteral,
-			lexer.TLocalVariable}) {
-			return expressionList, fmt.Errorf("expected identifier, got %s\n", p.peekToken.Value)
+			lexer.TLocalVariable})
+		if err != nil {
+			return expressionList, err
 		}
 
 		expr := p.parseExpression(PrecedenceLowest)
@@ -288,8 +302,8 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 			fmt.Printf("current token: %v\n", p.currentToken)
 
 			for {
-				if !p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier, lexer.TQuotedIdentifier, lexer.TAsterisk}) {
-					fmt.Printf("expected identifier, got %s\n", p.peekToken.Value)
+				err := p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier, lexer.TQuotedIdentifier, lexer.TAsterisk})
+				if err != nil {
 					return nil
 				}
 				fmt.Printf("current token: %v\n", p.currentToken)
@@ -437,8 +451,8 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 		}
 		function := &ast.ExprFunction{Type: funcType, Name: &ast.ExprIdentifier{Value: p.currentToken.Value}}
 		// parse function arguments
-		if !p.expectPeek(lexer.TLeftParen) {
-			fmt.Printf("expected left parenthesis, got %s\n", p.peekToken.Value)
+		err := p.expectPeek(lexer.TLeftParen)
+		if err != nil {
 			return nil
 		}
 		args := []ast.Expression{}
@@ -451,13 +465,13 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 		}
 
 		for {
-			if !p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier,
+			err = p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier,
 				lexer.TNumericLiteral,
 				lexer.TStringLiteral,
 				lexer.TLocalVariable,
 				lexer.TQuotedIdentifier,
-			}) {
-				fmt.Printf("expected argument, got %s\n", p.peekToken.Value)
+			})
+			if err != nil {
 				return nil
 			}
 
@@ -479,7 +493,8 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 			p.nextToken()
 		}
 
-		if !p.expectPeek(lexer.TRightParen) {
+		err = p.expectPeek(lexer.TRightParen)
+		if err != nil {
 			fmt.Printf("expected right parenthesis, got %s\n", p.peekToken.Value)
 			return nil
 		}
