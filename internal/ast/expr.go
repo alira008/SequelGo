@@ -112,8 +112,36 @@ func (e *ExprCompoundIdentifier) TokenLiteral() string {
 	return str.String()
 }
 
+type ExprSubquery struct {
+	SelectItem  Expression
+	TableObject Expression
+	WhereClause Expression
+}
+
+func (e *ExprSubquery) expressionNode() {}
+func (e *ExprSubquery) TokenLiteral() string {
+	var str strings.Builder
+	str.WriteString("SELECT ")
+
+	if e.SelectItem != nil {
+		str.WriteString(e.SelectItem.TokenLiteral())
+	}
+	if e.TableObject != nil {
+		str.WriteString(" FROM ")
+		str.WriteString(e.TableObject.TokenLiteral())
+	}
+
+	if e.WhereClause != nil {
+		str.WriteString(" WHERE ")
+		str.WriteString(e.WhereClause.TokenLiteral())
+	}
+
+	fmt.Printf("subquery statement %s\n", str.String())
+	return str.String()
+}
+
 type ExprExpressionList struct {
-	List []*Expression
+	List []Expression
 }
 
 func (e *ExprExpressionList) expressionNode() {}
@@ -124,7 +152,7 @@ func (e *ExprExpressionList) TokenLiteral() string {
 			str.WriteString(", ")
 		}
 
-		str.WriteString((*item).TokenLiteral())
+		str.WriteString(item.TokenLiteral())
 	}
 	return str.String()
 }

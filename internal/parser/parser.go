@@ -126,6 +126,37 @@ func (p *Parser) parseSelectBody() (ast.SelectBody, error) {
 	return stmt, nil
 }
 
+func (p *Parser) parseSelectSubquery() (ast.ExprSubquery, error) {
+	stmt := ast.ExprSubquery{}
+	if !p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier,
+		lexer.TNumericLiteral,
+		lexer.TStringLiteral,
+		lexer.TAsterisk,
+		lexer.TLocalVariable,
+		// rework checking keywords
+		lexer.TSum,
+		lexer.TQuotedIdentifier}) {
+		// fmt.Printf("expected identifier, got %s\n", p.peekToken.Value)
+		return stmt, fmt.Errorf("expected identifier, got %s\n", p.peekToken.Value)
+	}
+
+	stmt.SelectItem = p.parseExpression(PrecedenceLowest)
+
+	tableObject, err := p.parseTableObject()
+	if err != nil {
+		return stmt, err
+	}
+	stmt.TableObject = tableObject
+
+	whereExpression, err := p.parseWhereExpression()
+	if err != nil {
+		return stmt, err
+	}
+	stmt.WhereClause = whereExpression
+
+	return stmt, nil
+}
+
 func (p *Parser) parseSelectItems() ([]ast.Expression, error) {
 	items := []ast.Expression{}
 
@@ -135,10 +166,10 @@ func (p *Parser) parseSelectItems() ([]ast.Expression, error) {
 			lexer.TStringLiteral,
 			lexer.TAsterisk,
 			lexer.TLocalVariable,
+			lexer.TLeftParen,
 			// rework checking keywords
 			lexer.TSum,
 			lexer.TQuotedIdentifier}) {
-			// fmt.Printf("expected identifier, got %s\n", p.peekToken.Value)
 			return items, fmt.Errorf("expected identifier, got %s\n", p.peekToken.Value)
 		}
 
@@ -184,6 +215,32 @@ func (p *Parser) parseWhereExpression() (ast.Expression, error) {
 		return nil, fmt.Errorf("Expected an expression after where")
 	}
 	return expr, nil
+}
+
+func (p *Parser) parseExpressionList() (ast.ExprExpressionList, error) {
+	items := []ast.Expression{}
+	expressionList := ast.ExprExpressionList{List: items}
+
+	for {
+		if !p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier,
+			lexer.TIdentifier,
+			lexer.TNumericLiteral,
+			lexer.TStringLiteral,
+			lexer.TLocalVariable}) {
+			return expressionList, fmt.Errorf("expected identifier, got %s\n", p.peekToken.Value)
+		}
+
+		expr := p.parseExpression(PrecedenceLowest)
+		items = append(items, expr)
+
+		if p.peekToken.Type != lexer.TComma {
+			break
+		}
+
+		p.nextToken()
+	}
+
+	return expressionList, nil
 }
 
 func (p *Parser) parseExpression(precedence Precedence) ast.Expression {
@@ -431,7 +488,22 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 			Name: function,
 			Args: args,
 		}
+	case lexer.TLeftParen:
+		// start of subquery
+		if p.peekTokenIs(lexer.TSelect) {
+			p.nextToken()
+			statement, _ := p.parseSelectSubquery()
+			p.expectPeek(lexer.TRightParen)
 
+			return &statement
+		} else if p.peekTokenIs(lexer.TIdentifier) ||
+			p.peekTokenIs(lexer.TLocalVariable) ||
+			p.peekTokenIs(lexer.TNumericLiteral) {
+			stmt, _ := p.parseExpressionList()
+			p.expectPeek(lexer.TRightParen)
+
+			return &stmt
+		}
 	default:
 		return nil
 	}

@@ -43,7 +43,6 @@ func TestParseBasicSelectQuery(t *testing.T) {
 }
 
 func TestParseBuiltinFunctionCall(t *testing.T) {
-
 	select_statement := ast.SelectStatement{
 		SelectBody: &ast.SelectBody{
 			SelectItems: []ast.Expression{
@@ -55,6 +54,37 @@ func TestParseBuiltinFunctionCall(t *testing.T) {
 	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
 
 	l := lexer.NewLexer("select hello, sum(price) FROM testtable")
+	p := NewParser(l)
+	query := p.Parse()
+
+	if len(query.Statements) != 1 {
+		t.Fatalf("expected 1 statement, got %d", len(query.Statements))
+	}
+	for i, stmt := range query.Statements {
+		if stmt.TokenLiteral() != expected.Statements[i].TokenLiteral() {
+			t.Fatalf("expected %s, got %s", expected.Statements[i].TokenLiteral(), stmt.TokenLiteral())
+		}
+	}
+}
+
+func TestParseSubqueryCall(t *testing.T) {
+	select_statement := ast.SelectStatement{
+		SelectBody: &ast.SelectBody{
+			SelectItems: []ast.Expression{
+				&ast.ExprIdentifier{Value: "hello"},
+				&ast.ExprSubquery{
+					SelectItem:  &ast.ExprIdentifier{Value: "yesirr"},
+					TableObject: &ast.ExprIdentifier{Value: "bruh"},
+					WhereClause: &ast.ExprBinary{Left: &ast.ExprIdentifier{Value: "yes"},
+						Operator: ast.OpAnd,
+						Right:    &ast.ExprStringLiteral{Value: "no"}},
+				}},
+			TableObject: &ast.ExprIdentifier{Value: "testtable"},
+		},
+	}
+	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
+
+	l := lexer.NewLexer("select hello, (select yesirr from bruh where yes and 'no') FROM testtable")
 	p := NewParser(l)
 	query := p.Parse()
 
