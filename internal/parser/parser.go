@@ -149,8 +149,50 @@ func (p *Parser) parseSelectStatement() *ast.SelectStatement {
 	return &ast.SelectStatement{}
 }
 
+func (p *Parser) parseTopArg() (*ast.TopArg, error) {
+	p.nextToken()
+	p.nextToken()
+
+	expr, err := p.parseExpression(PrecedenceLowest)
+	if err != nil {
+		return nil, err
+	}
+
+	topArg := ast.TopArg{Quantity: expr}
+	if p.peekTokenIs(lexer.TPercent) {
+		topArg.Percent = true
+		p.nextToken()
+	}
+
+	if p.peekTokenIs(lexer.TWith) {
+		p.nextToken()
+
+		err = p.expectPeek(lexer.TTies)
+		if err != nil {
+			return nil, err
+		}
+		topArg.Percent = true
+		p.nextToken()
+	}
+
+	return &topArg, nil
+}
+
 func (p *Parser) parseSelectBody() (ast.SelectBody, error) {
 	stmt := ast.SelectBody{}
+	if p.peekTokenIs(lexer.TDistinct) {
+		stmt.Distinct = true
+		p.nextToken()
+	}
+
+	if p.peekTokenIs(lexer.TTop) {
+		topArg, err := p.parseTopArg()
+		if err != nil {
+			return stmt, err
+		}
+		stmt.Top = topArg
+	}
+
 	selectItems, err := p.parseSelectItems()
 	if err != nil {
 		return stmt, err

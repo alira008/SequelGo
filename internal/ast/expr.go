@@ -110,7 +110,7 @@ func (e *ExprWithAlias) TokenLiteral() string {
 		str.WriteString(" AS ")
 	} else {
 		str.WriteString(" ")
-    }
+	}
 	str.WriteString(e.Alias)
 	return str.String()
 }

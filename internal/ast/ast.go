@@ -63,7 +63,29 @@ func (ss *SelectStatement) TokenLiteral() string {
 
 type CommmonTableExpression struct{}
 
+type TopArg struct {
+	WithTies bool
+	Percent  bool
+	Quantity Expression
+}
+func (ta *TopArg) TokenLiteral() string {
+	var str strings.Builder
+	str.WriteString(fmt.Sprintf("TOP %s ", ta.Quantity.TokenLiteral()))
+
+    if ta.Percent {
+        str.WriteString("PERCENT ")
+    }
+
+    if ta.WithTies {
+        str.WriteString("WITH TIES ")
+    }
+
+    return str.String()
+}
+
 type SelectBody struct {
+	Distinct    bool
+	Top         *TopArg
 	SelectItems []Expression
 	TableObject Expression
 	WhereClause Expression
@@ -72,6 +94,14 @@ type SelectBody struct {
 func (sb *SelectBody) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString("SELECT ")
+
+    if sb.Distinct {
+        str.WriteString("DISTINCT ")
+    }
+
+    if sb.Top != nil {
+        str.WriteString(sb.Top.TokenLiteral())
+    }
 
 	if sb.SelectItems == nil {
 		return ""

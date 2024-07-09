@@ -109,9 +109,8 @@ func TestParseSelectItemWithAlias(t *testing.T) {
 			SelectItems: []ast.Expression{
 				&ast.ExprIdentifier{Value: "hello"},
 				&ast.ExprWithAlias{
-					Expression:     &ast.ExprIdentifier{Value: "potate"},
-					AsTokenPresent: false,
-					Alias:          "Potate",
+					Expression: &ast.ExprIdentifier{Value: "potate"},
+					Alias:      "Potate",
 				},
 				&ast.ExprSubquery{
 					SelectItem: &ast.ExprWithAlias{
@@ -126,7 +125,40 @@ func TestParseSelectItemWithAlias(t *testing.T) {
 	}
 	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
 
-	l := lexer.NewLexer("select hello, potate 'Potate', (select dt as 'Datetime' from bruh) FROM testtable")
+	input := "select hello, potate 'Potate', (select dt as 'Datetime' from bruh) FROM testtable"
+
+	test(t, expected, input)
+}
+
+func TestDistinctTopArg(t *testing.T) {
+	select_statement := ast.SelectStatement{
+		SelectBody: &ast.SelectBody{
+            Distinct: true,
+			Top: &ast.TopArg{
+				Percent: true,
+				Quantity: &ast.ExprNumberLiteral{
+					Value: "44",
+				},
+			},
+			SelectItems: []ast.Expression{
+				&ast.ExprIdentifier{Value: "hello"},
+				&ast.ExprWithAlias{
+					Expression: &ast.ExprIdentifier{Value: "potate"},
+					Alias:      "Potate",
+				},
+			},
+			TableObject: &ast.ExprIdentifier{Value: "testtable"},
+		},
+	}
+	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
+
+	input := "select distinct top 44 percent hello, potate 'Potate' FROM testtable"
+
+	test(t, expected, input)
+}
+
+func test(t *testing.T, expected ast.Query, input string) {
+	l := lexer.NewLexer(input)
 	p := NewParser(l)
 	query := p.Parse()
 
