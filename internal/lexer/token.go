@@ -31,7 +31,8 @@ const (
 	TRightParen
 	TDoubleEqual
 	TEqual
-	TNotEqual
+	TNotEqualBang
+	TNotEqualArrow
 	TLessThan
 	TLessThanEqual
 	TGreaterThan
@@ -522,8 +523,10 @@ func (t TokenType) String() string {
 		return "DoubleEqual"
 	case TEqual:
 		return "Equal"
-	case TNotEqual:
-		return "NotEqual"
+	case TNotEqualBang:
+		return "NotEqualBang"
+	case TNotEqualArrow:
+		return "NotEqualArrow"
 	case TLessThan:
 		return "LessThan"
 	case TLessThanEqual:

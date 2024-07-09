@@ -320,7 +320,7 @@ func (p *Parser) parseWhereExpression() (ast.Expression, error) {
 	}
 
 	switch expr.(type) {
-	case *ast.ExprBinary:
+	case *ast.ExprComparisonOperator:
 		break
 	default:
 		p.errorToken = ETCurrent
@@ -645,6 +645,30 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 
 			return &stmt, nil
 		}
+	case lexer.TPlus, lexer.TMinus:
+		var operator ast.UnaryOperatorType
+		switch p.currentToken.Type {
+		case lexer.TPlus:
+			operator = ast.UnaryOpPlus
+			break
+		case lexer.TMinus:
+			operator = ast.UnaryOpMinus
+			break
+		}
+
+		precedence := checkPrecedence(p.currentToken.Type)
+		p.nextToken()
+
+		right, err := p.parseExpression(precedence)
+		if err != nil {
+			return nil, err
+		}
+		fmt.Printf("right expression: %v\n", right)
+		newExpr = &ast.ExprUnaryOperator{
+			Operator: operator,
+			Right:    right,
+		}
+		break
 	default:
 		p.errorToken = ETCurrent
 		return nil, fmt.Errorf("Unimplemented expression %s", p.currentToken.Type.String())
@@ -661,22 +685,19 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 		lexer.TMinus,
 		lexer.TAsterisk,
 		lexer.TDivide,
-		lexer.TAnd,
-		lexer.TOr:
-		var operator ast.OperatorType
+		lexer.TMod:
+		var operator ast.ArithmeticOperatorType
 		switch p.currentToken.Type {
 		case lexer.TPlus:
-			operator = ast.OpPlus
+			operator = ast.ArithmeticOpPlus
 		case lexer.TMinus:
-			operator = ast.OpMinus
+			operator = ast.ArithmeticOpMinus
 		case lexer.TAsterisk:
-			operator = ast.OpMult
+			operator = ast.ArithmeticOpMult
 		case lexer.TDivide:
-			operator = ast.OpDiv
-		case lexer.TAnd:
-			operator = ast.OpAnd
-		case lexer.TOr:
-			operator = ast.OpOr
+			operator = ast.ArithmeticOpDiv
+		case lexer.TMod:
+			operator = ast.ArithmeticOpMod
 		}
 		precedence := checkPrecedence(p.currentToken.Type)
 		p.nextToken()
@@ -687,32 +708,35 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 		}
 		fmt.Printf("left expression: %v\n", left)
 		fmt.Printf("right expression: %v\n", right)
-		return &ast.ExprBinary{
+		return &ast.ExprArithmeticOperator{
 			Left:     left,
 			Operator: operator,
 			Right:    right,
 		}, nil
 	case lexer.TEqual,
-		lexer.TNotEqual,
+		lexer.TNotEqualBang,
+		lexer.TNotEqualArrow,
 		lexer.TGreaterThan,
 		lexer.TLessThan,
 		lexer.TGreaterThanEqual,
 		lexer.TLessThanEqual:
 
-		var operator ast.OperatorType
+		var operator ast.ComparisonOperatorType
 		switch p.currentToken.Type {
 		case lexer.TEqual:
-			operator = ast.OpEqual
-		case lexer.TNotEqual:
-			operator = ast.OpNotEqual
+			operator = ast.ComparisonOpEqual
+		case lexer.TNotEqualBang:
+			operator = ast.ComparisonOpNotEqualBang
+		case lexer.TNotEqualArrow:
+			operator = ast.ComparisonOpNotEqualArrow
 		case lexer.TGreaterThan:
-			operator = ast.OpGreater
+			operator = ast.ComparisonOpGreater
 		case lexer.TLessThan:
-			operator = ast.OpLess
+			operator = ast.ComparisonOpLess
 		case lexer.TGreaterThanEqual:
-			operator = ast.OpGreaterEqual
+			operator = ast.ComparisonOpGreaterEqual
 		case lexer.TLessThanEqual:
-			operator = ast.OpLessEqual
+			operator = ast.ComparisonOpLessEqual
 		}
 		precedence := checkPrecedence(p.currentToken.Type)
 		p.nextToken()
@@ -722,7 +746,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 		if err != nil {
 			return nil, err
 		}
-		return &ast.ExprBinary{
+		return &ast.ExprComparisonOperator{
 			Left:     left,
 			Operator: operator,
 			Right:    right,

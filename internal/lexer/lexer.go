@@ -67,7 +67,7 @@ func (l *Lexer) NextToken() Token {
 	case '!':
 		if l.peekChar() == '=' {
 			l.readChar()
-			token.Type = TNotEqual
+			token.Type = TNotEqualBang
 			token.Value = "!="
 		} else {
 			token.Type = TExclamationMark
@@ -78,7 +78,11 @@ func (l *Lexer) NextToken() Token {
 			l.readChar()
 			token.Type = TLessThanEqual
 			token.Value = "<="
-		} else {
+		} else if l.peekChar() == '>' {
+			l.readChar()
+			token.Type = TNotEqualArrow
+			token.Value = "<>"
+        } else {
 			token.Type = TLessThan
 			token.Value = "<"
 		}

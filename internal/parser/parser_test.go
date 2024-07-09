@@ -21,19 +21,17 @@ func TestParseBasicSelectQuery(t *testing.T) {
 					&ast.ExprStar{}}},
 			},
 			TableObject: &ast.ExprIdentifier{Value: "testtable"},
-			WhereClause: &ast.ExprBinary{
-				Left: &ast.ExprBinary{
-					Left:     &ast.ExprIdentifier{Value: "yes"},
-					Operator: ast.OpEqual,
-					Right:    &ast.ExprStringLiteral{Value: "yes"},
+			WhereClause: &ast.ExprComparisonOperator{
+				Left: &ast.ExprIdentifier{
+					Value: "LastPrice",
 				},
-				Operator: ast.OpAnd,
-				Right:    &ast.ExprStringLiteral{Value: "no"}},
+				Operator: ast.ComparisonOpLess,
+				Right:    &ast.ExprNumberLiteral{Value: "10.0"}},
 		},
 	}
 	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
 
-	l := lexer.NewLexer("select *,\n hello,\n 'yes',\n [yessir],\n @nosir, [superdb].world.* FROM testtable where yes = 'yes' and 'no'")
+	l := lexer.NewLexer("select *,\n hello,\n 'yes',\n [yessir],\n @nosir, [superdb].world.* FROM testtable where LastPrice < 10.0")
 	p := NewParser(l)
 	query := p.Parse()
 
@@ -80,16 +78,19 @@ func TestParseSubqueryCall(t *testing.T) {
 				&ast.ExprSubquery{
 					SelectItem:  &ast.ExprIdentifier{Value: "yesirr"},
 					TableObject: &ast.ExprIdentifier{Value: "bruh"},
-					WhereClause: &ast.ExprBinary{Left: &ast.ExprIdentifier{Value: "yes"},
-						Operator: ast.OpAnd,
-						Right:    &ast.ExprStringLiteral{Value: "no"}},
+					WhereClause: &ast.ExprComparisonOperator{
+						Left: &ast.ExprIdentifier{
+							Value: "LastPrice",
+						},
+						Operator: ast.ComparisonOpLess,
+						Right:    &ast.ExprNumberLiteral{Value: "10.0"}},
 				}},
 			TableObject: &ast.ExprIdentifier{Value: "testtable"},
 		},
 	}
 	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
 
-	l := lexer.NewLexer("select hello,  (select yesirr from bruh where yes and 'no') FROM testtable")
+	l := lexer.NewLexer("select hello,  (select yesirr from bruh where LastPrice < 10.0) FROM testtable")
 	p := NewParser(l)
 	query := p.Parse()
 
@@ -133,7 +134,7 @@ func TestParseSelectItemWithAlias(t *testing.T) {
 func TestDistinctTopArg(t *testing.T) {
 	select_statement := ast.SelectStatement{
 		SelectBody: &ast.SelectBody{
-            Distinct: true,
+			Distinct: true,
 			Top: &ast.TopArg{
 				Percent: true,
 				Quantity: &ast.ExprNumberLiteral{
