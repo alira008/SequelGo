@@ -21,14 +21,19 @@ func TestParseBasicSelectQuery(t *testing.T) {
 					&ast.ExprStar{}}},
 			},
 			TableObject: &ast.ExprIdentifier{Value: "testtable"},
-			WhereClause: &ast.ExprBinary{Left: &ast.ExprIdentifier{Value: "yes"},
+			WhereClause: &ast.ExprBinary{
+				Left: &ast.ExprBinary{
+					Left:     &ast.ExprIdentifier{Value: "yes"},
+					Operator: ast.OpEqual,
+					Right:    &ast.ExprStringLiteral{Value: "yes"},
+				},
 				Operator: ast.OpAnd,
 				Right:    &ast.ExprStringLiteral{Value: "no"}},
 		},
 	}
 	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
 
-	l := lexer.NewLexer("select *,\n hello,\n 'yes',\n [yessir],\n @nosir, [superdb].world.* FROM testtable where yes and 'no'")
+	l := lexer.NewLexer("select *,\n hello,\n 'yes',\n [yessir],\n @nosir, [superdb].world.* FROM testtable where yes = 'yes' and 'no'")
 	p := NewParser(l)
 	query := p.Parse()
 
@@ -84,7 +89,7 @@ func TestParseSubqueryCall(t *testing.T) {
 	}
 	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
 
-	l := lexer.NewLexer("select hello, (select yesirr from bruh where yes and 'no') FROM testtable")
+	l := lexer.NewLexer("select hello, true (select yesirr from bruh where yes and 'no') FROM testtable")
 	p := NewParser(l)
 	query := p.Parse()
 

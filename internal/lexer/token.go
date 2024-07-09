@@ -449,6 +449,53 @@ var Keywords = map[string]TokenType{
 	"year":          TYear,
 }
 
+func (t TokenType) IsBuiltinFunction() bool {
+	switch t {
+	case TDenseRank,
+		TRank,
+		TRowNumber,
+		TAbs,
+		TAcos,
+		TAsin,
+		TAtan,
+		TCeiling,
+		TCos,
+		TCot,
+		TDegrees,
+		TExp,
+		TFloor,
+		TLog,
+		TLog10,
+		TPi,
+		TPower,
+		TRadians,
+		TRands,
+		TRound,
+		TSign,
+		TSin,
+		TSqrt,
+		TSquare,
+		TTan,
+		TFirstValue,
+		TLastValue,
+		TLag,
+		TLead,
+		TAvg,
+		TCount,
+		TMax,
+		TMin,
+		TStdev,
+		TStdevp,
+		TSum,
+		TVar,
+		TVarp,
+		TGetdate:
+		return true
+	default:
+		return false
+	}
+}
+
 func (t TokenType) String() string {
 	switch t {
 	case TEndOfFile:
@@ -914,4 +961,3 @@ func (t TokenType) String() string {
 	}
 	return "Unimplemented"
 }
-

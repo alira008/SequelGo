@@ -4,6 +4,7 @@ import (
 	"SequelGo/internal/ast"
 	"SequelGo/internal/lexer"
 	"fmt"
+	"strings"
 )
 
 type ErrorToken int
@@ -77,17 +78,23 @@ func (p *Parser) peekError(t lexer.TokenType) error {
 }
 
 func (p *Parser) peekErrorMany(ts []lexer.TokenType) error {
-	expectedTokenTypes := ""
-	for i, t := range ts {
-		expectedTokenTypes += fmt.Sprintf("%s", t.String())
-		if i < len(ts)-1 {
-			expectedTokenTypes += " or "
+	var expectedTokenTypes []string 
+	builtinFuncPresent := false
+	for _, t := range ts {
+		if t.IsBuiltinFunction() && !builtinFuncPresent {
+			builtinFuncPresent = true
+			expectedTokenTypes = append(expectedTokenTypes, fmt.Sprintf("Builtin Functions"))
+			continue
+		} else if t.IsBuiltinFunction() && builtinFuncPresent {
+			continue
 		}
+
+		expectedTokenTypes = append(expectedTokenTypes, fmt.Sprintf("%s", t.String()))
 	}
 
 	return fmt.Errorf(
 		"expected (%s) got (%s) instead\n%s",
-		expectedTokenTypes,
+		strings.Join(expectedTokenTypes, " or "),
 		p.peekToken.Type.String(),
 		p.l.CurrentLine(),
 	)
@@ -574,7 +581,7 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 			return &stmt, nil
 		}
 	default:
-        p.errorToken = ETCurrent
+		p.errorToken = ETCurrent
 		return nil, fmt.Errorf("Unimplemented expression %s", p.currentToken.Type.String())
 	}
 
@@ -657,6 +664,6 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 		}, nil
 
 	}
-    p.errorToken = ETCurrent
+	p.errorToken = ETCurrent
 	return nil, fmt.Errorf("Unimplemented expression %s", p.currentToken.Type.String())
 }
