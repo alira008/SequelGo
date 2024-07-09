@@ -28,7 +28,7 @@ func TestParseBasicSelectQuery(t *testing.T) {
 	}
 	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
 
-	l := lexer.NewLexer("select *, hello, 'yes', [yessir],  @nosir, [superdb].world.* FROM testtable where yes and 'no'")
+	l := lexer.NewLexer("select *, hello, 'yes', [yessir],\n true,  @nosir, [superdb].world.* FROM testtable where yes and 'no'")
 	p := NewParser(l)
 	query := p.Parse()
 

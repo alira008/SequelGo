@@ -56,7 +56,12 @@ func (p *Parser) expectPeekMany(ts []lexer.TokenType) error {
 }
 
 func (p *Parser) peekError(t lexer.TokenType) error {
-	return fmt.Errorf("expected (%s) got (%s) instead", t.String(), p.peekToken.Type.String())
+	return fmt.Errorf(
+		"expected (%s) got (%s) instead\n%s",
+		t.String(),
+		p.peekToken.Type.String(),
+		p.l.CurrentLine(),
+	)
 }
 
 func (p *Parser) peekErrorMany(ts []lexer.TokenType) error {
@@ -68,7 +73,12 @@ func (p *Parser) peekErrorMany(ts []lexer.TokenType) error {
 		}
 	}
 
-	return fmt.Errorf("expected (%s) got (%s) instead", expectedTokenTypes, p.peekToken.Type.String())
+	return fmt.Errorf(
+		"expected (%s) got (%s) instead\n%s",
+		expectedTokenTypes,
+		p.peekToken.Type.String(),
+		p.l.CurrentLine(),
+	)
 }
 
 func (p *Parser) Errors() []string {
@@ -143,14 +153,17 @@ func (p *Parser) parseSelectSubquery() (ast.ExprSubquery, error) {
 		lexer.TStringLiteral,
 		lexer.TAsterisk,
 		lexer.TLocalVariable,
-		// rework checking keywords
+		lexer.TLeftParen,
 		lexer.TSum,
 		lexer.TQuotedIdentifier})
 	if err != nil {
 		return stmt, err
 	}
 
-	stmt.SelectItem = p.parseExpression(PrecedenceLowest)
+	stmt.SelectItem, err = p.parseExpression(PrecedenceLowest)
+	if err != nil {
+		return stmt, err
+	}
 
 	tableObject, err := p.parseTableObject()
 	if err != nil {
@@ -184,7 +197,10 @@ func (p *Parser) parseSelectItems() ([]ast.Expression, error) {
 			return items, err
 		}
 
-		expr := p.parseExpression(PrecedenceLowest)
+		expr, err := p.parseExpression(PrecedenceLowest)
+		if err != nil {
+			return items, err
+		}
 		items = append(items, expr)
 
 		if p.peekToken.Type != lexer.TComma {
@@ -208,7 +224,10 @@ func (p *Parser) parseTableObject() (ast.Expression, error) {
 		return nil, err
 	}
 
-	tableObject := p.parseExpression(PrecedenceLowest)
+	tableObject, err := p.parseExpression(PrecedenceLowest)
+	if err != nil {
+		return tableObject, err
+	}
 
 	return tableObject, nil
 }
@@ -222,7 +241,10 @@ func (p *Parser) parseWhereExpression() (ast.Expression, error) {
 	// go to where token
 	p.nextToken()
 	p.nextToken()
-	expr := p.parseExpression(PrecedenceLowest)
+	expr, err := p.parseExpression(PrecedenceLowest)
+	if err != nil {
+		return expr, err
+	}
 
 	if expr == nil {
 		return nil, fmt.Errorf("Expected an expression after where")
@@ -244,7 +266,10 @@ func (p *Parser) parseExpressionList() (ast.ExprExpressionList, error) {
 			return expressionList, err
 		}
 
-		expr := p.parseExpression(PrecedenceLowest)
+		expr, err := p.parseExpression(PrecedenceLowest)
+		if err != nil {
+			return expressionList, err
+		}
 		items = append(items, expr)
 
 		if p.peekToken.Type != lexer.TComma {
@@ -257,20 +282,26 @@ func (p *Parser) parseExpressionList() (ast.ExprExpressionList, error) {
 	return expressionList, nil
 }
 
-func (p *Parser) parseExpression(precedence Precedence) ast.Expression {
-	leftExpr := p.parsePrefixExpression()
+func (p *Parser) parseExpression(precedence Precedence) (ast.Expression, error) {
+	leftExpr, err := p.parsePrefixExpression()
+	if err != nil {
+		return nil, err
+	}
 
 	// parse infix sql expressions using stacks to keep track of precedence
 	for precedence < checkPrecedence(p.peekToken.Type) {
 		p.nextToken()
 
-		leftExpr = p.parseInfixExpression(leftExpr)
+		leftExpr, err = p.parseInfixExpression(leftExpr)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return leftExpr
+	return leftExpr, nil
 }
 
-func (p *Parser) parsePrefixExpression() ast.Expression {
+func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 	fmt.Printf("parsing prefix expression\n")
 	var newExpr ast.Expression
 	switch p.currentToken.Type {
@@ -288,8 +319,6 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 			newExpr = &ast.ExprIdentifier{Value: p.currentToken.Value}
 		case lexer.TAsterisk:
 			newExpr = &ast.ExprStar{}
-		default:
-			return nil
 		}
 
 		if p.peekToken.Type == lexer.TPeriod {
@@ -304,7 +333,7 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 			for {
 				err := p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier, lexer.TQuotedIdentifier, lexer.TAsterisk})
 				if err != nil {
-					return nil
+					return nil, err
 				}
 				fmt.Printf("current token: %v\n", p.currentToken)
 
@@ -453,7 +482,7 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 		// parse function arguments
 		err := p.expectPeek(lexer.TLeftParen)
 		if err != nil {
-			return nil
+			return nil, err
 		}
 		args := []ast.Expression{}
 		if p.peekTokenIs(lexer.TRightParen) {
@@ -461,7 +490,7 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 			return &ast.ExprFunctionCall{
 				Name: function,
 				Args: args,
-			}
+			}, nil
 		}
 
 		for {
@@ -472,7 +501,7 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 				lexer.TQuotedIdentifier,
 			})
 			if err != nil {
-				return nil
+				return nil, err
 			}
 
 			if p.currentToken.Type == lexer.TLocalVariable {
@@ -496,38 +525,44 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 		err = p.expectPeek(lexer.TRightParen)
 		if err != nil {
 			fmt.Printf("expected right parenthesis, got %s\n", p.peekToken.Value)
-			return nil
+			return nil, err
 		}
 
 		return &ast.ExprFunctionCall{
 			Name: function,
 			Args: args,
-		}
+		}, nil
 	case lexer.TLeftParen:
 		// start of subquery
 		if p.peekTokenIs(lexer.TSelect) {
 			p.nextToken()
-			statement, _ := p.parseSelectSubquery()
+			statement, err := p.parseSelectSubquery()
+			if err != nil {
+				return nil, err
+			}
 			p.expectPeek(lexer.TRightParen)
 
-			return &statement
+			return &statement, nil
 		} else if p.peekTokenIs(lexer.TIdentifier) ||
 			p.peekTokenIs(lexer.TLocalVariable) ||
 			p.peekTokenIs(lexer.TNumericLiteral) {
-			stmt, _ := p.parseExpressionList()
+			stmt, err := p.parseExpressionList()
+			if err != nil {
+				return nil, err
+			}
 			p.expectPeek(lexer.TRightParen)
 
-			return &stmt
+			return &stmt, nil
 		}
 	default:
-		return nil
+		return nil, fmt.Errorf("Unimplemented expression %s", p.currentToken.Type.String())
 	}
 
-	return newExpr
+	return newExpr, nil
 
 }
 
-func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
+func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, error) {
 	fmt.Printf("parsing infix expression\n")
 	switch p.currentToken.Type {
 	case lexer.TPlus,
@@ -554,9 +589,9 @@ func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
 		precedence := checkPrecedence(p.currentToken.Type)
 		p.nextToken()
 
-		right := p.parseExpression(precedence)
-		if right == nil {
-			return nil
+		right, err := p.parseExpression(precedence)
+		if err != nil {
+			return nil, err
 		}
 		fmt.Printf("left expression: %v\n", left)
 		fmt.Printf("right expression: %v\n", right)
@@ -564,7 +599,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
 			Left:     left,
 			Operator: operator,
 			Right:    right,
-		}
+		}, nil
 	case lexer.TEqual,
 		lexer.TNotEqual,
 		lexer.TGreaterThan,
@@ -591,13 +626,16 @@ func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
 		p.nextToken()
 
 		// parse the expression of the operator
-		right := p.parseExpression(precedence)
+		right, err := p.parseExpression(precedence)
+		if err != nil {
+			return nil, err
+		}
 		return &ast.ExprBinary{
 			Left:     left,
 			Operator: operator,
 			Right:    right,
-		}
+		}, nil
 
 	}
-	return nil
+	return nil, fmt.Errorf("Unimplemented expression %s", p.currentToken.Type.String())
 }

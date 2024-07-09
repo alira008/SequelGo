@@ -30,7 +30,7 @@ func TestBasic(t *testing.T) {
 
 	lexed := []Token{}
 	current := lexer.NextToken()
-	t.Logf("current: %v\n", current.Value)
+	t.Logf("current: %s\n", current.Value)
 
 	for current.Type != TEndOfFile {
 		lexed = append(lexed, current)
@@ -44,7 +44,7 @@ func TestBasic(t *testing.T) {
 
 	for i, token := range lexed {
 		if token.Type != expected[i].Type {
-			t.Fatalf("expected %v, got %v", expected[i].Type, token.Type)
+			t.Fatalf("expected %s, got %s", expected[i].Type.String(), token.Type.String())
 		}
 		lowercase := strings.ToLower(token.Value)
 		if lowercase != expected[i].Value {
