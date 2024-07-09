@@ -89,7 +89,44 @@ func TestParseSubqueryCall(t *testing.T) {
 	}
 	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
 
-	l := lexer.NewLexer("select hello, true (select yesirr from bruh where yes and 'no') FROM testtable")
+	l := lexer.NewLexer("select hello,  (select yesirr from bruh where yes and 'no') FROM testtable")
+	p := NewParser(l)
+	query := p.Parse()
+
+	if len(query.Statements) != 1 {
+		t.Fatalf("expected 1 statement, got %d", len(query.Statements))
+	}
+	for i, stmt := range query.Statements {
+		if stmt.TokenLiteral() != expected.Statements[i].TokenLiteral() {
+			t.Fatalf("expected %s, got %s", expected.Statements[i].TokenLiteral(), stmt.TokenLiteral())
+		}
+	}
+}
+
+func TestParseSelectItemWithAlias(t *testing.T) {
+	select_statement := ast.SelectStatement{
+		SelectBody: &ast.SelectBody{
+			SelectItems: []ast.Expression{
+				&ast.ExprIdentifier{Value: "hello"},
+				&ast.ExprWithAlias{
+					Expression:     &ast.ExprIdentifier{Value: "potate"},
+					AsTokenPresent: false,
+					Alias:          "Potate",
+				},
+				&ast.ExprSubquery{
+					SelectItem: &ast.ExprWithAlias{
+						Expression:     &ast.ExprIdentifier{Value: "dt"},
+						AsTokenPresent: true,
+						Alias:          "Datetime",
+					},
+					TableObject: &ast.ExprIdentifier{Value: "bruh"},
+				}},
+			TableObject: &ast.ExprIdentifier{Value: "testtable"},
+		},
+	}
+	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
+
+	l := lexer.NewLexer("select hello, potate 'Potate', (select dt as 'Datetime' from bruh) FROM testtable")
 	p := NewParser(l)
 	query := p.Parse()
 

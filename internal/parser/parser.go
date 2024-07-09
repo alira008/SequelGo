@@ -78,7 +78,7 @@ func (p *Parser) peekError(t lexer.TokenType) error {
 }
 
 func (p *Parser) peekErrorMany(ts []lexer.TokenType) error {
-	var expectedTokenTypes []string 
+	var expectedTokenTypes []string
 	builtinFuncPresent := false
 	for _, t := range ts {
 		if t.IsBuiltinFunction() && !builtinFuncPresent {
@@ -383,6 +383,20 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 			}
 
 			newExpr = &ast.ExprCompoundIdentifier{Identifiers: *compound}
+		}
+
+		if p.peekToken.Type == lexer.TAs || p.peekToken.Type == lexer.TStringLiteral {
+			expr := &ast.ExprWithAlias{AsTokenPresent: false, Expression: newExpr}
+			if p.peekToken.Type == lexer.TAs {
+				expr.AsTokenPresent = true
+				p.nextToken()
+			}
+			err := p.expectPeek(lexer.TStringLiteral)
+			if err != nil {
+				return nil, err
+			}
+			expr.Alias = p.currentToken.Value
+			newExpr = expr
 		}
 	case lexer.TDenseRank,
 		lexer.TRank,

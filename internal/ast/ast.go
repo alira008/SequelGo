@@ -61,8 +61,8 @@ func (ss *SelectStatement) TokenLiteral() string {
 	return ss.SelectBody.TokenLiteral()
 }
 
-type CommmonTableExpression struct {
-}
+type CommmonTableExpression struct{}
+
 type SelectBody struct {
 	SelectItems []Expression
 	TableObject Expression
