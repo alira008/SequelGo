@@ -185,6 +185,11 @@ func (p *Parser) parseSelectBody() (ast.SelectBody, error) {
 		p.nextToken()
 	}
 
+	// check for optional all keyword
+	if p.peekTokenIs(lexer.TAll) {
+		p.nextToken()
+	}
+
 	if p.peekTokenIs(lexer.TTop) {
 		topArg, err := p.parseTopArg()
 		if err != nil {
@@ -314,8 +319,12 @@ func (p *Parser) parseWhereExpression() (ast.Expression, error) {
 		return expr, err
 	}
 
-	if expr == nil {
-		return nil, fmt.Errorf("Expected an expression after where")
+	switch expr.(type) {
+	case *ast.ExprBinary:
+		break
+	default:
+		p.errorToken = ETCurrent
+		return nil, fmt.Errorf("expected expression after 'WHERE' keyword")
 	}
 	return expr, nil
 }
