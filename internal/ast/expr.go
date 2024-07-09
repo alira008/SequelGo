@@ -96,6 +96,25 @@ func (e *ExprStar) TokenLiteral() string {
 	return "*"
 }
 
+type ExprWithAlias struct {
+	Expression     Expression
+	AsTokenPresent bool
+	Alias          string
+}
+
+func (e *ExprWithAlias) expressionNode() {}
+func (e *ExprWithAlias) TokenLiteral() string {
+	var str strings.Builder
+	str.WriteString(e.Expression.TokenLiteral())
+	if e.AsTokenPresent {
+		str.WriteString(" AS ")
+	} else {
+		str.WriteString(" ")
+    }
+	str.WriteString(e.Alias)
+	return str.String()
+}
+
 type ExprCompoundIdentifier struct {
 	Identifiers []Expression
 }
