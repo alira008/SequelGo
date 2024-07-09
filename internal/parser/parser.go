@@ -6,10 +6,19 @@ import (
 	"fmt"
 )
 
+type ErrorToken int
+
+const (
+	ETCurrent ErrorToken = iota
+	ETPeak
+	ETNone
+)
+
 type Parser struct {
 	l            *lexer.Lexer
 	currentToken lexer.Token
 	peekToken    lexer.Token
+	errorToken   ErrorToken
 	errors       []string
 }
 
@@ -25,6 +34,7 @@ func NewParser(lexer *lexer.Lexer) *Parser {
 func (p *Parser) nextToken() {
 	p.currentToken = p.peekToken
 	p.peekToken = p.l.NextToken()
+	p.errorToken = ETNone
 }
 
 func (p *Parser) currentTokenIs(t lexer.TokenType) bool {
@@ -41,6 +51,7 @@ func (p *Parser) expectPeek(t lexer.TokenType) error {
 		return nil
 	}
 
+	p.errorToken = ETPeak
 	return p.peekError(t)
 }
 
@@ -52,6 +63,7 @@ func (p *Parser) expectPeekMany(ts []lexer.TokenType) error {
 		}
 	}
 
+	p.errorToken = ETPeak
 	return p.peekErrorMany(ts)
 }
 
@@ -92,7 +104,13 @@ func (p *Parser) Parse() ast.Query {
 		stmt, err := p.parseStatement()
 
 		if err != nil {
-			fmt.Printf("[Error Line: %d Col: %d]: %s\n", p.currentToken.End.Line, p.currentToken.End.Col+1, err.Error())
+			if p.errorToken == ETCurrent {
+				fmt.Printf("[Error Line: %d Col: %d]: %s\n", p.currentToken.End.Line,
+					p.currentToken.End.Col+1, err.Error())
+			} else {
+				fmt.Printf("[Error Line: %d Col: %d]: %s\n", p.peekToken.End.Line,
+					p.peekToken.End.Col+1, err.Error())
+			}
 			p.nextToken()
 			continue
 		}
@@ -114,7 +132,8 @@ func (p *Parser) parseStatement() (ast.Statement, error) {
 
 		return nil, err
 	default:
-		return nil, fmt.Errorf("unknown statement type")
+		return nil, nil
+		// return nil, fmt.Errorf("unknown statement type %s", p.currentToken.Value)
 	}
 }
 
@@ -302,7 +321,7 @@ func (p *Parser) parseExpression(precedence Precedence) (ast.Expression, error) 
 }
 
 func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
-	fmt.Printf("parsing prefix expression\n")
+	// fmt.Printf("parsing prefix expression\n")
 	var newExpr ast.Expression
 	switch p.currentToken.Type {
 	case lexer.TIdentifier, lexer.TNumericLiteral, lexer.TStringLiteral, lexer.TAsterisk, lexer.TLocalVariable, lexer.TQuotedIdentifier:
@@ -555,6 +574,7 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 			return &stmt, nil
 		}
 	default:
+        p.errorToken = ETCurrent
 		return nil, fmt.Errorf("Unimplemented expression %s", p.currentToken.Type.String())
 	}
 
@@ -637,5 +657,6 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 		}, nil
 
 	}
+    p.errorToken = ETCurrent
 	return nil, fmt.Errorf("Unimplemented expression %s", p.currentToken.Type.String())
 }
