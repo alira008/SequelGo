@@ -22,11 +22,11 @@ func TestBasic(t *testing.T) {
 		{Type: TIdentifier, Value: "testtable", Start: Position{Line: 0, Col: 62}, End: Position{Line: 0, Col: 70}},
 		{Type: TWhere, Value: "where", Start: Position{Line: 0, Col: 72}, End: Position{Line: 0, Col: 76}},
 		{Type: TAnd, Value: "and", Start: Position{Line: 0, Col: 78}, End: Position{Line: 0, Col: 80}},
-		{Type: TStringLiteral, Value: "no", Start: Position{Line: 0, Col: 82}, End: Position{Line: 0, Col: 85}},
+		{Type: TStringLiteral, Value: "no", Start: Position{Line: 1, Col: 2}, End: Position{Line: 1, Col: 5}},
 	}
 	_ = expected
 
-	lexer := NewLexer(" SELect     distinct *, @hello, [yes], 3.555, 'literal' FROM testtable where aND 'no'")
+	lexer := NewLexer(" SELect     distinct *, @hello, [yes], 3.555, 'literal' FROM testtable where aND\n 'no'")
 
 	lexed := []Token{}
 	current := lexer.NextToken()

@@ -266,7 +266,7 @@ func (l *Lexer) readChar() {
 		l.ch = l.input[l.read]
 	}
 
-	if l.ch == '\n' || l.ch == '\r' {
+	if l.ch == '\n' {
 		l.line++
 		l.col = 0
 	} else if l.ch == '\t' {
