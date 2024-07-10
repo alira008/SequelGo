@@ -40,9 +40,10 @@ type ExprCompoundIdentifier struct {
 type ExprSubquery struct {
 	Distinct    bool
 	Top         *TopArg
-	SelectItems  []Expression
+	SelectItems []Expression
 	TableObject Expression
 	WhereClause Expression
+    OrderByClause []OrderByArg
 }
 
 type ExprExpressionList struct {
@@ -162,6 +163,7 @@ func (e ExprCompoundIdentifier) TokenLiteral() string {
 func (e ExprSubquery) expressionNode() {}
 func (e ExprSubquery) TokenLiteral() string {
 	var str strings.Builder
+    str.WriteString("(")
 	str.WriteString("SELECT ")
 
 	if e.Distinct {
@@ -188,7 +190,15 @@ func (e ExprSubquery) TokenLiteral() string {
 		str.WriteString(e.WhereClause.TokenLiteral())
 	}
 
-	fmt.Printf("subquery statement %s\n", str.String())
+	var orderByArgs []string
+	for _, o := range e.OrderByClause {
+		orderByArgs = append(orderByArgs, o.TokenLiteral())
+	}
+    if len(orderByArgs) > 1 {
+        str.WriteString(strings.Join(orderByArgs, ", "))
+    }
+
+    str.WriteString(")")
 	return str.String()
 }
 
@@ -307,3 +317,4 @@ func (e ExprFunctionCall) TokenLiteral() string {
 	str.WriteString(")")
 	return str.String()
 }
+

@@ -58,6 +58,10 @@ func TestParseSubqueryCall(t *testing.T) {
 			SelectItems: []ast.Expression{
 				&ast.ExprIdentifier{Value: "hello"},
 				&ast.ExprSubquery{
+					Top: &ast.TopArg{
+						Percent:  true,
+						Quantity: ast.ExprNumberLiteral{Value: "20"},
+					},
 					SelectItems: []ast.Expression{
 						&ast.ExprIdentifier{Value: "yesirr"},
 					},
@@ -68,13 +72,19 @@ func TestParseSubqueryCall(t *testing.T) {
 						},
 						Operator: ast.ComparisonOpLess,
 						Right:    &ast.ExprNumberLiteral{Value: "10.0"}},
+					OrderByClause: []ast.OrderByArg{
+						{
+							Column: ast.ExprIdentifier{Value: "LastPrice"},
+							Type:   ast.OBDesc,
+						},
+					},
 				}},
 			TableObject: &ast.ExprIdentifier{Value: "testtable"},
 		},
 	}
 	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
 
-	input := "select hello,  (select yesirr from bruh where LastPrice < 10.0) FROM testtable"
+	input := "select hello,  (select  top 20 percent yesirr from bruh where LastPrice < 10.0 order by LastPrice desc) FROM testtable"
 
 	test(t, expected, input)
 }
@@ -96,13 +106,13 @@ func TestParseSomeLogicalOperators(t *testing.T) {
 			TableObject: &ast.ExprIdentifier{Value: "MarketData"},
 			WhereClause: &ast.ExprOrLogicalOperator{
 				Left: &ast.ExprAndLogicalOperator{
-                    Left: &ast.ExprComparisonOperator{
+					Left: &ast.ExprComparisonOperator{
 						Left: &ast.ExprQuotedIdentifier{
 							Value: "LastPrice",
 						},
 						Operator: ast.ComparisonOpLess,
 						Right:    &ast.ExprNumberLiteral{Value: "10.0"}},
-                    Right: &ast.ExprInLogicalOperator{
+					Right: &ast.ExprInLogicalOperator{
 						TestExpression: &ast.ExprIdentifier{Value: "Stock"},
 						Not:            true,
 						Expressions: []ast.Expression{

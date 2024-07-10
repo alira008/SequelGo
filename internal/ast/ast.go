@@ -36,19 +36,40 @@ type SelectStatement struct {
 	SelectBody *SelectBody
 }
 
+type SelectBody struct {
+	Distinct      bool
+	Top           *TopArg
+	SelectItems   []Expression
+	TableObject   Expression
+	WhereClause   Expression
+	OrderByClause []OrderByArg
+}
+
 type TopArg struct {
 	WithTies bool
 	Percent  bool
 	Quantity Expression
 }
 
-type SelectBody struct {
-	Distinct    bool
-	Top         *TopArg
-	SelectItems []Expression
-	TableObject Expression
-	WhereClause Expression
+type OrderByArg struct {
+	Column Expression
+	Type   OrderByType
 }
+
+type OrderByType uint8
+
+const (
+	OBNone OrderByType = iota
+	OBAsc
+	OBDesc
+)
+
+type RowOrRows uint8
+
+const (
+	Row RowOrRows = iota
+	Rows
+)
 
 func (q Query) TokenLiteral() string {
 	str := strings.Builder{}
@@ -72,21 +93,6 @@ func (ss SelectStatement) statementNode() {}
 func (ss SelectStatement) TokenLiteral() string {
 	fmt.Printf("select statement %s\n", ss.SelectBody.TokenLiteral())
 	return ss.SelectBody.TokenLiteral()
-}
-
-func (ta TopArg) TokenLiteral() string {
-	var str strings.Builder
-	str.WriteString(fmt.Sprintf("TOP %s", ta.Quantity.TokenLiteral()))
-
-	if ta.Percent {
-		str.WriteString(" PERCENT")
-	}
-
-	if ta.WithTies {
-		str.WriteString(" WITH TIES")
-	}
-
-	return str.String()
 }
 
 func (sb SelectBody) statementNode() {}
@@ -118,5 +124,44 @@ func (sb SelectBody) TokenLiteral() string {
 		str.WriteString(sb.WhereClause.TokenLiteral())
 	}
 
+	var orderByArgs []string
+	for _, o := range sb.OrderByClause {
+		orderByArgs = append(orderByArgs, o.TokenLiteral())
+	}
+    if len(orderByArgs) > 1 {
+        str.WriteString(strings.Join(orderByArgs, ", "))
+    }
+
+	return str.String()
+}
+
+func (ta TopArg) TokenLiteral() string {
+	var str strings.Builder
+	str.WriteString(fmt.Sprintf("TOP %s", ta.Quantity.TokenLiteral()))
+
+	if ta.Percent {
+		str.WriteString(" PERCENT")
+	}
+
+	if ta.WithTies {
+		str.WriteString(" WITH TIES")
+	}
+
+	return str.String()
+}
+
+func (o OrderByArg) TokenLiteral() string {
+	var str strings.Builder
+	str.WriteString(o.Column.TokenLiteral())
+	switch o.Type {
+	case OBNone:
+		break
+	case OBAsc:
+		str.WriteString(" ASC")
+		break
+	case OBDesc:
+		str.WriteString(" DESC")
+		break
+	}
 	return str.String()
 }
