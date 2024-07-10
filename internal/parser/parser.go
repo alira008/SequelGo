@@ -441,10 +441,12 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 			p.peekToken.Type == lexer.TStringLiteral ||
 			p.peekToken.Type == lexer.TQuotedIdentifier {
 			expr := &ast.ExprWithAlias{AsTokenPresent: false, Expression: newExpr}
+
 			if p.peekToken.Type == lexer.TAs {
 				expr.AsTokenPresent = true
 				p.nextToken()
 			}
+
 			// needed in case we just parsed AS keyword
 			err := p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier, lexer.TStringLiteral, lexer.TQuotedIdentifier})
 			if err != nil {
@@ -460,7 +462,7 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 			case *ast.ExprIdentifier, *ast.ExprStringLiteral, *ast.ExprQuotedIdentifier:
 				break
 			default:
-				err = fmt.Errorf("Expected alias after AS keyword")
+				err = fmt.Errorf("Expected (Identifier or StringLiteral or QuotedIdentifier) for Alias")
 				return nil, err
 			}
 			expr.Alias = alias
