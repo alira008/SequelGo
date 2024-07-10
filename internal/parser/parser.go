@@ -254,6 +254,8 @@ func (p *Parser) parseSelectItems() ([]ast.Expression, error) {
 			lexer.TAsterisk,
 			lexer.TLocalVariable,
 			lexer.TLeftParen,
+			lexer.TMinus,
+			lexer.TPlus,
 			// rework checking keywords
 			lexer.TSum,
 			lexer.TQuotedIdentifier})
@@ -318,7 +320,18 @@ func (p *Parser) parseWhereExpression() (ast.Expression, error) {
 	}
 
 	switch expr.(type) {
-	case *ast.ExprComparisonOperator:
+	case *ast.ExprComparisonOperator,
+		*ast.ExprAndLogicalOperator,
+		*ast.ExprAllLogicalOperator,
+		*ast.ExprBetweenLogicalOperator,
+		*ast.ExprExistsLogicalOperator,
+		*ast.ExprInSubqueryLogicalOperator,
+		*ast.ExprInLogicalOperator,
+		*ast.ExprLikeLogicalOperator,
+		*ast.ExprNotLogicalOperator,
+		*ast.ExprOrLogicalOperator,
+		*ast.ExprSomeLogicalOperator,
+		*ast.ExprAnyLogicalOperator:
 		break
 	default:
 		p.errorToken = ETCurrent
@@ -328,12 +341,11 @@ func (p *Parser) parseWhereExpression() (ast.Expression, error) {
 }
 
 func (p *Parser) parseExpressionList() (ast.ExprExpressionList, error) {
-	items := []ast.Expression{}
-	expressionList := ast.ExprExpressionList{List: items}
+	expressionList := ast.ExprExpressionList{}
 
 	for {
 		err := p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier,
-			lexer.TIdentifier,
+			lexer.TQuotedIdentifier,
 			lexer.TNumericLiteral,
 			lexer.TStringLiteral,
 			lexer.TLocalVariable})
@@ -345,7 +357,7 @@ func (p *Parser) parseExpressionList() (ast.ExprExpressionList, error) {
 		if err != nil {
 			return expressionList, err
 		}
-		items = append(items, expr)
+		expressionList.List = append(expressionList.List, expr)
 
 		if p.peekToken.Type != lexer.TComma {
 			break
@@ -653,13 +665,15 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 			return &statement, nil
 		} else if p.peekTokenIs(lexer.TIdentifier) ||
 			p.peekTokenIs(lexer.TLocalVariable) ||
+			p.peekTokenIs(lexer.TQuotedIdentifier) ||
+			p.peekTokenIs(lexer.TStringLiteral) ||
 			p.peekTokenIs(lexer.TNumericLiteral) {
 			stmt, err := p.parseExpressionList()
 			if err != nil {
 				return nil, err
 			}
 			p.expectPeek(lexer.TRightParen)
-
+            fmt.Printf("stmt: %v\n", stmt)
 			return &stmt, nil
 		}
 	case lexer.TPlus, lexer.TMinus:
@@ -673,17 +687,46 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 			break
 		}
 
-		precedence := checkPrecedence(p.currentToken.Type)
 		p.nextToken()
 
-		right, err := p.parseExpression(precedence)
+		right, err := p.parseExpression(PrecedenceLowest)
 		if err != nil {
 			return nil, err
 		}
-		fmt.Printf("right expression: %v\n", right)
 		newExpr = &ast.ExprUnaryOperator{
 			Operator: operator,
 			Right:    right,
+		}
+		break
+	case lexer.TExists:
+		p.nextToken()
+
+		expr, err := p.parseExpression(PrecedenceLowest)
+		if err != nil {
+			return nil, err
+		}
+		// check if it is a subquery
+		switch v := expr.(type) {
+		case *ast.ExprSubquery:
+			newExpr = &ast.ExprExistsLogicalOperator{
+				Subquery: v,
+			}
+			break
+		default:
+			p.errorToken = ETCurrent
+			return nil, fmt.Errorf("Expected subquery after 'EXISTS' keyword")
+		}
+		break
+	case lexer.TNot:
+		p.nextToken()
+
+		expr, err := p.parseExpression(PrecedenceLowest)
+		if err != nil {
+			return nil, err
+		}
+		// check if it is a subquery
+		newExpr = &ast.ExprNotLogicalOperator{
+			Expression: expr,
 		}
 		break
 	default:
@@ -696,8 +739,32 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 }
 
 func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, error) {
-	fmt.Printf("parsing infix expression\n")
+	fmt.Printf("parsing infix expression, %s\n", p.currentToken.String())
 	switch p.currentToken.Type {
+	case lexer.TAnd:
+		precedence := checkPrecedence(p.currentToken.Type)
+		p.nextToken()
+
+		right, err := p.parseExpression(precedence)
+		if err != nil {
+			return nil, err
+		}
+		return &ast.ExprAndLogicalOperator{
+			Left:  left,
+			Right: right,
+		}, nil
+	case lexer.TOr:
+		precedence := checkPrecedence(p.currentToken.Type)
+		p.nextToken()
+
+		right, err := p.parseExpression(precedence)
+		if err != nil {
+			return nil, err
+		}
+		return &ast.ExprOrLogicalOperator{
+			Left:  left,
+			Right: right,
+		}, nil
 	case lexer.TPlus,
 		lexer.TMinus,
 		lexer.TAsterisk,
@@ -723,8 +790,6 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 		if err != nil {
 			return nil, err
 		}
-		fmt.Printf("left expression: %v\n", left)
-		fmt.Printf("right expression: %v\n", right)
 		return &ast.ExprArithmeticOperator{
 			Left:     left,
 			Operator: operator,
@@ -758,6 +823,56 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 		precedence := checkPrecedence(p.currentToken.Type)
 		p.nextToken()
 
+		if p.currentTokenIs(lexer.TAll) {
+			p.nextToken()
+			right, err := p.parseExpression(precedence)
+			if err != nil {
+				return nil, err
+			}
+			switch v := right.(type) {
+			case *ast.ExprSubquery:
+				return &ast.ExprAllLogicalOperator{
+					ScalarExpression:   left,
+					ComparisonOperator: operator,
+					Subquery:           v,
+				}, nil
+			}
+			p.errorToken = ETCurrent
+			return nil, fmt.Errorf("sub query was not provided for All Expression")
+		} else if p.currentTokenIs(lexer.TSome) {
+			p.nextToken()
+			right, err := p.parseExpression(precedence)
+			if err != nil {
+				return nil, err
+			}
+			switch v := right.(type) {
+			case *ast.ExprSubquery:
+				return &ast.ExprSomeLogicalOperator{
+					ScalarExpression:   left,
+					ComparisonOperator: operator,
+					Subquery:           v,
+				}, nil
+			}
+			p.errorToken = ETCurrent
+			return nil, fmt.Errorf("sub query was not provided for Some Expression")
+		} else if p.currentTokenIs(lexer.TAny) {
+			p.nextToken()
+			right, err := p.parseExpression(precedence)
+			if err != nil {
+				return nil, err
+			}
+			switch v := right.(type) {
+			case *ast.ExprSubquery:
+				return &ast.ExprAnyLogicalOperator{
+					ScalarExpression:   left,
+					ComparisonOperator: operator,
+					Subquery:           v,
+				}, nil
+			}
+			p.errorToken = ETCurrent
+			return nil, fmt.Errorf("sub query was not provided for Any Expression")
+		}
+
 		// parse the expression of the operator
 		right, err := p.parseExpression(precedence)
 		if err != nil {
@@ -768,7 +883,139 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 			Operator: operator,
 			Right:    right,
 		}, nil
+	case lexer.TBetween:
+		precedence := checkPrecedence(p.currentToken.Type)
+		p.nextToken()
 
+		right, err := p.parseExpression(precedence)
+		if err != nil {
+			return nil, err
+		}
+
+		// check if we have and operator
+		switch v := right.(type) {
+		case *ast.ExprAndLogicalOperator:
+			return &ast.ExprBetweenLogicalOperator{
+				TestExpression: left,
+				Begin:          v.Left,
+				End:            v.Right,
+			}, nil
+		default:
+			p.errorToken = ETCurrent
+			return nil, fmt.Errorf("Expected 'AND' logical operator after 'BETWEEN' keyword")
+		}
+	case lexer.TIn:
+		precedence := checkPrecedence(p.currentToken.Type)
+		p.nextToken()
+        fmt.Printf("p.currentToken: %v\n", p.currentToken)
+		right, err := p.parseExpression(precedence)
+        fmt.Printf("right: %v\n", right)
+		if err != nil {
+			return nil, err
+		}
+
+		// check if we have and operator
+		switch v := right.(type) {
+		case *ast.ExprSubquery:
+            fmt.Printf("hello uno \n")
+			return &ast.ExprInSubqueryLogicalOperator{
+				TestExpression: left,
+				Subquery:       v,
+			}, nil
+		case *ast.ExprExpressionList:
+            fmt.Printf("hello dos\n")
+			return &ast.ExprInLogicalOperator{
+				TestExpression: left,
+				Expressions:    v.List,
+			}, nil
+		default:
+            fmt.Printf("hello tres\n")
+			p.errorToken = ETCurrent
+			return nil, fmt.Errorf("Expected (Subquery or Expression List) after 'IN' keyword got %v", v)
+		}
+	case lexer.TLike:
+		precedence := checkPrecedence(p.currentToken.Type)
+		p.nextToken()
+
+		right, err := p.parseExpression(precedence)
+		if err != nil {
+			return nil, err
+		}
+
+		return &ast.ExprLikeLogicalOperator{
+			MatchExpression: left,
+			Pattern:         right,
+		}, nil
+	case lexer.TNot:
+		p.nextToken()
+
+		if p.currentTokenIs(lexer.TBetween) {
+			precedence := checkPrecedence(p.currentToken.Type)
+			p.nextToken()
+
+			right, err := p.parseExpression(precedence)
+			if err != nil {
+				return nil, err
+			}
+
+			// check if we have and operator
+			switch v := right.(type) {
+			case *ast.ExprAndLogicalOperator:
+				return &ast.ExprBetweenLogicalOperator{
+					TestExpression: left,
+					Not:            true,
+					Begin:          v.Left,
+					End:            v.Right,
+				}, nil
+			default:
+				p.errorToken = ETCurrent
+				return nil, fmt.Errorf("Expected subquery after 'NOT BETWEEN' keyword")
+			}
+		} else if p.currentTokenIs(lexer.TIn) {
+			precedence := checkPrecedence(p.currentToken.Type)
+			p.nextToken()
+
+			right, err := p.parseExpression(precedence)
+			if err != nil {
+				return nil, err
+			}
+
+			// check if we have and operator
+			switch v := right.(type) {
+			case *ast.ExprSubquery:
+				return &ast.ExprInSubqueryLogicalOperator{
+					TestExpression: left,
+					Not:            true,
+					Subquery:       v,
+				}, nil
+			case *ast.ExprExpressionList:
+				return &ast.ExprInLogicalOperator{
+					TestExpression: left,
+					Not:            true,
+					Expressions:    v.List,
+				}, nil
+			default:
+				p.errorToken = ETCurrent
+				return nil, fmt.Errorf("Expected (Subquery or Expression List) after 'NOT IN' keyword")
+			}
+		} else if p.currentTokenIs(lexer.TLike) {
+			precedence := checkPrecedence(p.currentToken.Type)
+			p.nextToken()
+
+			right, err := p.parseExpression(precedence)
+			if err != nil {
+				return nil, err
+			}
+
+			return &ast.ExprLikeLogicalOperator{
+				MatchExpression: left,
+				Not:             true,
+				Pattern:         right,
+			}, nil
+		} else {
+			p.errorToken = ETCurrent
+			return nil, fmt.Errorf("Expected (BETWEEN Expression or IN Expression or LIKE Expression) after 'Test Expression NOT' Expression")
+		}
 	}
 	p.errorToken = ETCurrent
 	return nil, fmt.Errorf("Unimplemented expression %s", p.currentToken.Type.String())

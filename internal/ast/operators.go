@@ -76,7 +76,7 @@ type ExprAndLogicalOperator struct {
 type ExprAllLogicalOperator struct {
 	ScalarExpression   Expression
 	ComparisonOperator ComparisonOperatorType
-	Subquery           ExprSubquery
+	Subquery           *ExprSubquery
 }
 
 type ExprBetweenLogicalOperator struct {
@@ -87,13 +87,13 @@ type ExprBetweenLogicalOperator struct {
 }
 
 type ExprExistsLogicalOperator struct {
-	Subquery ExprSubquery
+	Subquery *ExprSubquery
 }
 
 type ExprInSubqueryLogicalOperator struct {
 	TestExpression Expression
 	Not            bool
-	Subquery       ExprSubquery
+	Subquery       *ExprSubquery
 }
 
 type ExprInLogicalOperator struct {
@@ -120,13 +120,13 @@ type ExprOrLogicalOperator struct {
 type ExprSomeLogicalOperator struct {
 	ScalarExpression   Expression
 	ComparisonOperator ComparisonOperatorType
-	Subquery           ExprSubquery
+	Subquery           *ExprSubquery
 }
 
 type ExprAnyLogicalOperator struct {
 	ScalarExpression   Expression
 	ComparisonOperator ComparisonOperatorType
-	Subquery           ExprSubquery
+	Subquery           *ExprSubquery
 }
 
 func (e ExprUnaryOperator) expressionNode() {}

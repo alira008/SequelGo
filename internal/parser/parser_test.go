@@ -79,6 +79,57 @@ func TestParseSubqueryCall(t *testing.T) {
 	test(t, expected, input)
 }
 
+func TestParseSomeLogicalOperators(t *testing.T) {
+	select_statement := ast.SelectStatement{
+		SelectBody: &ast.SelectBody{
+			SelectItems: []ast.Expression{
+				&ast.ExprIdentifier{Value: "Stock"},
+				&ast.ExprWithAlias{
+					Expression: &ast.ExprUnaryOperator{
+						Operator: ast.UnaryOpMinus,
+						Right:    &ast.ExprIdentifier{Value: "LastPrice"},
+					},
+					Alias: &ast.ExprStringLiteral{Value: "NegativeLastPrice"},
+				},
+				&ast.ExprIdentifier{Value: "LastPrice"},
+			},
+			TableObject: &ast.ExprIdentifier{Value: "MarketData"},
+			WhereClause: &ast.ExprAndLogicalOperator{
+				Left: &ast.ExprAndLogicalOperator{
+					&ast.ExprComparisonOperator{
+						Left: &ast.ExprIdentifier{
+							Value: "LastPrice",
+						},
+						Operator: ast.ComparisonOpLess,
+						Right:    &ast.ExprNumberLiteral{Value: "10.0"}},
+					&ast.ExprInLogicalOperator{
+						TestExpression: &ast.ExprIdentifier{Value: "Stock"},
+						Not:            true,
+						Expressions: []ast.Expression{
+							&ast.ExprStringLiteral{Value: "AAL"},
+							&ast.ExprStringLiteral{Value: "AMZN"},
+							&ast.ExprStringLiteral{Value: "GOOGL"},
+							&ast.ExprStringLiteral{Value: "ZM"},
+						},
+					},
+				},
+				Right: &ast.ExprBetweenLogicalOperator{
+					TestExpression: &ast.ExprIdentifier{Value: "PercentChange"},
+					Begin:          &ast.ExprNumberLiteral{Value: "1"},
+					End:            &ast.ExprNumberLiteral{Value: "4"},
+				},
+			},
+		},
+	}
+	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
+
+	input := "select Stock, -LastPrice 'NegativeLastPrice', LastPrice FROM MarketData"
+	input += " where LastPrice < 10.0 and Stock in ('AAL', 'AMZN', 'GOOGL', 'ZM')"
+	input += "\n and PercentChange Between 1 and 4"
+
+	test(t, expected, input)
+}
+
 func TestParseSelectItemWithAlias(t *testing.T) {
 	select_statement := ast.SelectStatement{
 		SelectBody: &ast.SelectBody{
@@ -91,7 +142,7 @@ func TestParseSelectItemWithAlias(t *testing.T) {
 				&ast.ExprSubquery{
 					SelectItems: []ast.Expression{
 						&ast.ExprWithAlias{
-							Expression: &ast.ExprIdentifier{Value: "dt"},
+							Expression:     &ast.ExprIdentifier{Value: "dt"},
 							AsTokenPresent: true,
 							Alias:          &ast.ExprQuotedIdentifier{Value: "Datetime"},
 						},
