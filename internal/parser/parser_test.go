@@ -31,18 +31,9 @@ func TestParseBasicSelectQuery(t *testing.T) {
 	}
 	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
 
-	l := lexer.NewLexer("select *,\n hello,\n 'yes',\n [yessir],\n @nosir, [superdb].world.* FROM testtable where LastPrice < 10.0")
-	p := NewParser(l)
-	query := p.Parse()
+	input := "select *,\n hello,\n 'yes',\n [yessir],\n @nosir, [superdb].world.* FROM testtable where LastPrice < 10.0"
 
-	if len(query.Statements) != 1 {
-		t.Fatalf("expected 1 statement, got %d", len(query.Statements))
-	}
-	for i, stmt := range query.Statements {
-		if stmt.TokenLiteral() != expected.Statements[i].TokenLiteral() {
-			t.Fatalf("expected %s, got %s", expected.Statements[i].TokenLiteral(), stmt.TokenLiteral())
-		}
-	}
+	test(t, expected, input)
 }
 
 func TestParseBuiltinFunctionCall(t *testing.T) {
@@ -56,18 +47,9 @@ func TestParseBuiltinFunctionCall(t *testing.T) {
 			TableObject: &ast.ExprIdentifier{Value: "testtable"}}}
 	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
 
-	l := lexer.NewLexer("select hello, sum(price) FROM testtable")
-	p := NewParser(l)
-	query := p.Parse()
+	input := "select hello, sum(price) FROM testtable"
 
-	if len(query.Statements) != 1 {
-		t.Fatalf("expected 1 statement, got %d", len(query.Statements))
-	}
-	for i, stmt := range query.Statements {
-		if stmt.TokenLiteral() != expected.Statements[i].TokenLiteral() {
-			t.Fatalf("expected %s, got %s", expected.Statements[i].TokenLiteral(), stmt.TokenLiteral())
-		}
-	}
+	test(t, expected, input)
 }
 
 func TestParseSubqueryCall(t *testing.T) {
@@ -90,18 +72,9 @@ func TestParseSubqueryCall(t *testing.T) {
 	}
 	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
 
-	l := lexer.NewLexer("select hello,  (select yesirr from bruh where LastPrice < 10.0) FROM testtable")
-	p := NewParser(l)
-	query := p.Parse()
+	input := "select hello,  (select yesirr from bruh where LastPrice < 10.0) FROM testtable"
 
-	if len(query.Statements) != 1 {
-		t.Fatalf("expected 1 statement, got %d", len(query.Statements))
-	}
-	for i, stmt := range query.Statements {
-		if stmt.TokenLiteral() != expected.Statements[i].TokenLiteral() {
-			t.Fatalf("expected %s, got %s", expected.Statements[i].TokenLiteral(), stmt.TokenLiteral())
-		}
-	}
+	test(t, expected, input)
 }
 
 func TestParseSelectItemWithAlias(t *testing.T) {
@@ -111,13 +84,13 @@ func TestParseSelectItemWithAlias(t *testing.T) {
 				&ast.ExprIdentifier{Value: "hello"},
 				&ast.ExprWithAlias{
 					Expression: &ast.ExprIdentifier{Value: "potate"},
-					Alias:      "Potate",
+					Alias:      &ast.ExprStringLiteral{Value: "Potate"},
 				},
 				&ast.ExprSubquery{
 					SelectItem: &ast.ExprWithAlias{
 						Expression:     &ast.ExprIdentifier{Value: "dt"},
 						AsTokenPresent: true,
-						Alias:          "Datetime",
+						Alias:          &ast.ExprQuotedIdentifier{Value: "Datetime"},
 					},
 					TableObject: &ast.ExprIdentifier{Value: "bruh"},
 				}},
@@ -126,7 +99,7 @@ func TestParseSelectItemWithAlias(t *testing.T) {
 	}
 	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
 
-	input := "select hello, potate 'Potate', (select dt as 'Datetime' from bruh) FROM testtable"
+	input := "select hello, potate 'Potate', (select dt as [Datetime] from bruh) FROM testtable"
 
 	test(t, expected, input)
 }
@@ -145,7 +118,7 @@ func TestDistinctTopArg(t *testing.T) {
 				&ast.ExprIdentifier{Value: "hello"},
 				&ast.ExprWithAlias{
 					Expression: &ast.ExprIdentifier{Value: "potate"},
-					Alias:      "Potate",
+                    Alias:      &ast.ExprIdentifier{Value: "Potate"},
 				},
 			},
 			TableObject: &ast.ExprIdentifier{Value: "testtable"},
@@ -153,7 +126,7 @@ func TestDistinctTopArg(t *testing.T) {
 	}
 	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
 
-	input := "select distinct top 44 percent hello, potate 'Potate' FROM testtable"
+	input := "select distinct top 44 percent hello, potate Potate FROM testtable"
 
 	test(t, expected, input)
 }

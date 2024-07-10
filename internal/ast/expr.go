@@ -11,7 +11,7 @@ type ExprStringLiteral struct {
 
 func (e *ExprStringLiteral) expressionNode() {}
 func (e *ExprStringLiteral) TokenLiteral() string {
-	return e.Value
+	return fmt.Sprintf("'%s'", e.Value)
 }
 
 type ExprNumberLiteral struct {
@@ -57,10 +57,12 @@ func (e *ExprStar) TokenLiteral() string {
 	return "*"
 }
 
+type SpaceCharacterAliasType uint8
+
 type ExprWithAlias struct {
 	Expression     Expression
 	AsTokenPresent bool
-	Alias          string
+	Alias          Expression
 }
 
 func (e *ExprWithAlias) expressionNode() {}
@@ -72,7 +74,7 @@ func (e *ExprWithAlias) TokenLiteral() string {
 	} else {
 		str.WriteString(" ")
 	}
-	str.WriteString(e.Alias)
+	str.WriteString(e.Alias.TokenLiteral())
 	return str.String()
 }
 
@@ -136,7 +138,6 @@ func (e *ExprExpressionList) TokenLiteral() string {
 	}
 	return str.String()
 }
-
 
 type FuncType uint8
 

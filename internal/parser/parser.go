@@ -436,17 +436,34 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 			newExpr = &ast.ExprCompoundIdentifier{Identifiers: *compound}
 		}
 
-		if p.peekToken.Type == lexer.TAs || p.peekToken.Type == lexer.TStringLiteral {
+		if p.peekToken.Type == lexer.TAs ||
+			p.peekToken.Type == lexer.TIdentifier ||
+			p.peekToken.Type == lexer.TStringLiteral ||
+			p.peekToken.Type == lexer.TQuotedIdentifier {
 			expr := &ast.ExprWithAlias{AsTokenPresent: false, Expression: newExpr}
 			if p.peekToken.Type == lexer.TAs {
 				expr.AsTokenPresent = true
 				p.nextToken()
 			}
-			err := p.expectPeek(lexer.TStringLiteral)
+			// needed in case we just parsed AS keyword
+			err := p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier, lexer.TStringLiteral, lexer.TQuotedIdentifier})
 			if err != nil {
 				return nil, err
 			}
-			expr.Alias = p.currentToken.Value
+
+			alias, err := p.parseExpression(PrecedenceLowest)
+			if err != nil {
+				return nil, err
+			}
+
+			switch alias.(type) {
+			case *ast.ExprIdentifier, *ast.ExprStringLiteral, *ast.ExprQuotedIdentifier:
+				break
+			default:
+				err = fmt.Errorf("Expected alias after AS keyword")
+				return nil, err
+			}
+			expr.Alias = alias
 			newExpr = expr
 		}
 	case lexer.TDenseRank,
