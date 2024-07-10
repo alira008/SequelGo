@@ -23,6 +23,37 @@ type Query struct {
 	Statements []Statement
 }
 
+type InsertStatement struct {}
+type UpdateStatement struct {}
+type DeleteStatement struct {}
+type CTESelectStatement struct {}
+type CTEInsertleteStatement struct {}
+type CTEUpdateStatement struct {}
+type CTEDeleteStatement struct {}
+type DeclareStatement struct {}
+type ExecuteStatement struct {}
+type SetLocalVariableStatement struct {}
+type CommmonTableExpression struct{}
+
+type SelectStatement struct {
+	CTE        *CommmonTableExpression
+	SelectBody *SelectBody
+}
+
+type TopArg struct {
+	WithTies bool
+	Percent  bool
+	Quantity Expression
+}
+
+type SelectBody struct {
+	Distinct    bool
+	Top         *TopArg
+	SelectItems []Expression
+	TableObject Expression
+	WhereClause Expression
+}
+
 func (q *Query) TokenLiteral() string {
 	str := strings.Builder{}
 
@@ -36,23 +67,9 @@ func (q *Query) TokenLiteral() string {
 	return str.String()
 }
 
-type DeclareStatement struct {
-}
-
 func (ds *DeclareStatement) statementNode() {}
 func (ds *DeclareStatement) TokenLiteral() string {
 	return ""
-}
-
-type ExecuteStatement struct {
-}
-
-type SetLocalVariableStatement struct {
-}
-
-type SelectStatement struct {
-	CTE        *CommmonTableExpression
-	SelectBody *SelectBody
 }
 
 func (ss *SelectStatement) statementNode() {}
@@ -61,13 +78,6 @@ func (ss *SelectStatement) TokenLiteral() string {
 	return ss.SelectBody.TokenLiteral()
 }
 
-type CommmonTableExpression struct{}
-
-type TopArg struct {
-	WithTies bool
-	Percent  bool
-	Quantity Expression
-}
 func (ta *TopArg) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString(fmt.Sprintf("TOP %s ", ta.Quantity.TokenLiteral()))
@@ -81,14 +91,6 @@ func (ta *TopArg) TokenLiteral() string {
     }
 
     return str.String()
-}
-
-type SelectBody struct {
-	Distinct    bool
-	Top         *TopArg
-	SelectItems []Expression
-	TableObject Expression
-	WhereClause Expression
 }
 
 func (sb *SelectBody) TokenLiteral() string {
@@ -126,23 +128,3 @@ func (sb *SelectBody) TokenLiteral() string {
 	return str.String()
 }
 
-type InsertStatement struct {
-}
-
-type UpdateStatement struct {
-}
-
-type DeleteStatement struct {
-}
-
-type CTESelectStatement struct {
-}
-
-type CTEInsertleteStatement struct {
-}
-
-type CTEUpdateStatement struct {
-}
-
-type CTEDeleteStatement struct {
-}

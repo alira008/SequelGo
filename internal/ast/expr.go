@@ -9,55 +9,23 @@ type ExprStringLiteral struct {
 	Value string
 }
 
-func (e *ExprStringLiteral) expressionNode() {}
-func (e *ExprStringLiteral) TokenLiteral() string {
-	return fmt.Sprintf("'%s'", e.Value)
-}
-
 type ExprNumberLiteral struct {
 	Value string
-}
-
-func (e *ExprNumberLiteral) expressionNode() {}
-func (e *ExprNumberLiteral) TokenLiteral() string {
-	return e.Value
 }
 
 type ExprLocalVariable struct {
 	Value string
 }
 
-func (e *ExprLocalVariable) expressionNode() {}
-func (e *ExprLocalVariable) TokenLiteral() string {
-	return fmt.Sprintf("@%s", e.Value)
-}
-
 type ExprIdentifier struct {
 	Value string
-}
-
-func (e *ExprIdentifier) expressionNode() {}
-func (e *ExprIdentifier) TokenLiteral() string {
-	return e.Value
 }
 
 type ExprQuotedIdentifier struct {
 	Value string
 }
 
-func (e *ExprQuotedIdentifier) expressionNode() {}
-func (e *ExprQuotedIdentifier) TokenLiteral() string {
-	return fmt.Sprintf("[%s]", e.Value)
-}
-
 type ExprStar struct{}
-
-func (e *ExprStar) expressionNode() {}
-func (e *ExprStar) TokenLiteral() string {
-	return "*"
-}
-
-type SpaceCharacterAliasType uint8
 
 type ExprWithAlias struct {
 	Expression     Expression
@@ -65,33 +33,8 @@ type ExprWithAlias struct {
 	Alias          Expression
 }
 
-func (e *ExprWithAlias) expressionNode() {}
-func (e *ExprWithAlias) TokenLiteral() string {
-	var str strings.Builder
-	str.WriteString(e.Expression.TokenLiteral())
-	if e.AsTokenPresent {
-		str.WriteString(" AS ")
-	} else {
-		str.WriteString(" ")
-	}
-	str.WriteString(e.Alias.TokenLiteral())
-	return str.String()
-}
-
 type ExprCompoundIdentifier struct {
 	Identifiers []Expression
-}
-
-func (e *ExprCompoundIdentifier) expressionNode() {}
-func (e *ExprCompoundIdentifier) TokenLiteral() string {
-	var str strings.Builder
-	for i, item := range e.Identifiers {
-		if i > 0 {
-			str.WriteString(".")
-		}
-		str.WriteString(item.TokenLiteral())
-	}
-	return str.String()
 }
 
 type ExprSubquery struct {
@@ -100,43 +43,8 @@ type ExprSubquery struct {
 	WhereClause Expression
 }
 
-func (e *ExprSubquery) expressionNode() {}
-func (e *ExprSubquery) TokenLiteral() string {
-	var str strings.Builder
-	str.WriteString("SELECT ")
-
-	if e.SelectItem != nil {
-		str.WriteString(e.SelectItem.TokenLiteral())
-	}
-	if e.TableObject != nil {
-		str.WriteString(" FROM ")
-		str.WriteString(e.TableObject.TokenLiteral())
-	}
-
-	if e.WhereClause != nil {
-		str.WriteString(" WHERE ")
-		str.WriteString(e.WhereClause.TokenLiteral())
-	}
-
-	fmt.Printf("subquery statement %s\n", str.String())
-	return str.String()
-}
-
 type ExprExpressionList struct {
 	List []Expression
-}
-
-func (e *ExprExpressionList) expressionNode() {}
-func (e *ExprExpressionList) TokenLiteral() string {
-	var str strings.Builder
-	for i, item := range e.List {
-		if i > 0 {
-			str.WriteString(", ")
-		}
-
-		str.WriteString(item.TokenLiteral())
-	}
-	return str.String()
 }
 
 type FuncType uint8
@@ -187,6 +95,101 @@ const (
 type ExprFunction struct {
 	Type FuncType
 	Name Expression
+}
+
+type ExprFunctionCall struct {
+	Name *ExprFunction
+	Args []Expression
+}
+
+func (e *ExprStringLiteral) expressionNode() {}
+func (e *ExprStringLiteral) TokenLiteral() string {
+	return fmt.Sprintf("'%s'", e.Value)
+}
+
+func (e *ExprNumberLiteral) expressionNode() {}
+func (e *ExprNumberLiteral) TokenLiteral() string {
+	return e.Value
+}
+
+func (e *ExprLocalVariable) expressionNode() {}
+func (e *ExprLocalVariable) TokenLiteral() string {
+	return fmt.Sprintf("@%s", e.Value)
+}
+
+func (e *ExprIdentifier) expressionNode() {}
+func (e *ExprIdentifier) TokenLiteral() string {
+	return e.Value
+}
+
+func (e *ExprQuotedIdentifier) expressionNode() {}
+func (e *ExprQuotedIdentifier) TokenLiteral() string {
+	return fmt.Sprintf("[%s]", e.Value)
+}
+
+func (e *ExprStar) expressionNode() {}
+func (e *ExprStar) TokenLiteral() string {
+	return "*"
+}
+
+func (e *ExprWithAlias) expressionNode() {}
+func (e *ExprWithAlias) TokenLiteral() string {
+	var str strings.Builder
+	str.WriteString(e.Expression.TokenLiteral())
+	if e.AsTokenPresent {
+		str.WriteString(" AS ")
+	} else {
+		str.WriteString(" ")
+	}
+	str.WriteString(e.Alias.TokenLiteral())
+	return str.String()
+}
+
+func (e *ExprCompoundIdentifier) expressionNode() {}
+func (e *ExprCompoundIdentifier) TokenLiteral() string {
+	var str strings.Builder
+	for i, item := range e.Identifiers {
+		if i > 0 {
+			str.WriteString(".")
+		}
+		str.WriteString(item.TokenLiteral())
+	}
+	return str.String()
+}
+
+func (e *ExprSubquery) expressionNode() {}
+func (e *ExprSubquery) TokenLiteral() string {
+	var str strings.Builder
+	str.WriteString("SELECT ")
+
+	if e.SelectItem != nil {
+		str.WriteString(e.SelectItem.TokenLiteral())
+	}
+	if e.TableObject != nil {
+		str.WriteString(" FROM ")
+		str.WriteString(e.TableObject.TokenLiteral())
+	}
+
+	if e.WhereClause != nil {
+		str.WriteString(" WHERE ")
+		str.WriteString(e.WhereClause.TokenLiteral())
+	}
+
+	fmt.Printf("subquery statement %s\n", str.String())
+	return str.String()
+}
+
+func (e *ExprExpressionList) expressionNode() {}
+func (e *ExprExpressionList) TokenLiteral() string {
+	var str strings.Builder
+	for i, item := range e.List {
+		if i > 0 {
+			str.WriteString(", ")
+		}
+
+		str.WriteString(item.TokenLiteral())
+	}
+	return str.String()
 }
 
 func (e *ExprFunction) expressionNode() {}
@@ -275,11 +278,6 @@ func (e *ExprFunction) TokenLiteral() string {
 	default:
 		return "unimplemented function type"
 	}
-}
-
-type ExprFunctionCall struct {
-	Name *ExprFunction
-	Args []Expression
 }
 
 func (e *ExprFunctionCall) expressionNode() {}
