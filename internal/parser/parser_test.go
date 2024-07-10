@@ -58,7 +58,9 @@ func TestParseSubqueryCall(t *testing.T) {
 			SelectItems: []ast.Expression{
 				&ast.ExprIdentifier{Value: "hello"},
 				&ast.ExprSubquery{
-					SelectItem:  &ast.ExprIdentifier{Value: "yesirr"},
+					SelectItems: []ast.Expression{
+						&ast.ExprIdentifier{Value: "yesirr"},
+					},
 					TableObject: &ast.ExprIdentifier{Value: "bruh"},
 					WhereClause: &ast.ExprComparisonOperator{
 						Left: &ast.ExprIdentifier{
@@ -87,10 +89,12 @@ func TestParseSelectItemWithAlias(t *testing.T) {
 					Alias:      &ast.ExprStringLiteral{Value: "Potate"},
 				},
 				&ast.ExprSubquery{
-					SelectItem: &ast.ExprWithAlias{
-						Expression:     &ast.ExprIdentifier{Value: "dt"},
-						AsTokenPresent: true,
-						Alias:          &ast.ExprQuotedIdentifier{Value: "Datetime"},
+					SelectItems: []ast.Expression{
+						&ast.ExprWithAlias{
+							Expression: &ast.ExprIdentifier{Value: "dt"},
+							AsTokenPresent: true,
+							Alias:          &ast.ExprQuotedIdentifier{Value: "Datetime"},
+						},
 					},
 					TableObject: &ast.ExprIdentifier{Value: "bruh"},
 				}},
@@ -118,7 +122,7 @@ func TestDistinctTopArg(t *testing.T) {
 				&ast.ExprIdentifier{Value: "hello"},
 				&ast.ExprWithAlias{
 					Expression: &ast.ExprIdentifier{Value: "potate"},
-                    Alias:      &ast.ExprIdentifier{Value: "Potate"},
+					Alias:      &ast.ExprIdentifier{Value: "Potate"},
 				},
 			},
 			TableObject: &ast.ExprIdentifier{Value: "testtable"},

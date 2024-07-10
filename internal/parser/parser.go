@@ -221,22 +221,13 @@ func (p *Parser) parseSelectBody() (ast.SelectBody, error) {
 
 func (p *Parser) parseSelectSubquery() (ast.ExprSubquery, error) {
 	stmt := ast.ExprSubquery{}
-	err := p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier,
-		lexer.TNumericLiteral,
-		lexer.TStringLiteral,
-		lexer.TAsterisk,
-		lexer.TLocalVariable,
-		lexer.TLeftParen,
-		lexer.TSum,
-		lexer.TQuotedIdentifier})
+
+	selectItems, err := p.parseSelectItems()
 	if err != nil {
 		return stmt, err
 	}
 
-	stmt.SelectItem, err = p.parseExpression(PrecedenceLowest)
-	if err != nil {
-		return stmt, err
-	}
+	stmt.SelectItems = selectItems
 
 	tableObject, err := p.parseTableObject()
 	if err != nil {
@@ -273,6 +264,13 @@ func (p *Parser) parseSelectItems() ([]ast.Expression, error) {
 		expr, err := p.parseExpression(PrecedenceLowest)
 		if err != nil {
 			return items, err
+		}
+		switch v := expr.(type) {
+		case *ast.ExprSubquery:
+			if len(v.SelectItems) > 1 {
+				return items, fmt.Errorf("Subquery must contain only one column")
+			}
+			break
 		}
 		items = append(items, expr)
 

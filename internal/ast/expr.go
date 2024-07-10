@@ -40,7 +40,7 @@ type ExprCompoundIdentifier struct {
 type ExprSubquery struct {
 	Distinct    bool
 	Top         *TopArg
-	SelectItem  Expression
+	SelectItems  []Expression
 	TableObject Expression
 	WhereClause Expression
 }
@@ -172,9 +172,11 @@ func (e ExprSubquery) TokenLiteral() string {
 		str.WriteString(fmt.Sprintf("%s ", e.Top.TokenLiteral()))
 	}
 
-	if e.SelectItem != nil {
-		str.WriteString(e.SelectItem.TokenLiteral())
+	var selectItems []string
+	for _, s := range e.SelectItems {
+		selectItems = append(selectItems, s.TokenLiteral())
 	}
+	str.WriteString(strings.Join(selectItems, ", "))
 
 	if e.TableObject != nil {
 		str.WriteString(" FROM ")
