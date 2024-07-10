@@ -320,7 +320,7 @@ func (p *Parser) parseWhereExpression() (ast.Expression, error) {
 	}
 
 	switch expr.(type) {
-	case ast.ExprComparisonOperator:
+	case *ast.ExprComparisonOperator:
 		break
 	default:
 		p.errorToken = ETCurrent
@@ -459,7 +459,7 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 			}
 
 			switch alias.(type) {
-			case ast.ExprIdentifier, ast.ExprStringLiteral, ast.ExprQuotedIdentifier:
+			case *ast.ExprIdentifier, *ast.ExprStringLiteral, *ast.ExprQuotedIdentifier:
 				break
 			default:
 				err = fmt.Errorf("Expected (Identifier or StringLiteral or QuotedIdentifier) for Alias")
