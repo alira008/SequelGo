@@ -97,7 +97,7 @@ func TestParseSomeLogicalOperators(t *testing.T) {
 			WhereClause: &ast.ExprOrLogicalOperator{
 				Left: &ast.ExprAndLogicalOperator{
                     Left: &ast.ExprComparisonOperator{
-						Left: &ast.ExprIdentifier{
+						Left: &ast.ExprQuotedIdentifier{
 							Value: "LastPrice",
 						},
 						Operator: ast.ComparisonOpLess,
@@ -124,7 +124,7 @@ func TestParseSomeLogicalOperators(t *testing.T) {
 	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
 
 	input := "select Stock, -LastPrice 'NegativeLastPrice', LastPrice FROM MarketData"
-	input += " where LastPrice < 10.0 and Stock nOT in ('AAL', 'AMZN', 'GOOGL', 'ZM')"
+	input += " where [LastPrice] < 10.0 and Stock nOT in ('AAL', 'AMZN', 'GOOGL', 'ZM')"
 	input += "\n or PercentChange Between 1 and 4"
 
 	test(t, expected, input)
