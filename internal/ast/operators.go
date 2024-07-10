@@ -72,55 +72,65 @@ type ExprAndLogicalOperator struct {
 	Left  Expression
 	Right Expression
 }
+
 type ExprAllLogicalOperator struct {
 	ScalarExpression   Expression
 	ComparisonOperator ComparisonOperatorType
 	Subquery           ExprSubquery
 }
+
 type ExprBetweenLogicalOperator struct {
 	TestExpression Expression
 	Not            bool
 	Begin          Expression
 	End            Expression
 }
+
 type ExprExistsLogicalOperator struct {
 	Subquery ExprSubquery
 }
+
 type ExprInSubqueryLogicalOperator struct {
 	TestExpression Expression
 	Not            bool
 	Subquery       ExprSubquery
 }
+
 type ExprInLogicalOperator struct {
 	TestExpression Expression
 	Not            bool
 	Expressions    []Expression
 }
+
 type ExprLikeLogicalOperator struct {
 	MatchExpression Expression
 	Not             bool
 	Pattern         Expression
 }
+
 type ExprNotLogicalOperator struct {
 	Expression Expression
 }
+
 type ExprOrLogicalOperator struct {
 	Left  Expression
 	Right Expression
 }
+
 type ExprSomeLogicalOperator struct {
 	ScalarExpression   Expression
 	ComparisonOperator ComparisonOperatorType
 	Subquery           ExprSubquery
 }
+
 type ExprAnyLogicalOperator struct {
 	ScalarExpression   Expression
 	ComparisonOperator ComparisonOperatorType
 	Subquery           ExprSubquery
 }
 
-func (e *ExprUnaryOperator) expressionNode() {}
-func (e *ExprUnaryOperator) TokenLiteral() string {
+func (e ExprUnaryOperator) expressionNode() {}
+func (e ExprUnaryOperator) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString(e.Right.TokenLiteral())
 
@@ -134,8 +144,8 @@ func (e *ExprUnaryOperator) TokenLiteral() string {
 	return str.String()
 }
 
-func (e *ExprComparisonOperator) expressionNode() {}
-func (e *ExprComparisonOperator) TokenLiteral() string {
+func (e ExprComparisonOperator) expressionNode() {}
+func (e ExprComparisonOperator) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString(e.Left.TokenLiteral())
 	str.WriteString(fmt.Sprintf(" %s ", e.Operator.ToString()))
@@ -143,8 +153,8 @@ func (e *ExprComparisonOperator) TokenLiteral() string {
 	return str.String()
 }
 
-func (e *ExprArithmeticOperator) expressionNode() {}
-func (e *ExprArithmeticOperator) TokenLiteral() string {
+func (e ExprArithmeticOperator) expressionNode() {}
+func (e ExprArithmeticOperator) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString(e.Left.TokenLiteral())
 	switch e.Operator {
@@ -163,8 +173,8 @@ func (e *ExprArithmeticOperator) TokenLiteral() string {
 	return str.String()
 }
 
-func (e *ExprAndLogicalOperator) expressionNode() {}
-func (e *ExprAndLogicalOperator) TokenLiteral() string {
+func (e ExprAndLogicalOperator) expressionNode() {}
+func (e ExprAndLogicalOperator) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString(e.Left.TokenLiteral())
 	str.WriteString(" AND ")
@@ -172,8 +182,8 @@ func (e *ExprAndLogicalOperator) TokenLiteral() string {
 	return str.String()
 }
 
-func (e *ExprAllLogicalOperator) expressionNode() {}
-func (e *ExprAllLogicalOperator) TokenLiteral() string {
+func (e ExprAllLogicalOperator) expressionNode() {}
+func (e ExprAllLogicalOperator) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString(e.ScalarExpression.TokenLiteral())
 	str.WriteString(fmt.Sprintf(" %s ", e.ComparisonOperator.ToString()))
@@ -182,8 +192,8 @@ func (e *ExprAllLogicalOperator) TokenLiteral() string {
 	return str.String()
 }
 
-func (e *ExprBetweenLogicalOperator) expressionNode() {}
-func (e *ExprBetweenLogicalOperator) TokenLiteral() string {
+func (e ExprBetweenLogicalOperator) expressionNode() {}
+func (e ExprBetweenLogicalOperator) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString(e.TestExpression.TokenLiteral())
 	if e.Not {
@@ -196,8 +206,8 @@ func (e *ExprBetweenLogicalOperator) TokenLiteral() string {
 	return str.String()
 }
 
-func (e *ExprExistsLogicalOperator) expressionNode() {}
-func (e *ExprExistsLogicalOperator) TokenLiteral() string {
+func (e ExprExistsLogicalOperator) expressionNode() {}
+func (e ExprExistsLogicalOperator) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString("EXISTS (")
 	str.WriteString(e.Subquery.TokenLiteral())
@@ -205,8 +215,8 @@ func (e *ExprExistsLogicalOperator) TokenLiteral() string {
 	return str.String()
 }
 
-func (e *ExprInSubqueryLogicalOperator) expressionNode() {}
-func (e *ExprInSubqueryLogicalOperator) TokenLiteral() string {
+func (e ExprInSubqueryLogicalOperator) expressionNode() {}
+func (e ExprInSubqueryLogicalOperator) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString(e.TestExpression.TokenLiteral())
 	if e.Not {
@@ -218,8 +228,8 @@ func (e *ExprInSubqueryLogicalOperator) TokenLiteral() string {
 	return str.String()
 }
 
-func (e *ExprInLogicalOperator) expressionNode() {}
-func (e *ExprInLogicalOperator) TokenLiteral() string {
+func (e ExprInLogicalOperator) expressionNode() {}
+func (e ExprInLogicalOperator) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString(e.TestExpression.TokenLiteral())
 	if e.Not {
@@ -238,8 +248,8 @@ func (e *ExprInLogicalOperator) TokenLiteral() string {
 	return str.String()
 }
 
-func (e *ExprLikeLogicalOperator) expressionNode() {}
-func (e *ExprLikeLogicalOperator) TokenLiteral() string {
+func (e ExprLikeLogicalOperator) expressionNode() {}
+func (e ExprLikeLogicalOperator) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString(e.MatchExpression.TokenLiteral())
 	if e.Not {
@@ -250,16 +260,16 @@ func (e *ExprLikeLogicalOperator) TokenLiteral() string {
 	return str.String()
 }
 
-func (e *ExprNotLogicalOperator) expressionNode() {}
-func (e *ExprNotLogicalOperator) TokenLiteral() string {
+func (e ExprNotLogicalOperator) expressionNode() {}
+func (e ExprNotLogicalOperator) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString("NOT ")
 	str.WriteString(e.Expression.TokenLiteral())
 	return str.String()
 }
 
-func (e *ExprOrLogicalOperator) expressionNode() {}
-func (e *ExprOrLogicalOperator) TokenLiteral() string {
+func (e ExprOrLogicalOperator) expressionNode() {}
+func (e ExprOrLogicalOperator) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString(e.Left.TokenLiteral())
 	str.WriteString(" OR ")
@@ -267,8 +277,8 @@ func (e *ExprOrLogicalOperator) TokenLiteral() string {
 	return str.String()
 }
 
-func (e *ExprSomeLogicalOperator) expressionNode() {}
-func (e *ExprSomeLogicalOperator) TokenLiteral() string {
+func (e ExprSomeLogicalOperator) expressionNode() {}
+func (e ExprSomeLogicalOperator) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString(e.ScalarExpression.TokenLiteral())
 	str.WriteString(fmt.Sprintf(" %s ", e.ComparisonOperator.ToString()))
@@ -277,8 +287,8 @@ func (e *ExprSomeLogicalOperator) TokenLiteral() string {
 	return str.String()
 }
 
-func (e *ExprAnyLogicalOperator) expressionNode() {}
-func (e *ExprAnyLogicalOperator) TokenLiteral() string {
+func (e ExprAnyLogicalOperator) expressionNode() {}
+func (e ExprAnyLogicalOperator) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString(e.ScalarExpression.TokenLiteral())
 	str.WriteString(fmt.Sprintf(" %s ", e.ComparisonOperator.ToString()))

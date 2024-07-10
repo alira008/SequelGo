@@ -23,16 +23,12 @@ type Query struct {
 	Statements []Statement
 }
 
-type InsertStatement struct {}
-type UpdateStatement struct {}
-type DeleteStatement struct {}
-type CTESelectStatement struct {}
-type CTEInsertleteStatement struct {}
-type CTEUpdateStatement struct {}
-type CTEDeleteStatement struct {}
-type DeclareStatement struct {}
-type ExecuteStatement struct {}
-type SetLocalVariableStatement struct {}
+type DeclareStatement struct{}
+type ExecuteStatement struct{}
+type SetLocalVariableStatement struct{}
+type InsertStatement struct{}
+type UpdateStatement struct{}
+type DeleteStatement struct{}
 type CommmonTableExpression struct{}
 
 type SelectStatement struct {
@@ -54,7 +50,7 @@ type SelectBody struct {
 	WhereClause Expression
 }
 
-func (q *Query) TokenLiteral() string {
+func (q Query) TokenLiteral() string {
 	str := strings.Builder{}
 
 	for _, s := range q.Statements {
@@ -67,54 +63,51 @@ func (q *Query) TokenLiteral() string {
 	return str.String()
 }
 
-func (ds *DeclareStatement) statementNode() {}
-func (ds *DeclareStatement) TokenLiteral() string {
+func (ds DeclareStatement) statementNode() {}
+func (ds DeclareStatement) TokenLiteral() string {
 	return ""
 }
 
-func (ss *SelectStatement) statementNode() {}
-func (ss *SelectStatement) TokenLiteral() string {
+func (ss SelectStatement) statementNode() {}
+func (ss SelectStatement) TokenLiteral() string {
 	fmt.Printf("select statement %s\n", ss.SelectBody.TokenLiteral())
 	return ss.SelectBody.TokenLiteral()
 }
 
-func (ta *TopArg) TokenLiteral() string {
+func (ta TopArg) TokenLiteral() string {
 	var str strings.Builder
-	str.WriteString(fmt.Sprintf("TOP %s ", ta.Quantity.TokenLiteral()))
+	str.WriteString(fmt.Sprintf("TOP %s", ta.Quantity.TokenLiteral()))
 
-    if ta.Percent {
-        str.WriteString("PERCENT ")
-    }
+	if ta.Percent {
+		str.WriteString(" PERCENT")
+	}
 
-    if ta.WithTies {
-        str.WriteString("WITH TIES ")
-    }
+	if ta.WithTies {
+		str.WriteString(" WITH TIES")
+	}
 
-    return str.String()
+	return str.String()
 }
 
-func (sb *SelectBody) TokenLiteral() string {
+func (sb SelectBody) statementNode() {}
+func (sb SelectBody) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString("SELECT ")
 
-    if sb.Distinct {
-        str.WriteString("DISTINCT ")
-    }
-
-    if sb.Top != nil {
-        str.WriteString(sb.Top.TokenLiteral())
-    }
-
-	if sb.SelectItems == nil {
-		return ""
+	if sb.Distinct {
+		str.WriteString("DISTINCT ")
 	}
-	for i, s := range sb.SelectItems {
-		if i > 0 {
-			str.WriteString(", ")
-		}
 
-		str.WriteString(s.TokenLiteral())
+	if sb.Top != nil {
+		str.WriteString(fmt.Sprintf("%s ", sb.Top.TokenLiteral()))
 	}
+
+	var selectItems []string
+	for _, s := range sb.SelectItems {
+		selectItems = append(selectItems, s.TokenLiteral())
+	}
+	str.WriteString(strings.Join(selectItems, ", "))
+
 	if sb.TableObject != nil {
 		str.WriteString(" FROM ")
 		str.WriteString(sb.TableObject.TokenLiteral())
@@ -127,4 +120,3 @@ func (sb *SelectBody) TokenLiteral() string {
 
 	return str.String()
 }
-

@@ -38,6 +38,8 @@ type ExprCompoundIdentifier struct {
 }
 
 type ExprSubquery struct {
+	Distinct    bool
+	Top         *TopArg
 	SelectItem  Expression
 	TableObject Expression
 	WhereClause Expression
@@ -102,38 +104,38 @@ type ExprFunctionCall struct {
 	Args []Expression
 }
 
-func (e *ExprStringLiteral) expressionNode() {}
-func (e *ExprStringLiteral) TokenLiteral() string {
+func (e ExprStringLiteral) expressionNode() {}
+func (e ExprStringLiteral) TokenLiteral() string {
 	return fmt.Sprintf("'%s'", e.Value)
 }
 
-func (e *ExprNumberLiteral) expressionNode() {}
-func (e *ExprNumberLiteral) TokenLiteral() string {
+func (e ExprNumberLiteral) expressionNode() {}
+func (e ExprNumberLiteral) TokenLiteral() string {
 	return e.Value
 }
 
-func (e *ExprLocalVariable) expressionNode() {}
-func (e *ExprLocalVariable) TokenLiteral() string {
+func (e ExprLocalVariable) expressionNode() {}
+func (e ExprLocalVariable) TokenLiteral() string {
 	return fmt.Sprintf("@%s", e.Value)
 }
 
-func (e *ExprIdentifier) expressionNode() {}
-func (e *ExprIdentifier) TokenLiteral() string {
+func (e ExprIdentifier) expressionNode() {}
+func (e ExprIdentifier) TokenLiteral() string {
 	return e.Value
 }
 
-func (e *ExprQuotedIdentifier) expressionNode() {}
-func (e *ExprQuotedIdentifier) TokenLiteral() string {
+func (e ExprQuotedIdentifier) expressionNode() {}
+func (e ExprQuotedIdentifier) TokenLiteral() string {
 	return fmt.Sprintf("[%s]", e.Value)
 }
 
-func (e *ExprStar) expressionNode() {}
-func (e *ExprStar) TokenLiteral() string {
+func (e ExprStar) expressionNode() {}
+func (e ExprStar) TokenLiteral() string {
 	return "*"
 }
 
-func (e *ExprWithAlias) expressionNode() {}
-func (e *ExprWithAlias) TokenLiteral() string {
+func (e ExprWithAlias) expressionNode() {}
+func (e ExprWithAlias) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString(e.Expression.TokenLiteral())
 	if e.AsTokenPresent {
@@ -145,8 +147,8 @@ func (e *ExprWithAlias) TokenLiteral() string {
 	return str.String()
 }
 
-func (e *ExprCompoundIdentifier) expressionNode() {}
-func (e *ExprCompoundIdentifier) TokenLiteral() string {
+func (e ExprCompoundIdentifier) expressionNode() {}
+func (e ExprCompoundIdentifier) TokenLiteral() string {
 	var str strings.Builder
 	for i, item := range e.Identifiers {
 		if i > 0 {
@@ -157,14 +159,23 @@ func (e *ExprCompoundIdentifier) TokenLiteral() string {
 	return str.String()
 }
 
-func (e *ExprSubquery) expressionNode() {}
-func (e *ExprSubquery) TokenLiteral() string {
+func (e ExprSubquery) expressionNode() {}
+func (e ExprSubquery) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString("SELECT ")
+
+	if e.Distinct {
+		str.WriteString("DISTINCT ")
+	}
+
+	if e.Top != nil {
+		str.WriteString(fmt.Sprintf("%s ", e.Top.TokenLiteral()))
+	}
 
 	if e.SelectItem != nil {
 		str.WriteString(e.SelectItem.TokenLiteral())
 	}
+
 	if e.TableObject != nil {
 		str.WriteString(" FROM ")
 		str.WriteString(e.TableObject.TokenLiteral())
@@ -179,8 +190,8 @@ func (e *ExprSubquery) TokenLiteral() string {
 	return str.String()
 }
 
-func (e *ExprExpressionList) expressionNode() {}
-func (e *ExprExpressionList) TokenLiteral() string {
+func (e ExprExpressionList) expressionNode() {}
+func (e ExprExpressionList) TokenLiteral() string {
 	var str strings.Builder
 	for i, item := range e.List {
 		if i > 0 {
@@ -192,8 +203,8 @@ func (e *ExprExpressionList) TokenLiteral() string {
 	return str.String()
 }
 
-func (e *ExprFunction) expressionNode() {}
-func (e *ExprFunction) TokenLiteral() string {
+func (e ExprFunction) expressionNode() {}
+func (e ExprFunction) TokenLiteral() string {
 	switch e.Type {
 	case FuncDenseRank:
 		return "DENSE_RANK"
@@ -280,8 +291,8 @@ func (e *ExprFunction) TokenLiteral() string {
 	}
 }
 
-func (e *ExprFunctionCall) expressionNode() {}
-func (e *ExprFunctionCall) TokenLiteral() string {
+func (e ExprFunctionCall) expressionNode() {}
+func (e ExprFunctionCall) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString(e.Name.TokenLiteral())
 	str.WriteString("(")
