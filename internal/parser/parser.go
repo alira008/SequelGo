@@ -673,7 +673,7 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 				return nil, err
 			}
 			p.expectPeek(lexer.TRightParen)
-            fmt.Printf("stmt: %v\n", stmt)
+			fmt.Printf("stmt: %v\n", stmt)
 			return &stmt, nil
 		}
 	case lexer.TPlus, lexer.TMinus:
@@ -905,34 +905,37 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 			return nil, fmt.Errorf("Expected 'AND' logical operator after 'BETWEEN' keyword")
 		}
 	case lexer.TIn:
-		precedence := checkPrecedence(p.currentToken.Type)
-		p.nextToken()
-        fmt.Printf("p.currentToken: %v\n", p.currentToken)
-		right, err := p.parseExpression(precedence)
-        fmt.Printf("right: %v\n", right)
-		if err != nil {
-			return nil, err
-		}
+		p.expectPeek(lexer.TLeftParen)
+		if p.peekTokenIs(lexer.TSelect) {
+			p.nextToken()
+			statement, err := p.parseSelectSubquery()
+			if err != nil {
+				return nil, err
+			}
+			p.expectPeek(lexer.TRightParen)
 
-		// check if we have and operator
-		switch v := right.(type) {
-		case *ast.ExprSubquery:
-            fmt.Printf("hello uno \n")
 			return &ast.ExprInSubqueryLogicalOperator{
 				TestExpression: left,
-				Subquery:       v,
+				Subquery:       &statement,
 			}, nil
-		case *ast.ExprExpressionList:
-            fmt.Printf("hello dos\n")
+		} else if p.peekTokenIs(lexer.TIdentifier) ||
+			p.peekTokenIs(lexer.TLocalVariable) ||
+			p.peekTokenIs(lexer.TQuotedIdentifier) ||
+			p.peekTokenIs(lexer.TStringLiteral) ||
+			p.peekTokenIs(lexer.TNumericLiteral) {
+			stmt, err := p.parseExpressionList()
+			if err != nil {
+				return nil, err
+			}
+			p.expectPeek(lexer.TRightParen)
+
 			return &ast.ExprInLogicalOperator{
 				TestExpression: left,
-				Expressions:    v.List,
+				Expressions:    stmt.List,
 			}, nil
-		default:
-            fmt.Printf("hello tres\n")
-			p.errorToken = ETCurrent
-			return nil, fmt.Errorf("Expected (Subquery or Expression List) after 'IN' keyword got %v", v)
 		}
+		p.errorToken = ETCurrent
+		return nil, fmt.Errorf("Expected (Subquery or Expression List) after 'IN' keyword got %v", p.currentToken)
 	case lexer.TLike:
 		precedence := checkPrecedence(p.currentToken.Type)
 		p.nextToken()
@@ -972,32 +975,39 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 				return nil, fmt.Errorf("Expected subquery after 'NOT BETWEEN' keyword")
 			}
 		} else if p.currentTokenIs(lexer.TIn) {
-			precedence := checkPrecedence(p.currentToken.Type)
-			p.nextToken()
+			p.expectPeek(lexer.TLeftParen)
+			if p.peekTokenIs(lexer.TSelect) {
+				p.nextToken()
+				statement, err := p.parseSelectSubquery()
+				if err != nil {
+					return nil, err
+				}
+				p.expectPeek(lexer.TRightParen)
 
-			right, err := p.parseExpression(precedence)
-			if err != nil {
-				return nil, err
-			}
-
-			// check if we have and operator
-			switch v := right.(type) {
-			case *ast.ExprSubquery:
 				return &ast.ExprInSubqueryLogicalOperator{
 					TestExpression: left,
 					Not:            true,
-					Subquery:       v,
+					Subquery:       &statement,
 				}, nil
-			case *ast.ExprExpressionList:
+			} else if p.peekTokenIs(lexer.TIdentifier) ||
+				p.peekTokenIs(lexer.TLocalVariable) ||
+				p.peekTokenIs(lexer.TQuotedIdentifier) ||
+				p.peekTokenIs(lexer.TStringLiteral) ||
+				p.peekTokenIs(lexer.TNumericLiteral) {
+				stmt, err := p.parseExpressionList()
+				if err != nil {
+					return nil, err
+				}
+				p.expectPeek(lexer.TRightParen)
+
 				return &ast.ExprInLogicalOperator{
 					TestExpression: left,
 					Not:            true,
-					Expressions:    v.List,
+					Expressions:    stmt.List,
 				}, nil
-			default:
-				p.errorToken = ETCurrent
-				return nil, fmt.Errorf("Expected (Subquery or Expression List) after 'NOT IN' keyword")
 			}
+			p.errorToken = ETCurrent
+			return nil, fmt.Errorf("Expected (Subquery or Expression List) after 'NOT IN' keyword")
 		} else if p.currentTokenIs(lexer.TLike) {
 			precedence := checkPrecedence(p.currentToken.Type)
 			p.nextToken()

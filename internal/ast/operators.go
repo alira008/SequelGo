@@ -132,7 +132,6 @@ type ExprAnyLogicalOperator struct {
 func (e ExprUnaryOperator) expressionNode() {}
 func (e ExprUnaryOperator) TokenLiteral() string {
 	var str strings.Builder
-	str.WriteString(e.Right.TokenLiteral())
 
 	switch e.Operator {
 	case UnaryOpPlus:
@@ -141,6 +140,7 @@ func (e ExprUnaryOperator) TokenLiteral() string {
 		str.WriteString(" - ")
 	}
 
+	str.WriteString(e.Right.TokenLiteral())
 	return str.String()
 }
 

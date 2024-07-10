@@ -110,7 +110,7 @@ func (l *Lexer) NextToken() Token {
 			token.Type = TMinusEqual
 			token.Value = "-="
 		} else {
-			token.Type = TPlus
+			token.Type = TMinus
 			token.Value = "-"
 		}
 	case '/':
