@@ -94,7 +94,7 @@ func TestParseSomeLogicalOperators(t *testing.T) {
 				&ast.ExprIdentifier{Value: "LastPrice"},
 			},
 			TableObject: &ast.ExprIdentifier{Value: "MarketData"},
-			WhereClause: &ast.ExprAndLogicalOperator{
+			WhereClause: &ast.ExprOrLogicalOperator{
 				Left: &ast.ExprAndLogicalOperator{
                     Left: &ast.ExprComparisonOperator{
 						Left: &ast.ExprIdentifier{
@@ -125,7 +125,7 @@ func TestParseSomeLogicalOperators(t *testing.T) {
 
 	input := "select Stock, -LastPrice 'NegativeLastPrice', LastPrice FROM MarketData"
 	input += " where LastPrice < 10.0 and Stock nOT in ('AAL', 'AMZN', 'GOOGL', 'ZM')"
-	input += "\n and PercentChange Between 1 and 4"
+	input += "\n or PercentChange Between 1 and 4"
 
 	test(t, expected, input)
 }

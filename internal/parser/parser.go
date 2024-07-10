@@ -11,7 +11,7 @@ type ErrorToken int
 
 const (
 	ETCurrent ErrorToken = iota
-	ETPeak
+	ETPeek
 	ETNone
 )
 
@@ -52,7 +52,7 @@ func (p *Parser) expectPeek(t lexer.TokenType) error {
 		return nil
 	}
 
-	p.errorToken = ETPeak
+	p.errorToken = ETPeek
 	return p.peekError(t)
 }
 
@@ -64,11 +64,12 @@ func (p *Parser) expectPeekMany(ts []lexer.TokenType) error {
 		}
 	}
 
-	p.errorToken = ETPeak
+	p.errorToken = ETPeek
 	return p.peekErrorMany(ts)
 }
 
 func (p *Parser) peekError(t lexer.TokenType) error {
+	p.errorToken = ETPeek
 	return fmt.Errorf(
 		"expected (%s) got (%s) instead\n%s",
 		t.String(),
@@ -92,10 +93,20 @@ func (p *Parser) peekErrorMany(ts []lexer.TokenType) error {
 		expectedTokenTypes = append(expectedTokenTypes, fmt.Sprintf("%s", t.String()))
 	}
 
+	p.errorToken = ETPeek
 	return fmt.Errorf(
 		"expected (%s) got (%s) instead\n%s",
 		strings.Join(expectedTokenTypes, " or "),
 		p.peekToken.Type.String(),
+		p.l.CurrentLine(),
+	)
+}
+
+func (p *Parser) currentErrorString(expected string) error {
+	p.errorToken = ETCurrent
+	return fmt.Errorf(
+		"expected %s\n%s",
+		expected,
 		p.l.CurrentLine(),
 	)
 }
@@ -854,7 +865,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 				}, nil
 			}
 			p.errorToken = ETCurrent
-			return nil, fmt.Errorf("sub query was not provided for Some Expression")
+			return nil, p.currentErrorString("(Subquery) was not provided for Some Expression")
 		} else if p.currentTokenIs(lexer.TAny) {
 			p.nextToken()
 			right, err := p.parseExpression(precedence)
@@ -870,7 +881,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 				}, nil
 			}
 			p.errorToken = ETCurrent
-			return nil, fmt.Errorf("sub query was not provided for Any Expression")
+			return nil, p.currentErrorString("(Subquery) was not provided for Any Expression")
 		}
 
 		// parse the expression of the operator
@@ -902,7 +913,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 			}, nil
 		default:
 			p.errorToken = ETCurrent
-			return nil, fmt.Errorf("Expected 'AND' logical operator after 'BETWEEN' keyword")
+			return nil, p.currentErrorString("Expected 'AND' logical operator after 'BETWEEN' keyword")
 		}
 	case lexer.TIn:
 		p.expectPeek(lexer.TLeftParen)
@@ -935,7 +946,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 			}, nil
 		}
 		p.errorToken = ETCurrent
-		return nil, fmt.Errorf("Expected (Subquery or Expression List) after 'IN' keyword got %v", p.currentToken)
+		return nil, p.currentErrorString("Expected (Subquery or Expression List) after 'IN' keyword")
 	case lexer.TLike:
 		precedence := checkPrecedence(p.currentToken.Type)
 		p.nextToken()
@@ -972,7 +983,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 				}, nil
 			default:
 				p.errorToken = ETCurrent
-				return nil, fmt.Errorf("Expected subquery after 'NOT BETWEEN' keyword")
+				return nil, p.currentErrorString("Expected (Subquery) after 'NOT BETWEEN' keyword")
 			}
 		} else if p.currentTokenIs(lexer.TIn) {
 			p.expectPeek(lexer.TLeftParen)
@@ -1007,7 +1018,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 				}, nil
 			}
 			p.errorToken = ETCurrent
-			return nil, fmt.Errorf("Expected (Subquery or Expression List) after 'NOT IN' keyword")
+			return nil, p.currentErrorString("(Subquery or Expression List) after 'NOT IN' keyword")
 		} else if p.currentTokenIs(lexer.TLike) {
 			precedence := checkPrecedence(p.currentToken.Type)
 			p.nextToken()
@@ -1024,9 +1035,9 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 			}, nil
 		} else {
 			p.errorToken = ETCurrent
-			return nil, fmt.Errorf("Expected (BETWEEN Expression or IN Expression or LIKE Expression) after 'Test Expression NOT' Expression")
+			return nil, p.currentErrorString("(BETWEEN Expression or IN Expression or LIKE Expression) after 'Test Expression NOT' Expression")
 		}
 	}
 	p.errorToken = ETCurrent
-	return nil, fmt.Errorf("Unimplemented expression %s", p.currentToken.Type.String())
+	return nil, p.currentErrorString("Unimplemented expression")
 }
