@@ -3,15 +3,14 @@ package main
 import (
 	"SequelGo/internal/lexer"
 	"SequelGo/internal/parser"
+	"fmt"
 )
 
 func main() {
-	input := "select 'hello', yes, 1"
+	input := "select 'hello', yes, 1 from hello"
 	l := lexer.NewLexer(input)
 	p := parser.NewParser(l)
-	// reader := bufio.NewReader(os.Stdin)
-	//    reader.ReadString('\n')
 
-	q := p.Parse()
-	q.TokenLiteral()
+	query := p.Parse()
+    fmt.Println(query.TokenLiteral())
 }

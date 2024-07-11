@@ -144,11 +144,11 @@ func (p *Parser) parseStatement() (ast.Statement, error) {
 	switch p.currentToken.Type {
 	case lexer.TSelect:
 		body, err := p.parseSelectBody()
-		if err == nil {
-			return &ast.SelectStatement{SelectBody: &body}, nil
+		if err != nil {
+			return nil, err
 		}
 
-		return nil, err
+		return &ast.SelectStatement{SelectBody: &body}, nil
 	default:
 		return nil, nil
 		// return nil, fmt.Errorf("unknown statement type %s", p.currentToken.Value)
@@ -867,14 +867,14 @@ func (p *Parser) parseWindowFrameClause() (*ast.WindowFrameClause, error) {
 	var windowFrameEnd ast.WindowFrameBound
 	followingNeeded := false
 	// parse between
-    fmt.Printf("p.currentToken.Value: %v\n", p.currentToken.Value)
-    fmt.Printf("p.peekToken.Value: %v\n", p.peekToken.Value)
+	fmt.Printf("p.currentToken.Value: %v\n", p.currentToken.Value)
+	fmt.Printf("p.peekToken.Value: %v\n", p.peekToken.Value)
 	if p.peekTokenIs(lexer.TBetween) {
 		followingNeeded = true
 		p.nextToken()
 	}
-    fmt.Printf("p.currentToken.Value: %v\n", p.currentToken.Value)
-    fmt.Printf("p.peekToken.Value: %v\n", p.peekToken.Value)
+	fmt.Printf("p.currentToken.Value: %v\n", p.currentToken.Value)
+	fmt.Printf("p.peekToken.Value: %v\n", p.peekToken.Value)
 	if p.peekTokenIs(lexer.TUnbounded) {
 		p.nextToken()
 		if err := p.expectPeek(lexer.TPreceding); err != nil {
@@ -890,7 +890,7 @@ func (p *Parser) parseWindowFrameClause() (*ast.WindowFrameClause, error) {
 	} else if p.peekTokenIs(lexer.TNumericLiteral) {
 		p.nextToken()
 		expr, err := p.parseExpression(PrecedenceLowest)
-        fmt.Printf("test\n")
+		fmt.Printf("test\n")
 		if err != nil {
 			return nil, err
 		}

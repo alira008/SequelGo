@@ -141,9 +141,6 @@ func (q Query) TokenLiteral() string {
 	str := strings.Builder{}
 
 	for _, s := range q.Statements {
-		if s != nil {
-			fmt.Printf("yessir")
-		}
 		str.WriteString(s.TokenLiteral())
 	}
 
@@ -157,7 +154,7 @@ func (ds DeclareStatement) TokenLiteral() string {
 
 func (ss SelectStatement) statementNode() {}
 func (ss SelectStatement) TokenLiteral() string {
-	fmt.Printf("select statement %s\n", ss.SelectBody.TokenLiteral())
+	// fmt.Printf("select statement %s\n", ss.SelectBody.TokenLiteral())
 	return ss.SelectBody.TokenLiteral()
 }
 
@@ -214,7 +211,7 @@ func (ta TableArg) expressionNode() {}
 func (ta TableArg) TokenLiteral() string {
 	var str strings.Builder
 
-	ta.Table.TokenLiteral()
+	str.WriteString(ta.Table.TokenLiteral())
 
 	if len(ta.Joins) == 0 {
 		return str.String()
@@ -234,7 +231,7 @@ func (ts TableSource) expressionNode() {}
 func (ts TableSource) TokenLiteral() string {
 	var str strings.Builder
 
-	ts.Source.TokenLiteral()
+	str.WriteString(ts.Source.TokenLiteral())
 
 	return str.String()
 }
