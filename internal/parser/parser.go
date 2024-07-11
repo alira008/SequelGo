@@ -777,6 +777,168 @@ func (p *Parser) parseFetch() (ast.FetchArg, error) {
 	return fetchArg, nil
 }
 
+func (p *Parser) parseOverClause() (*ast.FunctionOverClause, error) {
+	p.nextToken()
+	if err := p.expectPeek(lexer.TLeftParen); err != nil {
+		return nil, err
+	}
+
+	functionOverClause := ast.FunctionOverClause{}
+
+	if p.peekTokenIs(lexer.TPartition) {
+		expressions, err := p.parsePartitionClause()
+		if err != nil {
+			return nil, err
+		}
+		functionOverClause.PartitionByClause = expressions
+	}
+
+	if p.peekTokenIs(lexer.TOrder) {
+		p.nextToken()
+		if err := p.expectPeek(lexer.TBy); err != nil {
+			return nil, err
+		}
+		args, err := p.parseOrderByArgs()
+		if err != nil {
+			return nil, err
+		}
+		functionOverClause.OrderByClause = args
+	}
+
+	if p.peekTokenIs(lexer.TRows) || p.peekTokenIs(lexer.TRange) {
+		clause, err := p.parseWindowFrameClause()
+		if err != nil {
+			return nil, err
+		}
+		functionOverClause.WindowFrameClause = clause
+	}
+
+	err := p.expectPeek(lexer.TRightParen)
+	if err != nil {
+		return nil, err
+	}
+
+	return &functionOverClause, nil
+}
+
+func (p *Parser) parsePartitionClause() ([]ast.Expression, error) {
+	p.nextToken()
+	if err := p.expectPeek(lexer.TBy); err != nil {
+		return nil, err
+	}
+	args := []ast.Expression{}
+
+	for {
+		if !p.peekTokenIs(lexer.TIdentifier) && !p.peekTokenIs(lexer.TQuotedIdentifier) {
+			break
+		}
+		p.nextToken()
+
+		expr, err := p.parseExpression(PrecedenceLowest)
+		if err != nil {
+			return nil, err
+		}
+
+		args = append(args, expr)
+
+		if !p.peekTokenIs(lexer.TComma) {
+			break
+		}
+		p.nextToken()
+	}
+
+	if len(args) == 0 {
+		return nil, p.currentErrorString("PARTITION BY items in PARTITION BY expression")
+	}
+
+	return args, nil
+}
+
+func (p *Parser) parseWindowFrameClause() (*ast.WindowFrameClause, error) {
+	var rowsOrRangeType ast.RowsOrRangeType
+	if p.peekTokenIs(lexer.TRows) {
+		rowsOrRangeType = ast.RRTRows
+	} else if p.peekTokenIs(lexer.TRange) {
+		rowsOrRangeType = ast.RRTRange
+	}
+	p.nextToken()
+
+	var windowFrameStart ast.WindowFrameBound
+	var windowFrameEnd ast.WindowFrameBound
+	followingNeeded := false
+	// parse between
+    fmt.Printf("p.currentToken.Value: %v\n", p.currentToken.Value)
+    fmt.Printf("p.peekToken.Value: %v\n", p.peekToken.Value)
+	if p.peekTokenIs(lexer.TBetween) {
+		followingNeeded = true
+		p.nextToken()
+	}
+    fmt.Printf("p.currentToken.Value: %v\n", p.currentToken.Value)
+    fmt.Printf("p.peekToken.Value: %v\n", p.peekToken.Value)
+	if p.peekTokenIs(lexer.TUnbounded) {
+		p.nextToken()
+		if err := p.expectPeek(lexer.TPreceding); err != nil {
+			return nil, err
+		}
+		windowFrameStart = ast.WindowFrameBound{Type: ast.WFBTUnboundedPreceding}
+	} else if p.peekTokenIs(lexer.TCurrent) {
+		p.nextToken()
+		if err := p.expectPeek(lexer.TRow); err != nil {
+			return nil, err
+		}
+		windowFrameStart = ast.WindowFrameBound{Type: ast.WFBTCurrentRow}
+	} else if p.peekTokenIs(lexer.TNumericLiteral) {
+		p.nextToken()
+		expr, err := p.parseExpression(PrecedenceLowest)
+        fmt.Printf("test\n")
+		if err != nil {
+			return nil, err
+		}
+		if err := p.expectPeek(lexer.TPreceding); err != nil {
+			return nil, err
+		}
+		windowFrameStart = ast.WindowFrameBound{Type: ast.WFBTPreceding, Expression: expr}
+	} else {
+		return nil, p.currentErrorString("Expected UNBOUNDED PRECEDING or CURRENT ROW or <NUMBER> PRECEDING")
+	}
+
+	if !followingNeeded {
+		return &ast.WindowFrameClause{RowsOrRange: rowsOrRangeType, Start: &windowFrameStart}, nil
+	}
+
+	if err := p.expectPeek(lexer.TAnd); err != nil {
+		return nil, err
+	}
+
+	if p.peekTokenIs(lexer.TUnbounded) {
+		p.nextToken()
+		if err := p.expectPeek(lexer.TFollowing); err != nil {
+			return nil, err
+		}
+		windowFrameEnd = ast.WindowFrameBound{Type: ast.WFBTUnboundedFollowing}
+	} else if p.peekTokenIs(lexer.TCurrent) {
+		p.nextToken()
+		if err := p.expectPeek(lexer.TRow); err != nil {
+			return nil, err
+		}
+		windowFrameEnd = ast.WindowFrameBound{Type: ast.WFBTCurrentRow}
+	} else if p.peekTokenIs(lexer.TNumericLiteral) {
+		p.nextToken()
+		expr, err := p.parseExpression(PrecedenceLowest)
+		if err != nil {
+			return nil, err
+		}
+		if err := p.expectPeek(lexer.TFollowing); err != nil {
+			return nil, err
+		}
+		windowFrameEnd = ast.WindowFrameBound{Type: ast.WFBTFollowing, Expression: expr}
+	} else {
+		return nil, p.currentErrorString("Expected UNBOUNDED FOLLOWING or CURRENT ROW or <NUMBER> FOLLOWING")
+	}
+
+	return &ast.WindowFrameClause{RowsOrRange: rowsOrRangeType, Start: &windowFrameStart, End: &windowFrameEnd}, nil
+}
+
 func (p *Parser) parseExpressionList() (ast.ExprExpressionList, error) {
 	expressionList := ast.ExprExpressionList{}
 
@@ -1085,9 +1247,23 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 			return nil, err
 		}
 
+		// check for over clause
+		if !p.peekTokenIs(lexer.TOver) {
+			return &ast.ExprFunctionCall{
+				Name: function,
+				Args: args,
+			}, nil
+		}
+
+		overClause, err := p.parseOverClause()
+		if err != nil {
+			return nil, err
+		}
+
 		return &ast.ExprFunctionCall{
-			Name: function,
-			Args: args,
+			Name:       function,
+			Args:       args,
+			OverClause: overClause,
 		}, nil
 	case lexer.TLeftParen:
 		// start of subquery
@@ -1128,8 +1304,8 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 					err = fmt.Errorf("Expected (Identifier or StringLiteral or QuotedIdentifier) for Alias")
 					return nil, err
 				}
-                exprWithAlias.Alias = alias
-                return exprWithAlias, nil
+				exprWithAlias.Alias = alias
+				return exprWithAlias, nil
 			}
 
 			return &statement, nil

@@ -38,14 +38,14 @@ type ExprCompoundIdentifier struct {
 }
 
 type ExprSubquery struct {
-	Distinct    bool
-	Top         *TopArg
-	SelectItems []Expression
+	Distinct      bool
+	Top           *TopArg
+	SelectItems   []Expression
 	Table         *TableArg
-	WhereClause Expression
-    GroupByClause []Expression
-	HavingClause Expression
-    OrderByClause *OrderByClause
+	WhereClause   Expression
+	GroupByClause []Expression
+	HavingClause  Expression
+	OrderByClause *OrderByClause
 }
 
 type ExprExpressionList struct {
@@ -97,14 +97,49 @@ const (
 	FuncUserDefined
 )
 
+type FunctionOverClause struct {
+	PartitionByClause []Expression
+	OrderByClause     []OrderByArg
+	WindowFrameClause *WindowFrameClause
+}
+
+type WindowFrameClause struct {
+	RowsOrRange RowsOrRangeType
+	Start       *WindowFrameBound
+	End         *WindowFrameBound
+}
+
+type WindowFrameBoundType uint8
+
+const (
+	WFBTCurrentRow WindowFrameBoundType = iota
+	WFBTPreceding
+	WFBTFollowing
+	WFBTUnboundedPreceding
+	WFBTUnboundedFollowing
+)
+
+type RowsOrRangeType uint8
+
+const (
+	RRTRows RowsOrRangeType = iota
+	RRTRange
+)
+
+type WindowFrameBound struct {
+	Type       WindowFrameBoundType
+	Expression Expression
+}
+
 type ExprFunction struct {
 	Type FuncType
 	Name Expression
 }
 
 type ExprFunctionCall struct {
-	Name *ExprFunction
-	Args []Expression
+	Name       *ExprFunction
+	Args       []Expression
+	OverClause *FunctionOverClause
 }
 
 func (e ExprStringLiteral) expressionNode() {}
@@ -165,7 +200,7 @@ func (e ExprCompoundIdentifier) TokenLiteral() string {
 func (e ExprSubquery) expressionNode() {}
 func (e ExprSubquery) TokenLiteral() string {
 	var str strings.Builder
-    str.WriteString("(")
+	str.WriteString("(")
 	str.WriteString("SELECT ")
 
 	if e.Distinct {
@@ -196,9 +231,9 @@ func (e ExprSubquery) TokenLiteral() string {
 	for _, g := range e.GroupByClause {
 		groupByArgs = append(groupByArgs, g.TokenLiteral())
 	}
-    if len(groupByArgs) > 1 {
-        str.WriteString(strings.Join(groupByArgs, ", "))
-    }
+	if len(groupByArgs) > 1 {
+		str.WriteString(strings.Join(groupByArgs, ", "))
+	}
 
 	if e.HavingClause != nil {
 		str.WriteString(" HAVING ")
@@ -209,7 +244,7 @@ func (e ExprSubquery) TokenLiteral() string {
 		str.WriteString(e.OrderByClause.TokenLiteral())
 	}
 
-    str.WriteString(")")
+	str.WriteString(")")
 	return str.String()
 }
 
@@ -314,6 +349,93 @@ func (e ExprFunction) TokenLiteral() string {
 	}
 }
 
+func (w WindowFrameBound) expressionNode() {}
+func (w WindowFrameBound) TokenLiteral() string {
+	var str strings.Builder
+
+	switch w.Type {
+	case WFBTFollowing:
+        str.WriteString(w.Expression.TokenLiteral())
+		str.WriteString(" FOLLOWING")
+		break
+	case WFBTCurrentRow:
+		str.WriteString("CURRENT ROW")
+		break
+	case WFBTPreceding:
+        str.WriteString(w.Expression.TokenLiteral())
+		str.WriteString(" PRECEDING")
+		break
+	case WFBTUnboundedPreceding:
+		str.WriteString("UNBOUNDED PRECEDING")
+		break
+	case WFBTUnboundedFollowing:
+		str.WriteString("UNBOUNDED FOLLOWING")
+		break
+	}
+
+	return str.String()
+}
+
+func (w WindowFrameClause) expressionNode() {}
+func (w WindowFrameClause) TokenLiteral() string {
+	var str strings.Builder
+
+	switch w.RowsOrRange {
+	case RRTRows:
+		str.WriteString(" ROWS ")
+		break
+	case RRTRange:
+		str.WriteString(" RANGE ")
+		break
+	}
+
+	if w.End != nil {
+		str.WriteString("BETWEEN ")
+	}
+
+	str.WriteString(w.Start.TokenLiteral())
+
+	if w.End != nil {
+        str.WriteString(" AND ")
+		str.WriteString(w.End.TokenLiteral())
+	}
+
+	return str.String()
+}
+
+func (e FunctionOverClause) expressionNode() {}
+func (e FunctionOverClause) TokenLiteral() string {
+	var str strings.Builder
+
+	str.WriteString("(")
+
+	if len(e.PartitionByClause) > 0 {
+        str.WriteString("PARTITION BY ")
+		var expressions []string
+		for _, p := range e.PartitionByClause {
+			expressions = append(expressions, p.TokenLiteral())
+		}
+		str.WriteString(strings.Join(expressions, ", "))
+	}
+
+	if len(e.OrderByClause) > 0 {
+        str.WriteString(" ORDER BY ")
+		var args []string
+		for _, o := range e.OrderByClause {
+			args = append(args, o.TokenLiteral())
+		}
+		str.WriteString(strings.Join(args, ", "))
+	}
+
+	if e.WindowFrameClause != nil {
+		str.WriteString(e.WindowFrameClause.TokenLiteral())
+	}
+
+	str.WriteString(")")
+
+	return str.String()
+}
+
 func (e ExprFunctionCall) expressionNode() {}
 func (e ExprFunctionCall) TokenLiteral() string {
 	var str strings.Builder
@@ -326,6 +448,10 @@ func (e ExprFunctionCall) TokenLiteral() string {
 		str.WriteString(item.TokenLiteral())
 	}
 	str.WriteString(")")
+
+	if e.OverClause != nil {
+		str.WriteString(e.OverClause.TokenLiteral())
+	}
+
 	return str.String()
 }
-

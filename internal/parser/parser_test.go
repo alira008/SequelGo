@@ -112,9 +112,35 @@ func TestParseBuiltinFunctionCall(t *testing.T) {
 		SelectBody: &ast.SelectBody{
 			SelectItems: []ast.Expression{
 				&ast.ExprIdentifier{Value: "hello"},
-				&ast.ExprFunctionCall{Name: &ast.ExprFunction{Type: ast.FuncSum,
-					Name: &ast.ExprIdentifier{Value: "sum"}},
-					Args: []ast.Expression{&ast.ExprIdentifier{Value: "price"}}}},
+				&ast.ExprFunctionCall{
+					Name: &ast.ExprFunction{
+						Type: ast.FuncSum,
+						Name: &ast.ExprIdentifier{Value: "sum"},
+					},
+					Args: []ast.Expression{
+						&ast.ExprIdentifier{Value: "price"},
+					},
+					OverClause: &ast.FunctionOverClause{
+						PartitionByClause: []ast.Expression{
+							ast.ExprIdentifier{Value: "InsertDate"},
+							ast.ExprIdentifier{Value: "Stock"},
+						},
+						OrderByClause: []ast.OrderByArg{
+							{Column: ast.ExprIdentifier{Value: "InsertTime"}, Type: ast.OBAsc},
+						},
+						WindowFrameClause: &ast.WindowFrameClause{
+							RowsOrRange: ast.RRTRows,
+							Start: &ast.WindowFrameBound{
+								Type:       ast.WFBTPreceding,
+								Expression: ast.ExprNumberLiteral{Value: "10"},
+							},
+							End: &ast.WindowFrameBound{
+								Type: ast.WFBTCurrentRow,
+							},
+						},
+					},
+				},
+			},
 			Table: &ast.TableArg{
 				Table: &ast.TableSource{
 					Type:   ast.TSTTable,
@@ -124,7 +150,7 @@ func TestParseBuiltinFunctionCall(t *testing.T) {
 		}}
 	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
 
-	input := "select hello, sum(price) FROM testtable"
+	input := "select hello, sum(price) over(Partition by InsertDate, Stock Order by InsertTime asc rows between 10 preceding  and current row) FROM testtable"
 
 	test(t, expected, input)
 }
@@ -204,7 +230,7 @@ func TestParseSubqueryCall(t *testing.T) {
 							},
 						},
 					},
-                    Alias: &ast.ExprIdentifier{Value: "NetScore"},
+					Alias: &ast.ExprIdentifier{Value: "NetScore"},
 				},
 			},
 			Table: &ast.TableArg{
