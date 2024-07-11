@@ -42,14 +42,25 @@ type SelectBody struct {
 	SelectItems   []Expression
 	TableObject   Expression
 	WhereClause   Expression
+	HavingClause  Expression
 	GroupByClause []Expression
-	OrderByClause []OrderByArg
+	OrderByClause *OrderByClause
 }
 
 type TopArg struct {
 	WithTies bool
 	Percent  bool
 	Quantity Expression
+}
+
+type OrderByClause struct {
+	Expressions []OrderByArg
+	OffsetFetch *OffsetFetchClause
+}
+
+type OffsetFetchClause struct {
+	Offset OffsetArg
+	Fetch  *FetchArg
 }
 
 type OrderByArg struct {
@@ -68,9 +79,27 @@ const (
 type RowOrRows uint8
 
 const (
-	Row RowOrRows = iota
-	Rows
+	RRRow RowOrRows = iota
+	RRRows
 )
+
+type NextOrFirst uint8
+
+const (
+	NFNext NextOrFirst = iota
+	NFFirst
+)
+
+type OffsetArg struct {
+	Value     Expression
+	RowOrRows RowOrRows
+}
+
+type FetchArg struct {
+	Value       Expression
+	NextOrFirst NextOrFirst
+	RowOrRows   RowOrRows
+}
 
 func (q Query) TokenLiteral() string {
 	str := strings.Builder{}
@@ -129,21 +158,23 @@ func (sb SelectBody) TokenLiteral() string {
 	for _, g := range sb.GroupByClause {
 		groupByArgs = append(groupByArgs, g.TokenLiteral())
 	}
-    if len(groupByArgs) > 1 {
-        str.WriteString(strings.Join(groupByArgs, ", "))
-    }
-
-	var orderByArgs []string
-	for _, o := range sb.OrderByClause {
-		orderByArgs = append(orderByArgs, o.TokenLiteral())
+	if len(groupByArgs) > 1 {
+		str.WriteString(strings.Join(groupByArgs, ", "))
 	}
-    if len(orderByArgs) > 1 {
-        str.WriteString(strings.Join(orderByArgs, ", "))
-    }
+
+	if sb.HavingClause != nil {
+		str.WriteString(" HAVING ")
+		str.WriteString(sb.HavingClause.TokenLiteral())
+	}
+
+	if sb.OrderByClause != nil {
+		str.WriteString(sb.OrderByClause.TokenLiteral())
+	}
 
 	return str.String()
 }
 
+func (ta TopArg) expressionNode() {}
 func (ta TopArg) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString(fmt.Sprintf("TOP %s", ta.Quantity.TokenLiteral()))
@@ -159,6 +190,46 @@ func (ta TopArg) TokenLiteral() string {
 	return str.String()
 }
 
+func (o OrderByClause) expressionNode() {}
+func (o OrderByClause) TokenLiteral() string {
+	var str strings.Builder
+
+	if len(o.Expressions) == 0 {
+		return ""
+	}
+
+	var orderByArgs []string
+	for _, o := range o.Expressions {
+		orderByArgs = append(orderByArgs, o.TokenLiteral())
+	}
+
+	str.WriteString(" ORDER BY ")
+	str.WriteString(strings.Join(orderByArgs, ", "))
+
+	if o.OffsetFetch == nil {
+		return str.String()
+	}
+
+	str.WriteString(o.OffsetFetch.TokenLiteral())
+
+	return str.String()
+}
+
+func (o OffsetFetchClause) expressionNode() {}
+func (o OffsetFetchClause) TokenLiteral() string {
+	var str strings.Builder
+
+	str.WriteString(o.Offset.TokenLiteral())
+
+	if o.Fetch == nil {
+		return str.String()
+	}
+
+	str.WriteString(o.Fetch.TokenLiteral())
+	return str.String()
+}
+
+func (o OrderByArg) expressionNode() {}
 func (o OrderByArg) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString(o.Column.TokenLiteral())
@@ -172,5 +243,50 @@ func (o OrderByArg) TokenLiteral() string {
 		str.WriteString(" DESC")
 		break
 	}
+
+	return str.String()
+}
+
+func (o OffsetArg) expressionNode() {}
+func (o OffsetArg) TokenLiteral() string {
+	var str strings.Builder
+	str.WriteString(" OFFSET ")
+	str.WriteString(o.Value.TokenLiteral())
+	switch o.RowOrRows {
+	case RRRow:
+		str.WriteString(" ROW")
+		break
+	case RRRows:
+		str.WriteString(" ROWS")
+		break
+	}
+	return str.String()
+}
+
+func (f FetchArg) expressionNode() {}
+func (f FetchArg) TokenLiteral() string {
+	var str strings.Builder
+	str.WriteString(" FETCH ")
+	switch f.NextOrFirst {
+	case NFNext:
+		str.WriteString(" NEXT ")
+		break
+	case NFFirst:
+		str.WriteString(" FIRST ")
+		break
+	}
+
+	str.WriteString(f.Value.TokenLiteral())
+
+	switch f.RowOrRows {
+	case RRRow:
+		str.WriteString(" ROW")
+		break
+	case RRRows:
+		str.WriteString(" ROWS")
+		break
+	}
+
+	str.WriteString(" ONLY")
 	return str.String()
 }

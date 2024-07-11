@@ -233,6 +233,12 @@ func (p *Parser) parseSelectBody() (ast.SelectBody, error) {
 	}
 	stmt.GroupByClause = groupByClause
 
+	havingExpression, err := p.parseHavingExpression()
+	if err != nil {
+		return stmt, err
+	}
+	stmt.HavingClause = havingExpression
+
 	orderByClause, err := p.parseOrderByClause()
 	if err != nil {
 		return stmt, err
@@ -287,6 +293,12 @@ func (p *Parser) parseSelectSubquery() (ast.ExprSubquery, error) {
 	}
 	stmt.GroupByClause = groupByClause
 
+	havingExpression, err := p.parseHavingExpression()
+	if err != nil {
+		return stmt, err
+	}
+	stmt.HavingClause = havingExpression
+
 	orderByClause, err := p.parseOrderByClause()
 	if err != nil {
 		return stmt, err
@@ -327,7 +339,7 @@ func (p *Parser) parseSelectItems() ([]ast.Expression, error) {
 			if len(v.GroupByClause) > 1 && v.Distinct {
 				return items, p.currentErrorString("The 'DISTINCT' keyword can't be used with subqueries that include 'GROUP BY'")
 			}
-			if len(v.OrderByClause) > 1 && v.Top == nil {
+			if v.OrderByClause != nil && len(v.OrderByClause.Expressions) > 1 && v.Top == nil {
 				return items, p.currentErrorString("'ORDER BY' can only be specified when 'TOP' is also specified")
 			}
 			break
@@ -393,7 +405,7 @@ func (p *Parser) parseWhereExpression() (ast.Expression, error) {
 		break
 	default:
 		p.errorToken = ETCurrent
-		return nil, fmt.Errorf("expected expression after 'WHERE' keyword")
+		return nil, p.currentErrorString("expected expression after 'WHERE' keyword")
 	}
 	return expr, nil
 }
@@ -438,18 +450,73 @@ func (p *Parser) parseGroupByClause() ([]ast.Expression, error) {
 
 	return items, nil
 }
-func (p *Parser) parseOrderByClause() ([]ast.OrderByArg, error) {
-	items := []ast.OrderByArg{}
+
+func (p *Parser) parseHavingExpression() (ast.Expression, error) {
+	if !p.peekTokenIs(lexer.THaving) {
+		return nil, nil
+	}
+	fmt.Printf("parsing having\n")
+
+	// go to where token
+	p.nextToken()
+	p.nextToken()
+	expr, err := p.parseExpression(PrecedenceLowest)
+	if err != nil {
+		return expr, err
+	}
+
+	switch expr.(type) {
+	case *ast.ExprComparisonOperator,
+		*ast.ExprAndLogicalOperator,
+		*ast.ExprAllLogicalOperator,
+		*ast.ExprBetweenLogicalOperator,
+		*ast.ExprExistsLogicalOperator,
+		*ast.ExprInSubqueryLogicalOperator,
+		*ast.ExprInLogicalOperator,
+		*ast.ExprLikeLogicalOperator,
+		*ast.ExprNotLogicalOperator,
+		*ast.ExprOrLogicalOperator,
+		*ast.ExprSomeLogicalOperator,
+		*ast.ExprAnyLogicalOperator:
+		break
+	default:
+		return nil, p.currentErrorString("expected expression after 'HAVING' keyword")
+	}
+	return expr, nil
+}
+
+func (p *Parser) parseOrderByClause() (*ast.OrderByClause, error) {
 	if !p.peekTokenIs(lexer.TOrder) {
-		return items, nil
+		return nil, nil
 	}
 	p.nextToken()
 	err := p.expectPeek(lexer.TBy)
 	if err != nil {
-		return items, err
+		return nil, err
+	}
+	fmt.Printf("parsing order by clause\n")
+	args, err := p.parseOrderByArgs()
+	if err != nil {
+		return nil, err
+	}
+	orderByClause := &ast.OrderByClause{Expressions: args}
+
+	if !p.peekTokenIs(lexer.TOffset) {
+		return orderByClause, nil
 	}
 
-	fmt.Printf("parsing order by clause\n")
+    offsetFetchClause, err:=p.parseOffsetFetchClause()
+    if err != nil {
+        return nil, err
+    }
+    
+    orderByClause.OffsetFetch = offsetFetchClause
+
+	return orderByClause, nil
+}
+
+func (p *Parser) parseOrderByArgs() ([]ast.OrderByArg, error) {
+	items := []ast.OrderByArg{}
 
 	for {
 		err := p.expectPeekMany([]lexer.TokenType{
@@ -484,6 +551,100 @@ func (p *Parser) parseOrderByClause() ([]ast.OrderByArg, error) {
 	}
 
 	return items, nil
+}
+
+func (p *Parser) parseOffsetFetchClause() (*ast.OffsetFetchClause, error) {
+    fmt.Printf("parsing offset fetch clause")
+	p.nextToken()
+
+	offset, err := p.parseOffset()
+	if err != nil {
+		return nil, err
+	}
+	offsetFetchClause := ast.OffsetFetchClause{Offset: offset}
+
+	if !p.peekTokenIs(lexer.TFetch) {
+		return &offsetFetchClause, nil
+	}
+
+	p.nextToken()
+	fetch, err := p.parseFetch()
+	if err != nil {
+		return nil, err
+	}
+
+	offsetFetchClause.Fetch = &fetch
+
+	return &offsetFetchClause, nil
+}
+
+func (p *Parser) parseOffset() (ast.OffsetArg, error) {
+	p.nextToken()
+	offsetArg := ast.OffsetArg{}
+	offset, err := p.parseExpression(PrecedenceLowest)
+	if err != nil {
+		return offsetArg, err
+	}
+
+	err = p.expectPeekMany([]lexer.TokenType{lexer.TRow, lexer.TRows})
+	if err != nil {
+		return offsetArg, err
+	}
+
+	offsetArg.Value = offset
+	switch p.currentToken.Type {
+	case lexer.TRow:
+		offsetArg.RowOrRows = ast.RRRow
+		return offsetArg, nil
+	case lexer.TRows:
+		offsetArg.RowOrRows = ast.RRRows
+		return offsetArg, nil
+	default:
+		return offsetArg, p.currentErrorString("Expected 'ROW' or 'ROWS' after offset expression")
+	}
+}
+
+func (p *Parser) parseFetch() (ast.FetchArg, error) {
+	fetchArg := ast.FetchArg{}
+	if err := p.expectPeekMany([]lexer.TokenType{lexer.TFirst, lexer.TNext}); err != nil {
+		return fetchArg, err
+	}
+
+	switch p.currentToken.Type {
+	case lexer.TFirst:
+		fetchArg.NextOrFirst = ast.NFFirst
+		break
+	case lexer.TNext:
+		fetchArg.NextOrFirst = ast.NFNext
+		break
+	}
+
+	p.nextToken()
+	fetch, err := p.parseExpression(PrecedenceLowest)
+	if err != nil {
+		return fetchArg, err
+	}
+
+	fetchArg.Value = fetch
+	err = p.expectPeekMany([]lexer.TokenType{lexer.TRow, lexer.TRows})
+	if err != nil {
+		return fetchArg, err
+	}
+
+	switch p.currentToken.Type {
+	case lexer.TRow:
+		fetchArg.RowOrRows = ast.RRRow
+		break
+	case lexer.TRows:
+		fetchArg.RowOrRows = ast.RRRows
+		break
+	}
+
+	if err = p.expectPeek(lexer.TOnly); err != nil {
+		return fetchArg, err
+	}
+
+	return fetchArg, nil
 }
 
 func (p *Parser) parseExpressionList() (ast.ExprExpressionList, error) {

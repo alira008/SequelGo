@@ -52,6 +52,41 @@ func TestParseBuiltinFunctionCall(t *testing.T) {
 	test(t, expected, input)
 }
 
+func TestParseOrderByClause(t *testing.T) {
+	select_statement := ast.SelectStatement{
+		SelectBody: &ast.SelectBody{
+			SelectItems: []ast.Expression{
+				&ast.ExprIdentifier{Value: "Stock"},
+				&ast.ExprIdentifier{Value: "PercentChange"},
+			},
+			TableObject: &ast.ExprIdentifier{Value: "MarketData"},
+			OrderByClause: &ast.OrderByClause{
+				Expressions: []ast.OrderByArg{
+					{Column: &ast.ExprIdentifier{Value: "InsertDate"}, Type: ast.OBDesc},
+					{Column: &ast.ExprIdentifier{Value: "InsertTime"}, Type: ast.OBAsc},
+					{Column: &ast.ExprIdentifier{Value: "Stock"}},
+				},
+				OffsetFetch: &ast.OffsetFetchClause{
+					Offset: ast.OffsetArg{
+						Value:     &ast.ExprNumberLiteral{Value: "4"},
+						RowOrRows: ast.RRRow,
+					},
+					Fetch: &ast.FetchArg{
+						Value:       &ast.ExprNumberLiteral{Value: "20"},
+						NextOrFirst: ast.NFFirst,
+						RowOrRows:   ast.RRRows,
+					},
+				},
+			},
+		}}
+	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
+
+	input := "select Stock, PercentChange FROM MarketData order by InsertDate Desc, InsertTime asc"
+	input += ", Stock offset 4 row fetch first 20 rows only"
+
+	test(t, expected, input)
+}
+
 func TestParseSubqueryCall(t *testing.T) {
 	select_statement := ast.SelectStatement{
 		SelectBody: &ast.SelectBody{
@@ -72,10 +107,12 @@ func TestParseSubqueryCall(t *testing.T) {
 						},
 						Operator: ast.ComparisonOpLess,
 						Right:    &ast.ExprNumberLiteral{Value: "10.0"}},
-					OrderByClause: []ast.OrderByArg{
-						{
-							Column: ast.ExprIdentifier{Value: "LastPrice"},
-							Type:   ast.OBDesc,
+					OrderByClause: &ast.OrderByClause{
+						Expressions: []ast.OrderByArg{
+							{
+								Column: ast.ExprIdentifier{Value: "LastPrice"},
+								Type:   ast.OBDesc,
+							},
 						},
 					},
 				}},

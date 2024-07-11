@@ -44,7 +44,8 @@ type ExprSubquery struct {
 	TableObject Expression
 	WhereClause Expression
     GroupByClause []Expression
-    OrderByClause []OrderByArg
+	HavingClause Expression
+    OrderByClause *OrderByClause
 }
 
 type ExprExpressionList struct {
@@ -199,13 +200,14 @@ func (e ExprSubquery) TokenLiteral() string {
         str.WriteString(strings.Join(groupByArgs, ", "))
     }
 
-	var orderByArgs []string
-	for _, o := range e.OrderByClause {
-		orderByArgs = append(orderByArgs, o.TokenLiteral())
+	if e.HavingClause != nil {
+		str.WriteString(" HAVING ")
+		str.WriteString(e.HavingClause.TokenLiteral())
 	}
-    if len(orderByArgs) > 1 {
-        str.WriteString(strings.Join(orderByArgs, ", "))
-    }
+
+	if e.OrderByClause != nil {
+		str.WriteString(e.OrderByClause.TokenLiteral())
+	}
 
     str.WriteString(")")
 	return str.String()
