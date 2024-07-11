@@ -61,8 +61,6 @@ type TableArg struct {
 type TableSource struct {
 	Type           TableSourceType
 	Source         Expression
-	AsTokenPresent bool
-	Alias          string
 }
 
 type TableSourceType uint8
@@ -237,15 +235,6 @@ func (ts TableSource) TokenLiteral() string {
 	var str strings.Builder
 
 	ts.Source.TokenLiteral()
-
-	if len(ts.Alias) == 0 {
-		return str.String()
-	}
-
-	if ts.AsTokenPresent {
-		str.WriteString(" AS")
-	}
-	str.WriteString(fmt.Sprintf(" %s", ts.Alias))
 
 	return str.String()
 }

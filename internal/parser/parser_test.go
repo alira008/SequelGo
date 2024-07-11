@@ -41,6 +41,72 @@ func TestParseBasicSelectQuery(t *testing.T) {
 	test(t, expected, input)
 }
 
+func TestParseBasicSelectQueryWithJoin(t *testing.T) {
+	select_statement := ast.SelectStatement{
+		SelectBody: &ast.SelectBody{
+			SelectItems: []ast.Expression{
+				&ast.ExprStar{},
+				&ast.ExprIdentifier{Value: "hello"},
+				&ast.ExprStringLiteral{Value: "yes"},
+				&ast.ExprQuotedIdentifier{Value: "yessir"},
+				&ast.ExprLocalVariable{Value: "nosir"},
+				&ast.ExprCompoundIdentifier{Identifiers: []ast.Expression{
+					&ast.ExprQuotedIdentifier{Value: "superdb"},
+					&ast.ExprIdentifier{Value: "world"},
+					&ast.ExprStar{}}},
+			},
+			Table: &ast.TableArg{
+				Table: &ast.TableSource{
+					Type: ast.TSTTable,
+					Source: &ast.ExprWithAlias{
+						Expression: &ast.ExprIdentifier{Value: "testtable"},
+						Alias:      &ast.ExprIdentifier{Value: "t"},
+					},
+				},
+				Joins: []ast.Join{
+					{
+						Type: ast.JTInner,
+						Table: &ast.TableSource{
+							Type: ast.TSTTable,
+							Source: &ast.ExprWithAlias{
+								Expression: &ast.ExprIdentifier{Value: "testtable2"},
+								Alias:      &ast.ExprIdentifier{Value: "t2"},
+							},
+						},
+						Condition: ast.ExprComparisonOperator{
+							Left: &ast.ExprCompoundIdentifier{
+								Identifiers: []ast.Expression{
+									ast.ExprIdentifier{Value: "t"},
+									ast.ExprIdentifier{Value: "InsertDate"},
+								},
+							},
+							Right: &ast.ExprCompoundIdentifier{
+								Identifiers: []ast.Expression{
+									ast.ExprIdentifier{Value: "t2"},
+									ast.ExprIdentifier{Value: "InsertDate"},
+								},
+							},
+							Operator: ast.ComparisonOpEqual,
+						},
+					},
+				},
+			},
+			WhereClause: &ast.ExprComparisonOperator{
+				Left: &ast.ExprIdentifier{
+					Value: "LastPrice",
+				},
+				Operator: ast.ComparisonOpLess,
+				Right:    &ast.ExprNumberLiteral{Value: "10.0"}},
+		},
+	}
+	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
+
+	input := "select *,\n hello,\n 'yes',\n [yessir],\n @nosir, [superdb].world.* FROM testtable t"
+	input += " inner join testtable2 t2 ON t.InsertDate = t2.InsertDate where LastPrice < 10.0"
+
+	test(t, expected, input)
+}
+
 func TestParseBuiltinFunctionCall(t *testing.T) {
 	select_statement := ast.SelectStatement{
 		SelectBody: &ast.SelectBody{
@@ -108,35 +174,39 @@ func TestParseSubqueryCall(t *testing.T) {
 		SelectBody: &ast.SelectBody{
 			SelectItems: []ast.Expression{
 				&ast.ExprIdentifier{Value: "hello"},
-				&ast.ExprSubquery{
-					Top: &ast.TopArg{
-						Percent:  true,
-						Quantity: ast.ExprNumberLiteral{Value: "20"},
-					},
-					SelectItems: []ast.Expression{
-						&ast.ExprIdentifier{Value: "yesirr"},
-					},
-					Table: &ast.TableArg{
-						Table: &ast.TableSource{
-							Type:   ast.TSTTable,
-							Source: &ast.ExprIdentifier{Value: "bruh"},
+				&ast.ExprWithAlias{
+					Expression: &ast.ExprSubquery{
+						Top: &ast.TopArg{
+							Percent:  true,
+							Quantity: ast.ExprNumberLiteral{Value: "20"},
 						},
-					},
-					WhereClause: &ast.ExprComparisonOperator{
-						Left: &ast.ExprIdentifier{
-							Value: "LastPrice",
+						SelectItems: []ast.Expression{
+							&ast.ExprIdentifier{Value: "yesirr"},
 						},
-						Operator: ast.ComparisonOpLess,
-						Right:    &ast.ExprNumberLiteral{Value: "10.0"}},
-					OrderByClause: &ast.OrderByClause{
-						Expressions: []ast.OrderByArg{
-							{
-								Column: ast.ExprIdentifier{Value: "LastPrice"},
-								Type:   ast.OBDesc,
+						Table: &ast.TableArg{
+							Table: &ast.TableSource{
+								Type:   ast.TSTTable,
+								Source: &ast.ExprIdentifier{Value: "bruh"},
+							},
+						},
+						WhereClause: &ast.ExprComparisonOperator{
+							Left: &ast.ExprIdentifier{
+								Value: "LastPrice",
+							},
+							Operator: ast.ComparisonOpLess,
+							Right:    &ast.ExprNumberLiteral{Value: "10.0"}},
+						OrderByClause: &ast.OrderByClause{
+							Expressions: []ast.OrderByArg{
+								{
+									Column: ast.ExprIdentifier{Value: "LastPrice"},
+									Type:   ast.OBDesc,
+								},
 							},
 						},
 					},
-				}},
+                    Alias: &ast.ExprIdentifier{Value: "NetScore"},
+				},
+			},
 			Table: &ast.TableArg{
 				Table: &ast.TableSource{
 					Type:   ast.TSTTable,
@@ -148,7 +218,7 @@ func TestParseSubqueryCall(t *testing.T) {
 	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
 
 	input := "select hello,  (select  top 20 percent yesirr from bruh where LastPrice < 10.0"
-	input += " order by LastPrice desc) FROM testtable"
+	input += " order by LastPrice desc) NetScore FROM testtable"
 
 	test(t, expected, input)
 }

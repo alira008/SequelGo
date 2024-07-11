@@ -392,41 +392,43 @@ func (p *Parser) parseTableSource() (*ast.TableSource, error) {
 	if err != nil {
 		return nil, err
 	}
-	var tableSourceType ast.TableSourceType
-	switch source.(type) {
+	switch v := source.(type) {
 	case *ast.ExprIdentifier, *ast.ExprCompoundIdentifier, *ast.ExprLocalVariable:
-		tableSourceType = ast.TSTTable
-		break
+		return &ast.TableSource{
+			Type:   ast.TSTTable,
+			Source: source,
+		}, err
 	case *ast.ExprFunctionCall:
-		tableSourceType = ast.TSTTableValuedFunction
-		break
+		return &ast.TableSource{
+			Type:   ast.TSTTableValuedFunction,
+			Source: source,
+		}, err
 	case *ast.ExprSubquery:
-		tableSourceType = ast.TSTDerived
-		break
+		return &ast.TableSource{
+			Type:   ast.TSTDerived,
+			Source: source,
+		}, err
+	case *ast.ExprWithAlias:
+		var tableType ast.TableSourceType
+		switch v.Expression.(type) {
+		case *ast.ExprIdentifier, *ast.ExprCompoundIdentifier, *ast.ExprLocalVariable:
+			tableType = ast.TSTTable
+			break
+		case *ast.ExprFunctionCall:
+			tableType = ast.TSTTableValuedFunction
+			break
+		case *ast.ExprSubquery:
+			tableType = ast.TSTDerived
+			break
+		}
+		return &ast.TableSource{
+			Type:   tableType,
+			Source: source,
+		}, err
 	default:
 		return nil, p.currentErrorString("expected Table Name or Function or Subquery")
 	}
 
-	if !p.peekTokenIs(lexer.TAs) {
-		return &ast.TableSource{
-			Type:           tableSourceType,
-			Source:         source,
-			AsTokenPresent: false,
-		}, err
-	}
-	p.nextToken()
-
-	err = p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier, lexer.TStringLiteral, lexer.TQuotedIdentifier})
-	if err != nil {
-		return nil, err
-	}
-
-	return &ast.TableSource{
-		Type:           tableSourceType,
-		Source:         source,
-		AsTokenPresent: true,
-		Alias:          p.currentToken.Value,
-	}, err
 }
 
 func (p *Parser) parseJoins() ([]ast.Join, error) {
@@ -1096,6 +1098,39 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 				return nil, err
 			}
 			p.expectPeek(lexer.TRightParen)
+
+			if p.peekToken.Type == lexer.TAs ||
+				p.peekToken.Type == lexer.TIdentifier ||
+				p.peekToken.Type == lexer.TStringLiteral ||
+				p.peekToken.Type == lexer.TQuotedIdentifier {
+				exprWithAlias := &ast.ExprWithAlias{AsTokenPresent: false, Expression: statement}
+
+				if p.peekToken.Type == lexer.TAs {
+					exprWithAlias.AsTokenPresent = true
+					p.nextToken()
+				}
+
+				// needed in case we just parsed AS keyword
+				err := p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier, lexer.TStringLiteral, lexer.TQuotedIdentifier})
+				if err != nil {
+					return nil, err
+				}
+
+				alias, err := p.parseExpression(PrecedenceLowest)
+				if err != nil {
+					return nil, err
+				}
+
+				switch alias.(type) {
+				case *ast.ExprIdentifier, *ast.ExprStringLiteral, *ast.ExprQuotedIdentifier:
+					break
+				default:
+					err = fmt.Errorf("Expected (Identifier or StringLiteral or QuotedIdentifier) for Alias")
+					return nil, err
+				}
+                exprWithAlias.Alias = alias
+                return exprWithAlias, nil
+			}
 
 			return &statement, nil
 		} else if p.peekTokenIs(lexer.TIdentifier) ||
