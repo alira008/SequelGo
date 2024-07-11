@@ -42,6 +42,7 @@ type SelectBody struct {
 	SelectItems   []Expression
 	TableObject   Expression
 	WhereClause   Expression
+	GroupByClause []Expression
 	OrderByClause []OrderByArg
 }
 
@@ -123,6 +124,14 @@ func (sb SelectBody) TokenLiteral() string {
 		str.WriteString(" WHERE ")
 		str.WriteString(sb.WhereClause.TokenLiteral())
 	}
+
+	var groupByArgs []string
+	for _, g := range sb.GroupByClause {
+		groupByArgs = append(groupByArgs, g.TokenLiteral())
+	}
+    if len(groupByArgs) > 1 {
+        str.WriteString(strings.Join(groupByArgs, ", "))
+    }
 
 	var orderByArgs []string
 	for _, o := range sb.OrderByClause {

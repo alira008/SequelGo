@@ -43,6 +43,7 @@ type ExprSubquery struct {
 	SelectItems []Expression
 	TableObject Expression
 	WhereClause Expression
+    GroupByClause []Expression
     OrderByClause []OrderByArg
 }
 
@@ -189,6 +190,14 @@ func (e ExprSubquery) TokenLiteral() string {
 		str.WriteString(" WHERE ")
 		str.WriteString(e.WhereClause.TokenLiteral())
 	}
+
+	var groupByArgs []string
+	for _, g := range e.GroupByClause {
+		groupByArgs = append(groupByArgs, g.TokenLiteral())
+	}
+    if len(groupByArgs) > 1 {
+        str.WriteString(strings.Join(groupByArgs, ", "))
+    }
 
 	var orderByArgs []string
 	for _, o := range e.OrderByClause {

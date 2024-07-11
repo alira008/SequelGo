@@ -227,6 +227,12 @@ func (p *Parser) parseSelectBody() (ast.SelectBody, error) {
 	}
 	stmt.WhereClause = whereExpression
 
+	groupByClause, err := p.parseGroupByClause()
+	if err != nil {
+		return stmt, err
+	}
+	stmt.GroupByClause = groupByClause
+
 	orderByClause, err := p.parseOrderByClause()
 	if err != nil {
 		return stmt, err
@@ -275,6 +281,12 @@ func (p *Parser) parseSelectSubquery() (ast.ExprSubquery, error) {
 	}
 	stmt.WhereClause = whereExpression
 
+	groupByClause, err := p.parseGroupByClause()
+	if err != nil {
+		return stmt, err
+	}
+	stmt.GroupByClause = groupByClause
+
 	orderByClause, err := p.parseOrderByClause()
 	if err != nil {
 		return stmt, err
@@ -311,6 +323,9 @@ func (p *Parser) parseSelectItems() ([]ast.Expression, error) {
 		case *ast.ExprSubquery:
 			if len(v.SelectItems) > 1 {
 				return items, p.currentErrorString("Subquery must contain only one column")
+			}
+			if len(v.GroupByClause) > 1 && v.Distinct {
+				return items, p.currentErrorString("The 'DISTINCT' keyword can't be used with subqueries that include 'GROUP BY'")
 			}
 			if len(v.OrderByClause) > 1 && v.Top == nil {
 				return items, p.currentErrorString("'ORDER BY' can only be specified when 'TOP' is also specified")
@@ -383,6 +398,46 @@ func (p *Parser) parseWhereExpression() (ast.Expression, error) {
 	return expr, nil
 }
 
+func (p *Parser) parseGroupByClause() ([]ast.Expression, error) {
+	items := []ast.Expression{}
+	if !p.peekTokenIs(lexer.TGroup) {
+		return items, nil
+	}
+	p.nextToken()
+	err := p.expectPeek(lexer.TBy)
+	if err != nil {
+		return items, err
+	}
+
+	fmt.Printf("parsing group by clause\n")
+
+	for {
+		err := p.expectPeekMany([]lexer.TokenType{
+			lexer.TIdentifier,
+			lexer.TNumericLiteral,
+			lexer.TLocalVariable,
+			lexer.TQuotedIdentifier,
+		})
+		if err != nil {
+			return items, err
+		}
+
+		expr, err := p.parseExpression(PrecedenceLowest)
+		if err != nil {
+			return items, err
+		}
+		items = append(items, expr)
+
+		if p.peekToken.Type != lexer.TComma {
+			break
+		}
+
+		p.nextToken()
+	}
+	p.nextToken()
+
+	return items, nil
+}
 func (p *Parser) parseOrderByClause() ([]ast.OrderByArg, error) {
 	items := []ast.OrderByArg{}
 	if !p.peekTokenIs(lexer.TOrder) {
@@ -412,8 +467,10 @@ func (p *Parser) parseOrderByClause() ([]ast.OrderByArg, error) {
 			return items, err
 		}
 		if p.peekTokenIs(lexer.TAsc) {
+			p.nextToken()
 			items = append(items, ast.OrderByArg{Column: expr, Type: ast.OBAsc})
 		} else if p.peekTokenIs(lexer.TDesc) {
+			p.nextToken()
 			items = append(items, ast.OrderByArg{Column: expr, Type: ast.OBDesc})
 		} else {
 			items = append(items, ast.OrderByArg{Column: expr, Type: ast.OBNone})
@@ -425,10 +482,10 @@ func (p *Parser) parseOrderByClause() ([]ast.OrderByArg, error) {
 
 		p.nextToken()
 	}
-	p.nextToken()
 
 	return items, nil
 }
+
 func (p *Parser) parseExpressionList() (ast.ExprExpressionList, error) {
 	expressionList := ast.ExprExpressionList{}
 
