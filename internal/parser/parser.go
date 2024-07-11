@@ -215,11 +215,11 @@ func (p *Parser) parseSelectBody() (ast.SelectBody, error) {
 	}
 	stmt.SelectItems = selectItems
 
-	tableObject, err := p.parseTableObject()
+	table, err := p.parseTableArg()
 	if err != nil {
 		return stmt, err
 	}
-	stmt.TableObject = tableObject
+	stmt.Table = table
 
 	whereExpression, err := p.parseWhereExpression()
 	if err != nil {
@@ -275,11 +275,11 @@ func (p *Parser) parseSelectSubquery() (ast.ExprSubquery, error) {
 
 	stmt.SelectItems = selectItems
 
-	tableObject, err := p.parseTableObject()
+	table, err := p.parseTableArg()
 	if err != nil {
 		return stmt, err
 	}
-	stmt.TableObject = tableObject
+	stmt.Table = table
 
 	whereExpression, err := p.parseWhereExpression()
 	if err != nil {
@@ -356,23 +356,151 @@ func (p *Parser) parseSelectItems() ([]ast.Expression, error) {
 	return items, nil
 }
 
-func (p *Parser) parseTableObject() (ast.Expression, error) {
+func (p *Parser) parseTableArg() (*ast.TableArg, error) {
 	err := p.expectPeek(lexer.TFrom)
 	if err != nil {
 		return nil, err
 	}
 
-	err = p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier, lexer.TLocalVariable})
+	tableSource, err := p.parseTableSource()
 	if err != nil {
 		return nil, err
 	}
 
-	tableObject, err := p.parseExpression(PrecedenceLowest)
-	if err != nil {
-		return tableObject, err
+	if !p.peekTokenIs(lexer.TInner) ||
+		p.peekTokenIs(lexer.TLeft) ||
+		p.peekTokenIs(lexer.TRight) ||
+		p.peekTokenIs(lexer.TFull) {
+		return &ast.TableArg{Table: tableSource}, nil
 	}
 
-	return tableObject, nil
+	joins, err := p.parseJoins()
+	if err != nil {
+		return nil, err
+	}
+
+	return &ast.TableArg{Table: tableSource, Joins: joins}, nil
+}
+
+func (p *Parser) parseTableSource() (*ast.TableSource, error) {
+	err := p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier, lexer.TLocalVariable, lexer.TLeftParen})
+	if err != nil {
+		return nil, err
+	}
+
+	source, err := p.parseExpression(PrecedenceLowest)
+	if err != nil {
+		return nil, err
+	}
+	var tableSourceType ast.TableSourceType
+	switch source.(type) {
+	case *ast.ExprIdentifier, *ast.ExprCompoundIdentifier, *ast.ExprLocalVariable:
+		tableSourceType = ast.TSTTable
+		break
+	case *ast.ExprFunctionCall:
+		tableSourceType = ast.TSTTableValuedFunction
+		break
+	case *ast.ExprSubquery:
+		tableSourceType = ast.TSTDerived
+		break
+	default:
+		return nil, p.currentErrorString("expected Table Name or Function or Subquery")
+	}
+
+	if !p.peekTokenIs(lexer.TAs) {
+		return &ast.TableSource{
+			Type:           tableSourceType,
+			Source:         source,
+			AsTokenPresent: false,
+		}, err
+	}
+	p.nextToken()
+
+	err = p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier, lexer.TStringLiteral, lexer.TQuotedIdentifier})
+	if err != nil {
+		return nil, err
+	}
+
+	return &ast.TableSource{
+		Type:           tableSourceType,
+		Source:         source,
+		AsTokenPresent: true,
+		Alias:          p.currentToken.Value,
+	}, err
+}
+
+func (p *Parser) parseJoins() ([]ast.Join, error) {
+	joins := []ast.Join{}
+
+	for {
+		var joinType ast.JoinType
+		if p.peekTokenIs(lexer.TInner) {
+			p.nextToken()
+			if err := p.expectPeek(lexer.TJoin); err != nil {
+				return nil, err
+			}
+			joinType = ast.JTInner
+
+		} else if p.peekTokenIs(lexer.TLeft) {
+			p.nextToken()
+			if p.peekTokenIs(lexer.TOuter) {
+				joinType = ast.JTLeftOuter
+				p.nextToken()
+			} else if p.peekTokenIs(lexer.TJoin) {
+				joinType = ast.JTLeft
+			}
+
+			if err := p.expectPeek(lexer.TJoin); err != nil {
+				return nil, err
+			}
+		} else if p.peekTokenIs(lexer.TRight) {
+			p.nextToken()
+			if p.peekTokenIs(lexer.TOuter) {
+				joinType = ast.JTRightOuter
+				p.nextToken()
+			} else if p.peekTokenIs(lexer.TJoin) {
+				joinType = ast.JTRight
+			}
+
+			if err := p.expectPeek(lexer.TJoin); err != nil {
+				return nil, err
+			}
+		} else if p.peekTokenIs(lexer.TFull) {
+			p.nextToken()
+			if p.peekTokenIs(lexer.TOuter) {
+				joinType = ast.JTFullOuter
+				p.nextToken()
+			} else if p.peekTokenIs(lexer.TJoin) {
+				joinType = ast.JTFull
+			}
+
+			if err := p.expectPeek(lexer.TJoin); err != nil {
+				return nil, err
+			}
+		} else {
+			break
+		}
+		p.nextToken()
+
+		tableSource, err := p.parseTableSource()
+		if err != nil {
+			return nil, err
+		}
+
+		if err := p.expectPeek(lexer.TOn); err != nil {
+			return nil, err
+		}
+		p.nextToken()
+
+		searchCondition, err := p.parseExpression(PrecedenceLowest)
+		if err != nil {
+			return nil, err
+		}
+
+		joins = append(joins, ast.Join{Type: joinType, Table: tableSource, Condition: searchCondition})
+	}
+
+	return joins, nil
 }
 
 func (p *Parser) parseWhereExpression() (ast.Expression, error) {
@@ -505,12 +633,12 @@ func (p *Parser) parseOrderByClause() (*ast.OrderByClause, error) {
 		return orderByClause, nil
 	}
 
-    offsetFetchClause, err:=p.parseOffsetFetchClause()
-    if err != nil {
-        return nil, err
-    }
-    
-    orderByClause.OffsetFetch = offsetFetchClause
+	offsetFetchClause, err := p.parseOffsetFetchClause()
+	if err != nil {
+		return nil, err
+	}
+
+	orderByClause.OffsetFetch = offsetFetchClause
 
 	return orderByClause, nil
 }
@@ -554,7 +682,7 @@ func (p *Parser) parseOrderByArgs() ([]ast.OrderByArg, error) {
 }
 
 func (p *Parser) parseOffsetFetchClause() (*ast.OffsetFetchClause, error) {
-    fmt.Printf("parsing offset fetch clause")
+	fmt.Printf("parsing offset fetch clause")
 	p.nextToken()
 
 	offset, err := p.parseOffset()

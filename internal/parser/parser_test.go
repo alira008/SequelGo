@@ -20,7 +20,12 @@ func TestParseBasicSelectQuery(t *testing.T) {
 					&ast.ExprIdentifier{Value: "world"},
 					&ast.ExprStar{}}},
 			},
-			TableObject: &ast.ExprIdentifier{Value: "testtable"},
+			Table: &ast.TableArg{
+				Table: &ast.TableSource{
+					Type:   ast.TSTTable,
+					Source: &ast.ExprIdentifier{Value: "testtable"},
+				},
+			},
 			WhereClause: &ast.ExprComparisonOperator{
 				Left: &ast.ExprIdentifier{
 					Value: "LastPrice",
@@ -44,7 +49,13 @@ func TestParseBuiltinFunctionCall(t *testing.T) {
 				&ast.ExprFunctionCall{Name: &ast.ExprFunction{Type: ast.FuncSum,
 					Name: &ast.ExprIdentifier{Value: "sum"}},
 					Args: []ast.Expression{&ast.ExprIdentifier{Value: "price"}}}},
-			TableObject: &ast.ExprIdentifier{Value: "testtable"}}}
+			Table: &ast.TableArg{
+				Table: &ast.TableSource{
+					Type:   ast.TSTTable,
+					Source: &ast.ExprIdentifier{Value: "testtable"},
+				},
+			},
+		}}
 	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
 
 	input := "select hello, sum(price) FROM testtable"
@@ -59,7 +70,12 @@ func TestParseOrderByClause(t *testing.T) {
 				&ast.ExprIdentifier{Value: "Stock"},
 				&ast.ExprIdentifier{Value: "PercentChange"},
 			},
-			TableObject: &ast.ExprIdentifier{Value: "MarketData"},
+			Table: &ast.TableArg{
+				Table: &ast.TableSource{
+					Type:   ast.TSTTable,
+					Source: &ast.ExprIdentifier{Value: "MarketData"},
+				},
+			},
 			OrderByClause: &ast.OrderByClause{
 				Expressions: []ast.OrderByArg{
 					{Column: &ast.ExprIdentifier{Value: "InsertDate"}, Type: ast.OBDesc},
@@ -100,7 +116,12 @@ func TestParseSubqueryCall(t *testing.T) {
 					SelectItems: []ast.Expression{
 						&ast.ExprIdentifier{Value: "yesirr"},
 					},
-					TableObject: &ast.ExprIdentifier{Value: "bruh"},
+					Table: &ast.TableArg{
+						Table: &ast.TableSource{
+							Type:   ast.TSTTable,
+							Source: &ast.ExprIdentifier{Value: "bruh"},
+						},
+					},
 					WhereClause: &ast.ExprComparisonOperator{
 						Left: &ast.ExprIdentifier{
 							Value: "LastPrice",
@@ -116,12 +137,18 @@ func TestParseSubqueryCall(t *testing.T) {
 						},
 					},
 				}},
-			TableObject: &ast.ExprIdentifier{Value: "testtable"},
+			Table: &ast.TableArg{
+				Table: &ast.TableSource{
+					Type:   ast.TSTTable,
+					Source: &ast.ExprIdentifier{Value: "testtable"},
+				},
+			},
 		},
 	}
 	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
 
-	input := "select hello,  (select  top 20 percent yesirr from bruh where LastPrice < 10.0 order by LastPrice desc) FROM testtable"
+	input := "select hello,  (select  top 20 percent yesirr from bruh where LastPrice < 10.0"
+	input += " order by LastPrice desc) FROM testtable"
 
 	test(t, expected, input)
 }
@@ -140,7 +167,12 @@ func TestParseSomeLogicalOperators(t *testing.T) {
 				},
 				&ast.ExprIdentifier{Value: "LastPrice"},
 			},
-			TableObject: &ast.ExprIdentifier{Value: "MarketData"},
+			Table: &ast.TableArg{
+				Table: &ast.TableSource{
+					Type:   ast.TSTTable,
+					Source: &ast.ExprIdentifier{Value: "MarketData"},
+				},
+			},
 			WhereClause: &ast.ExprOrLogicalOperator{
 				Left: &ast.ExprAndLogicalOperator{
 					Left: &ast.ExprComparisonOperator{
@@ -194,9 +226,19 @@ func TestParseSelectItemWithAlias(t *testing.T) {
 							Alias:          &ast.ExprQuotedIdentifier{Value: "Datetime"},
 						},
 					},
-					TableObject: &ast.ExprIdentifier{Value: "bruh"},
+					Table: &ast.TableArg{
+						Table: &ast.TableSource{
+							Type:   ast.TSTTable,
+							Source: &ast.ExprIdentifier{Value: "bruh"},
+						},
+					},
 				}},
-			TableObject: &ast.ExprIdentifier{Value: "testtable"},
+			Table: &ast.TableArg{
+				Table: &ast.TableSource{
+					Type:   ast.TSTTable,
+					Source: &ast.ExprIdentifier{Value: "testtable"},
+				},
+			},
 		},
 	}
 	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
@@ -223,7 +265,12 @@ func TestDistinctTopArg(t *testing.T) {
 					Alias:      &ast.ExprIdentifier{Value: "Potate"},
 				},
 			},
-			TableObject: &ast.ExprIdentifier{Value: "testtable"},
+			Table: &ast.TableArg{
+				Table: &ast.TableSource{
+					Type:   ast.TSTTable,
+					Source: &ast.ExprIdentifier{Value: "testtable"},
+				},
+			},
 		},
 	}
 	expected := ast.Query{Statements: []ast.Statement{&select_statement}}

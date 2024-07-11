@@ -41,7 +41,7 @@ type ExprSubquery struct {
 	Distinct    bool
 	Top         *TopArg
 	SelectItems []Expression
-	TableObject Expression
+	Table         *TableArg
 	WhereClause Expression
     GroupByClause []Expression
 	HavingClause Expression
@@ -182,9 +182,9 @@ func (e ExprSubquery) TokenLiteral() string {
 	}
 	str.WriteString(strings.Join(selectItems, ", "))
 
-	if e.TableObject != nil {
+	if e.Table != nil {
 		str.WriteString(" FROM ")
-		str.WriteString(e.TableObject.TokenLiteral())
+		str.WriteString(e.Table.TokenLiteral())
 	}
 
 	if e.WhereClause != nil {

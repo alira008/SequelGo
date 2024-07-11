@@ -40,7 +40,7 @@ type SelectBody struct {
 	Distinct      bool
 	Top           *TopArg
 	SelectItems   []Expression
-	TableObject   Expression
+	Table         *TableArg
 	WhereClause   Expression
 	HavingClause  Expression
 	GroupByClause []Expression
@@ -52,6 +52,44 @@ type TopArg struct {
 	Percent  bool
 	Quantity Expression
 }
+
+type TableArg struct {
+	Table *TableSource
+	Joins []Join
+}
+
+type TableSource struct {
+	Type           TableSourceType
+	Source         Expression
+	AsTokenPresent bool
+	Alias          string
+}
+
+type TableSourceType uint8
+
+const (
+	TSTTable TableSourceType = iota
+	TSTDerived
+	TSTTableValuedFunction
+)
+
+type Join struct {
+	Type      JoinType
+	Table     *TableSource
+	Condition Expression
+}
+
+type JoinType uint8
+
+const (
+	JTInner JoinType = iota
+	JTLeft
+	JTLeftOuter
+	JTRight
+	JTRightOuter
+	JTFull
+	JTFullOuter
+)
 
 type OrderByClause struct {
 	Expressions []OrderByArg
@@ -144,9 +182,9 @@ func (sb SelectBody) TokenLiteral() string {
 	}
 	str.WriteString(strings.Join(selectItems, ", "))
 
-	if sb.TableObject != nil {
+	if sb.Table != nil {
 		str.WriteString(" FROM ")
-		str.WriteString(sb.TableObject.TokenLiteral())
+		str.WriteString(sb.Table.TokenLiteral())
 	}
 
 	if sb.WhereClause != nil {
@@ -169,6 +207,82 @@ func (sb SelectBody) TokenLiteral() string {
 
 	if sb.OrderByClause != nil {
 		str.WriteString(sb.OrderByClause.TokenLiteral())
+	}
+
+	return str.String()
+}
+
+func (ta TableArg) expressionNode() {}
+func (ta TableArg) TokenLiteral() string {
+	var str strings.Builder
+
+	ta.Table.TokenLiteral()
+
+	if len(ta.Joins) == 0 {
+		return str.String()
+	}
+
+	var joins []string
+	for _, j := range ta.Joins {
+		joins = append(joins, j.TokenLiteral())
+	}
+
+	str.WriteString(strings.Join(joins, " "))
+
+	return str.String()
+}
+
+func (ts TableSource) expressionNode() {}
+func (ts TableSource) TokenLiteral() string {
+	var str strings.Builder
+
+	ts.Source.TokenLiteral()
+
+	if len(ts.Alias) == 0 {
+		return str.String()
+	}
+
+	if ts.AsTokenPresent {
+		str.WriteString(" AS")
+	}
+	str.WriteString(fmt.Sprintf(" %s", ts.Alias))
+
+	return str.String()
+}
+
+func (j Join) expressionNode() {}
+func (j Join) TokenLiteral() string {
+	var str strings.Builder
+
+	switch j.Type {
+	case JTInner:
+		str.WriteString(" INNER JOIN ")
+		break
+	case JTLeft:
+		str.WriteString(" LEFT JOIN ")
+		break
+	case JTLeftOuter:
+		str.WriteString(" LEFT OUTER JOIN ")
+		break
+	case JTRight:
+		str.WriteString(" RIGHT JOIN ")
+		break
+	case JTRightOuter:
+		str.WriteString(" RIGHT OUTER JOIN ")
+		break
+	case JTFull:
+		str.WriteString(" FULL JOIN ")
+		break
+	case JTFullOuter:
+		str.WriteString(" RIGHT OUTER JOIN ")
+		break
+	}
+
+	str.WriteString(j.Table.TokenLiteral())
+
+	if j.Condition != nil {
+		str.WriteString(" ON ")
+		str.WriteString(j.Condition.TokenLiteral())
 	}
 
 	return str.String()
