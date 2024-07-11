@@ -355,14 +355,14 @@ func (w WindowFrameBound) TokenLiteral() string {
 
 	switch w.Type {
 	case WFBTFollowing:
-        str.WriteString(w.Expression.TokenLiteral())
+		str.WriteString(w.Expression.TokenLiteral())
 		str.WriteString(" FOLLOWING")
 		break
 	case WFBTCurrentRow:
 		str.WriteString("CURRENT ROW")
 		break
 	case WFBTPreceding:
-        str.WriteString(w.Expression.TokenLiteral())
+		str.WriteString(w.Expression.TokenLiteral())
 		str.WriteString(" PRECEDING")
 		break
 	case WFBTUnboundedPreceding:
@@ -396,7 +396,7 @@ func (w WindowFrameClause) TokenLiteral() string {
 	str.WriteString(w.Start.TokenLiteral())
 
 	if w.End != nil {
-        str.WriteString(" AND ")
+		str.WriteString(" AND ")
 		str.WriteString(w.End.TokenLiteral())
 	}
 
@@ -410,7 +410,7 @@ func (e FunctionOverClause) TokenLiteral() string {
 	str.WriteString("(")
 
 	if len(e.PartitionByClause) > 0 {
-        str.WriteString("PARTITION BY ")
+		str.WriteString("PARTITION BY ")
 		var expressions []string
 		for _, p := range e.PartitionByClause {
 			expressions = append(expressions, p.TokenLiteral())
@@ -419,7 +419,7 @@ func (e FunctionOverClause) TokenLiteral() string {
 	}
 
 	if len(e.OrderByClause) > 0 {
-        str.WriteString(" ORDER BY ")
+		str.WriteString(" ORDER BY ")
 		var args []string
 		for _, o := range e.OrderByClause {
 			args = append(args, o.TokenLiteral())
