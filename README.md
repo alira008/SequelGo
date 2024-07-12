@@ -12,7 +12,7 @@ make sense of the queries that are given to it
 
 ### Features In Progress
 
-- [x] Select Queries
+- [ ] Select Queries
     - [x] \[ ALL | DISTINCT ]
     - [x] TOP (expression) \[ PERCENT ] | \[ WITH TIES ]  
     - [x] select items
