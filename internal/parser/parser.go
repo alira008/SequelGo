@@ -4,6 +4,7 @@ import (
 	"SequelGo/internal/ast"
 	"SequelGo/internal/lexer"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"go.uber.org/zap"
@@ -18,17 +19,19 @@ const (
 )
 
 type Parser struct {
-    logger *zap.SugaredLogger
+	logger       *zap.SugaredLogger
 	l            *lexer.Lexer
 	currentToken lexer.Token
 	peekToken    lexer.Token
+	peekToken2   lexer.Token
 	errorToken   ErrorToken
 	errors       []string
 }
 
 func NewParser(logger *zap.SugaredLogger, lexer *lexer.Lexer) *Parser {
-    parser := &Parser{logger: logger, l: lexer}
+	parser := &Parser{logger: logger, l: lexer}
 
+	parser.nextToken()
 	parser.nextToken()
 	parser.nextToken()
 
@@ -37,7 +40,8 @@ func NewParser(logger *zap.SugaredLogger, lexer *lexer.Lexer) *Parser {
 
 func (p *Parser) nextToken() {
 	p.currentToken = p.peekToken
-	p.peekToken = p.l.NextToken()
+	p.peekToken = p.peekToken2
+	p.peekToken2 = p.l.NextToken()
 	p.errorToken = ETNone
 }
 
@@ -47,6 +51,30 @@ func (p *Parser) currentTokenIs(t lexer.TokenType) bool {
 
 func (p *Parser) peekTokenIs(t lexer.TokenType) bool {
 	return p.peekToken.Type == t
+}
+
+func (p *Parser) peekToken2Is(t lexer.TokenType) bool {
+	return p.peekToken2.Type == t
+}
+
+func (p *Parser) peekTokenIsAny(t []lexer.TokenType) bool {
+	for _, token := range t {
+		if p.peekToken.Type == token {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (p *Parser) peekToken2IsAny(t []lexer.TokenType) bool {
+	for _, token := range t {
+		if p.peekToken2.Type == token {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (p *Parser) expectPeek(t lexer.TokenType) error {
@@ -253,6 +281,7 @@ func (p *Parser) parseSelectBody() (ast.SelectBody, error) {
 
 func (p *Parser) parseSelectSubquery() (ast.ExprSubquery, error) {
 	stmt := ast.ExprSubquery{}
+	p.logger.Debug("parsing subquery")
 	if p.peekTokenIs(lexer.TDistinct) {
 		stmt.Distinct = true
 		p.nextToken()
@@ -315,7 +344,7 @@ func (p *Parser) parseSelectItems() ([]ast.Expression, error) {
 	items := []ast.Expression{}
 
 	for {
-		err := p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier,
+		err := p.expectPeekMany(append([]lexer.TokenType{lexer.TIdentifier,
 			lexer.TNumericLiteral,
 			lexer.TStringLiteral,
 			lexer.TAsterisk,
@@ -325,7 +354,7 @@ func (p *Parser) parseSelectItems() ([]ast.Expression, error) {
 			lexer.TPlus,
 			// rework checking keywords
 			lexer.TSum,
-			lexer.TQuotedIdentifier})
+			lexer.TQuotedIdentifier}, ast.BuiltinFunctionsTokenType...))
 		if err != nil {
 			return items, err
 		}
@@ -347,7 +376,40 @@ func (p *Parser) parseSelectItems() ([]ast.Expression, error) {
 			}
 			break
 		}
-		items = append(items, expr)
+		if (p.peekToken.Type == lexer.TAs ||
+			p.peekToken.Type == lexer.TIdentifier ||
+			p.peekToken.Type == lexer.TStringLiteral ||
+			p.peekToken.Type == lexer.TQuotedIdentifier) && !p.peekToken2IsAny(ast.DataTypeTokenTypes) {
+			exprAlias := &ast.ExprWithAlias{AsTokenPresent: false, Expression: expr}
+
+			if p.peekToken.Type == lexer.TAs {
+				exprAlias.AsTokenPresent = true
+				p.nextToken()
+			}
+
+			// needed in case we just parsed AS keyword
+			err := p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier, lexer.TStringLiteral, lexer.TQuotedIdentifier})
+			if err != nil {
+				return nil, err
+			}
+
+			alias, err := p.parseExpression(PrecedenceLowest)
+			if err != nil {
+				return nil, err
+			}
+
+			switch alias.(type) {
+			case *ast.ExprIdentifier, *ast.ExprStringLiteral, *ast.ExprQuotedIdentifier:
+				break
+			default:
+				err = fmt.Errorf("Expected (Identifier or StringLiteral or QuotedIdentifier) for Alias")
+				return nil, err
+			}
+			exprAlias.Alias = alias
+			items = append(items, exprAlias)
+		} else {
+			items = append(items, expr)
+		}
 
 		if p.peekToken.Type != lexer.TComma {
 			break
@@ -362,8 +424,10 @@ func (p *Parser) parseSelectItems() ([]ast.Expression, error) {
 func (p *Parser) parseTableArg() (*ast.TableArg, error) {
 	err := p.expectPeek(lexer.TFrom)
 	if err != nil {
+		p.logger.Debug("from err")
 		return nil, err
 	}
+	p.logger.Debug("parsing table arg")
 
 	tableSource, err := p.parseTableSource()
 	if err != nil {
@@ -426,7 +490,7 @@ func (p *Parser) parseTableSource() (*ast.TableSource, error) {
 		}
 		return &ast.TableSource{
 			Type:   tableType,
-			Source: source,
+			Source: v,
 		}, err
 	default:
 		return nil, p.currentErrorString("expected Table Name or Function or Subquery")
@@ -485,7 +549,6 @@ func (p *Parser) parseJoins() ([]ast.Join, error) {
 		} else {
 			break
 		}
-		p.nextToken()
 
 		tableSource, err := p.parseTableSource()
 		if err != nil {
@@ -971,6 +1034,188 @@ func (p *Parser) parseExpressionList() (ast.ExprExpressionList, error) {
 	return expressionList, nil
 }
 
+func (p *Parser) parseNumericSize() (*ast.NumericSize, error) {
+	if err := p.expectPeek(lexer.TLeftParen); err != nil {
+		return nil, err
+	}
+
+	if err := p.expectPeek(lexer.TNumericLiteral); err != nil {
+		return nil, p.currentErrorString("Expected a numeric literal for casting expression")
+	}
+
+	// parse precision
+	precision, err := strconv.ParseUint(p.currentToken.Value, 10, 32)
+	if err != nil {
+		return nil, p.currentErrorString("could not convert numeric literal to uint32")
+	}
+	precision32 := uint32(precision)
+	if p.peekTokenIs(lexer.TRightParen) {
+        p.nextToken()
+		return &ast.NumericSize{Precision: precision32}, nil
+	}
+
+	// parse scale
+	if err := p.expectPeek(lexer.TComma); err != nil {
+		return nil, p.currentErrorString("Expected a comma before scale")
+	}
+
+	p.nextToken()
+
+	if err := p.expectPeek(lexer.TNumericLiteral); err != nil {
+		return nil, p.currentErrorString("Expected a numeric literal for scale when casting expression")
+	}
+
+	scale, err := strconv.ParseUint(p.currentToken.Value, 10, 32)
+	if err != nil {
+		return nil, p.currentErrorString("could not convert numeric literal to uint32")
+	}
+	scale32 := uint32(scale)
+
+	if err := p.expectPeek(lexer.TRightParen); err != nil {
+		return nil, p.currentErrorString("Expected a right parenthesis after scale")
+	}
+
+	return &ast.NumericSize{Precision: precision32, Scale: &scale32}, nil
+}
+
+func (p *Parser) parseDataType() (*ast.DataType, error) {
+	if err := p.expectPeekMany(ast.DataTypeTokenTypes); err != nil {
+		return nil, err
+	}
+
+	var dataType ast.DataType
+	switch p.currentToken.Type {
+	case lexer.TInt:
+		dataType = ast.DataType{Kind: ast.DTInt}
+		break
+	case lexer.TBigint:
+		dataType = ast.DataType{Kind: ast.DTBigInt}
+		break
+	case lexer.TTinyint:
+		dataType = ast.DataType{Kind: ast.DTTinyInt}
+		break
+	case lexer.TSmallint:
+		dataType = ast.DataType{Kind: ast.DTSmallInt}
+		break
+	case lexer.TBit:
+		dataType = ast.DataType{Kind: ast.DTBit}
+		break
+	case lexer.TFloat:
+		dataType = ast.DataType{Kind: ast.DTFloat}
+		if !p.peekTokenIs(lexer.TLeftParen) {
+			break
+		}
+
+		if err := p.expectPeek(lexer.TLeftParen); err != nil {
+			return nil, err
+		}
+		if err := p.expectPeek(lexer.TNumericLiteral); err != nil {
+			return nil, p.currentErrorString("Expected a numeric literal for casting expression")
+		}
+		size, err := strconv.ParseUint(p.currentToken.Value, 10, 32)
+		if err != nil {
+			return nil, p.currentErrorString("could not convert numeric literal to uint32")
+		}
+		size32 := uint32(size)
+		dataType.FloatPrecision = &size32
+		if err := p.expectPeek(lexer.TRightParen); err != nil {
+			return nil, p.currentErrorString("Expected a numeric literal for casting expression")
+		}
+		break
+	case lexer.TReal:
+		dataType = ast.DataType{Kind: ast.DTReal}
+		break
+	case lexer.TDate:
+		dataType = ast.DataType{Kind: ast.DTDate}
+		break
+	case lexer.TDatetime:
+		dataType = ast.DataType{Kind: ast.DTDatetime}
+		break
+	case lexer.TTime:
+		dataType = ast.DataType{Kind: ast.DTTime}
+		break
+	case lexer.TDecimal:
+		dataType = ast.DataType{Kind: ast.DTDecimal}
+		if !p.peekTokenIs(lexer.TLeftParen) {
+			break
+		}
+		numericSize, err := p.parseNumericSize()
+		if err != nil {
+			return nil, err
+		}
+		dataType.DecimalNumericSize = numericSize
+		break
+	case lexer.TNumeric:
+		dataType = ast.DataType{Kind: ast.DTNumeric}
+		if !p.peekTokenIs(lexer.TLeftParen) {
+			break
+		}
+		numericSize, err := p.parseNumericSize()
+		if err != nil {
+			return nil, err
+		}
+		dataType.DecimalNumericSize = numericSize
+		break
+	case lexer.TVarchar:
+		dataType = ast.DataType{Kind: ast.DTVarchar}
+		if !p.peekTokenIs(lexer.TLeftParen) {
+			break
+		}
+
+		if err := p.expectPeek(lexer.TLeftParen); err != nil {
+			return nil, err
+		}
+		if err := p.expectPeek(lexer.TNumericLiteral); err != nil {
+			return nil, p.currentErrorString("Expected a numeric literal for casting expression")
+		}
+		size, err := strconv.ParseUint(p.currentToken.Value, 10, 32)
+		if err != nil {
+			return nil, p.currentErrorString("could not convert numeric literal to uint32")
+		}
+		size32 := uint32(size)
+		dataType.FloatPrecision = &size32
+		if err := p.expectPeek(lexer.TRightParen); err != nil {
+			return nil, p.currentErrorString("Expected a numeric literal for casting expression")
+		}
+		break
+	default:
+		return nil, p.currentErrorString("Expected a Builtin Datatype")
+	}
+
+	return &dataType, nil
+}
+
+func (p *Parser) parseCast() (*ast.ExprCast, error) {
+	if err := p.expectPeek(lexer.TLeftParen); err != nil {
+		return nil, err
+	}
+	p.logger.Debug("parsing cast expression")
+	p.nextToken()
+
+	expr, err := p.parseExpression(PrecedenceLowest)
+	if err != nil {
+		return nil, err
+	}
+
+	p.logger.Debug(expr.TokenLiteral())
+	if err := p.expectPeek(lexer.TAs); err != nil {
+		return nil, err
+	}
+
+	dt, err := p.parseDataType()
+	if err != nil {
+		return nil, err
+	}
+	p.logger.Debug(dt.TokenLiteral())
+	p.logger.Debug(p.currentToken)
+	p.logger.Debug(p.peekToken)
+	if err := p.expectPeek(lexer.TRightParen); err != nil {
+		return nil, err
+	}
+
+	return &ast.ExprCast{Expression: expr, DataType: *dt}, nil
+}
+
 func (p *Parser) parseExpression(precedence Precedence) (ast.Expression, error) {
 	leftExpr, err := p.parsePrefixExpression()
 	if err != nil {
@@ -1048,10 +1293,9 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 			newExpr = &ast.ExprCompoundIdentifier{Identifiers: *compound}
 		}
 
-		if p.peekToken.Type == lexer.TAs ||
-			p.peekToken.Type == lexer.TIdentifier ||
-			p.peekToken.Type == lexer.TStringLiteral ||
-			p.peekToken.Type == lexer.TQuotedIdentifier {
+		if (p.peekTokenIs(lexer.TAs) || p.peekTokenIs(lexer.TIdentifier) ||
+			p.peekTokenIs(lexer.TStringLiteral) || p.peekTokenIs(lexer.TQuotedIdentifier)) &&
+			!p.peekToken2IsAny(ast.DataTypeTokenTypes) {
 			expr := &ast.ExprWithAlias{AsTokenPresent: false, Expression: newExpr}
 
 			if p.peekToken.Type == lexer.TAs {
@@ -1200,6 +1444,7 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 		case lexer.TGetdate:
 			funcType = ast.FuncGetdate
 		}
+		p.logger.Debug("in function parse")
 		function := &ast.ExprFunction{Type: funcType, Name: &ast.ExprIdentifier{Value: p.currentToken.Value}}
 		// parse function arguments
 		err := p.expectPeek(lexer.TLeftParen)
@@ -1207,41 +1452,37 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 			return nil, err
 		}
 		args := []ast.Expression{}
-		if p.peekTokenIs(lexer.TRightParen) {
-			p.nextToken()
-			return &ast.ExprFunctionCall{
-				Name: function,
-				Args: args,
-			}, nil
-		}
+		if !p.peekTokenIs(lexer.TRightParen) {
 
-		for {
-			err = p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier,
-				lexer.TNumericLiteral,
-				lexer.TStringLiteral,
-				lexer.TLocalVariable,
-				lexer.TQuotedIdentifier,
-			})
-			if err != nil {
-				return nil, err
-			}
+			p.logger.Debug("parsing function args")
+			for {
+				err = p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier,
+					lexer.TNumericLiteral,
+					lexer.TStringLiteral,
+					lexer.TLocalVariable,
+					lexer.TQuotedIdentifier,
+				})
+				if err != nil {
+					return nil, err
+				}
 
-			if p.currentToken.Type == lexer.TLocalVariable {
-				args = append(args, &ast.ExprLocalVariable{Value: p.currentToken.Value})
-			} else if p.currentToken.Type == lexer.TQuotedIdentifier {
-				args = append(args, &ast.ExprQuotedIdentifier{Value: p.currentToken.Value})
-			} else if p.currentToken.Type == lexer.TStringLiteral {
-				args = append(args, &ast.ExprStringLiteral{Value: p.currentToken.Value})
-			} else if p.currentToken.Type == lexer.TNumericLiteral {
-				args = append(args, &ast.ExprNumberLiteral{Value: p.currentToken.Value})
-			} else {
-				args = append(args, &ast.ExprIdentifier{Value: p.currentToken.Value})
-			}
+				if p.currentToken.Type == lexer.TLocalVariable {
+					args = append(args, &ast.ExprLocalVariable{Value: p.currentToken.Value})
+				} else if p.currentToken.Type == lexer.TQuotedIdentifier {
+					args = append(args, &ast.ExprQuotedIdentifier{Value: p.currentToken.Value})
+				} else if p.currentToken.Type == lexer.TStringLiteral {
+					args = append(args, &ast.ExprStringLiteral{Value: p.currentToken.Value})
+				} else if p.currentToken.Type == lexer.TNumericLiteral {
+					args = append(args, &ast.ExprNumberLiteral{Value: p.currentToken.Value})
+				} else {
+					args = append(args, &ast.ExprIdentifier{Value: p.currentToken.Value})
+				}
 
-			if p.peekTokenIs(lexer.TRightParen) || p.peekTokenIs(lexer.TComma) {
-				break
+				if p.peekTokenIs(lexer.TRightParen) || p.peekTokenIs(lexer.TComma) {
+					break
+				}
+				p.nextToken()
 			}
-			p.nextToken()
 		}
 
 		err = p.expectPeek(lexer.TRightParen)
@@ -1263,6 +1504,8 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 			return nil, err
 		}
 
+		p.logger.Debug(overClause.TokenLiteral())
+
 		return &ast.ExprFunctionCall{
 			Name:       function,
 			Args:       args,
@@ -1272,18 +1515,21 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 		// start of subquery
 		if p.peekTokenIs(lexer.TSelect) {
 			p.nextToken()
-			statement, err := p.parseSelectSubquery()
+			subquery, err := p.parseSelectSubquery()
 			if err != nil {
 				return nil, err
 			}
 			p.expectPeek(lexer.TRightParen)
 
-			if p.peekToken.Type == lexer.TAs ||
-				p.peekToken.Type == lexer.TIdentifier ||
-				p.peekToken.Type == lexer.TStringLiteral ||
-				p.peekToken.Type == lexer.TQuotedIdentifier {
-				exprWithAlias := &ast.ExprWithAlias{AsTokenPresent: false, Expression: statement}
+			p.logger.Debug("parsing subquery alias")
+			p.logger.Debug(p.peekToken)
+			if (p.peekTokenIs(lexer.TAs) || p.peekTokenIs(lexer.TIdentifier) ||
+				p.peekTokenIs(lexer.TStringLiteral) || p.peekTokenIs(lexer.TQuotedIdentifier)) &&
+				!p.peekToken2IsAny(ast.DataTypeTokenTypes) {
+				p.logger.Debug("parsing subquery alias")
+				exprWithAlias := &ast.ExprWithAlias{AsTokenPresent: false, Expression: &subquery}
 
+				p.logger.Debug("parsing subquery alias")
 				if p.peekToken.Type == lexer.TAs {
 					exprWithAlias.AsTokenPresent = true
 					p.nextToken()
@@ -1311,7 +1557,7 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 				return exprWithAlias, nil
 			}
 
-			return &statement, nil
+			return &subquery, nil
 		} else if p.peekTokenIs(lexer.TIdentifier) ||
 			p.peekTokenIs(lexer.TLocalVariable) ||
 			p.peekTokenIs(lexer.TQuotedIdentifier) ||
@@ -1378,6 +1624,13 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 			Expression: expr,
 		}
 		break
+	case lexer.TCast:
+		expr, err := p.parseCast()
+		if err != nil {
+			return nil, err
+		}
+		p.logger.Debug(expr.TokenLiteral())
+		newExpr = expr
 	default:
 		p.errorToken = ETCurrent
 		return nil, fmt.Errorf("Unimplemented expression %s", p.currentToken.Type.String())

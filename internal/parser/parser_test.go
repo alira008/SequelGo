@@ -4,6 +4,8 @@ import (
 	"SequelGo/internal/ast"
 	"SequelGo/internal/lexer"
 	"testing"
+
+	"go.uber.org/zap"
 )
 
 func TestParseBasicSelectQuery(t *testing.T) {
@@ -37,6 +39,51 @@ func TestParseBasicSelectQuery(t *testing.T) {
 	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
 
 	input := "select *,\n hello,\n 'yes',\n [yessir],\n @nosir, [superdb].world.* FROM testtable where LastPrice < 10.0"
+
+	test(t, expected, input)
+}
+
+func TestParseBasicSelectQueryWithCast(t *testing.T) {
+	float := uint32(24)
+	floatPrecision := &float
+	select_statement := ast.SelectStatement{
+		SelectBody: &ast.SelectBody{
+			SelectItems: []ast.Expression{
+				&ast.ExprStar{},
+				&ast.ExprIdentifier{Value: "hello"},
+				&ast.ExprStringLiteral{Value: "yes"},
+				&ast.ExprQuotedIdentifier{Value: "yessir"},
+				&ast.ExprLocalVariable{Value: "nosir"},
+				&ast.ExprCompoundIdentifier{Identifiers: []ast.Expression{
+					&ast.ExprQuotedIdentifier{Value: "superdb"},
+					&ast.ExprIdentifier{Value: "world"},
+					&ast.ExprStar{}}},
+			},
+			Table: &ast.TableArg{
+				Table: &ast.TableSource{
+					Type:   ast.TSTTable,
+					Source: &ast.ExprIdentifier{Value: "testtable"},
+				},
+			},
+			WhereClause: &ast.ExprComparisonOperator{
+				Left: &ast.ExprIdentifier{
+					Value: "LastPrice",
+				},
+				Operator: ast.ComparisonOpLess,
+				Right: &ast.ExprCast{
+					Expression: &ast.ExprStringLiteral{Value: "10"},
+					DataType: ast.DataType{
+						Kind:           ast.DTFloat,
+						FloatPrecision: floatPrecision,
+					},
+				},
+			},
+		},
+	}
+	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
+
+	input := "select *,\n hello,\n 'yes',\n [yessir],\n @nosir, [superdb].world.* FROM"
+    input += " testtable where LastPrice < cast('10' as float(24))"
 
 	test(t, expected, input)
 }
@@ -377,12 +424,16 @@ func TestDistinctTopArg(t *testing.T) {
 }
 
 func test(t *testing.T, expected ast.Query, input string) {
+	logger, _ := zap.NewDevelopment()
+	defer logger.Sync()
+	sugar := logger.Sugar()
 	l := lexer.NewLexer(input)
-	p := NewParser(l)
+	p := NewParser(sugar, l)
 	query := p.Parse()
 
 	if len(query.Statements) != 1 {
-		t.Fatalf("expected 1 statement, got %d", len(query.Statements))
+        t.Fatalf("expected 1 statement, got %d", len(query.Statements))
+
 	}
 	for i, stmt := range query.Statements {
 		if stmt.TokenLiteral() != expected.Statements[i].TokenLiteral() {

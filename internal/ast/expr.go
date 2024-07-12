@@ -1,6 +1,7 @@
 package ast
 
 import (
+	"SequelGo/internal/lexer"
 	"fmt"
 	"strings"
 )
@@ -97,6 +98,15 @@ const (
 	FuncUserDefined
 )
 
+var BuiltinFunctionsTokenType = []lexer.TokenType{
+	lexer.TDenseRank, lexer.TRank, lexer.TRowNumber, lexer.TAbs, lexer.TAcos, lexer.TAsin,
+	lexer.TAtan, lexer.TCeiling, lexer.TCos, lexer.TCot, lexer.TDegrees, lexer.TExp, lexer.TFloor,
+	lexer.TLog, lexer.TLog10, lexer.TPi, lexer.TPower, lexer.TRadians, lexer.TRands, lexer.TRound,
+	lexer.TSign, lexer.TSin, lexer.TSqrt, lexer.TSquare, lexer.TTan, lexer.TFirstValue,
+	lexer.TLastValue, lexer.TLag, lexer.TLead, lexer.TAvg, lexer.TCount, lexer.TMax, lexer.TMin,
+	lexer.TStdev, lexer.TStdevp, lexer.TSum, lexer.TVar, lexer.TVarp, lexer.TGetdate,
+}
+
 type FunctionOverClause struct {
 	PartitionByClause []Expression
 	OrderByClause     []OrderByArg
@@ -140,6 +150,11 @@ type ExprFunctionCall struct {
 	Name       *ExprFunction
 	Args       []Expression
 	OverClause *FunctionOverClause
+}
+
+type ExprCast struct {
+	Expression Expression
+	DataType   DataType
 }
 
 func (e ExprStringLiteral) expressionNode() {}
@@ -452,6 +467,19 @@ func (e ExprFunctionCall) TokenLiteral() string {
 	if e.OverClause != nil {
 		str.WriteString(e.OverClause.TokenLiteral())
 	}
+
+	return str.String()
+}
+
+func (e ExprCast) expressionNode() {}
+func (e ExprCast) TokenLiteral() string {
+	var str strings.Builder
+
+	str.WriteString("CAST(")
+	str.WriteString(e.Expression.TokenLiteral())
+	str.WriteString(" AS ")
+	str.WriteString(e.DataType.TokenLiteral())
+	str.WriteString(")")
 
 	return str.String()
 }
