@@ -5,6 +5,8 @@ import (
 	"SequelGo/internal/lexer"
 	"fmt"
 	"strings"
+
+	"go.uber.org/zap"
 )
 
 type ErrorToken int
@@ -16,6 +18,7 @@ const (
 )
 
 type Parser struct {
+    logger *zap.SugaredLogger
 	l            *lexer.Lexer
 	currentToken lexer.Token
 	peekToken    lexer.Token
@@ -23,8 +26,8 @@ type Parser struct {
 	errors       []string
 }
 
-func NewParser(lexer *lexer.Lexer) *Parser {
-	parser := &Parser{l: lexer}
+func NewParser(logger *zap.SugaredLogger, lexer *lexer.Lexer) *Parser {
+    parser := &Parser{logger: logger, l: lexer}
 
 	parser.nextToken()
 	parser.nextToken()
@@ -123,10 +126,10 @@ func (p *Parser) Parse() ast.Query {
 
 		if err != nil {
 			if p.errorToken == ETCurrent {
-				fmt.Printf("[Error Line: %d Col: %d]: %s\n", p.currentToken.End.Line,
+				p.logger.Debugf("[Error Line: %d Col: %d]: %s", p.currentToken.End.Line,
 					p.currentToken.End.Col+1, err.Error())
 			} else {
-				fmt.Printf("[Error Line: %d Col: %d]: %s\n", p.peekToken.End.Line,
+				p.logger.Debugf("[Error Line: %d Col: %d]: %s", p.peekToken.End.Line,
 					p.peekToken.End.Col+1, err.Error())
 			}
 			p.nextToken()
@@ -509,7 +512,7 @@ func (p *Parser) parseWhereExpression() (ast.Expression, error) {
 	if !p.peekTokenIs(lexer.TWhere) {
 		return nil, nil
 	}
-	fmt.Printf("parsing where\n")
+	p.logger.Debug("parsing where")
 
 	// go to where token
 	p.nextToken()
@@ -551,7 +554,7 @@ func (p *Parser) parseGroupByClause() ([]ast.Expression, error) {
 		return items, err
 	}
 
-	fmt.Printf("parsing group by clause\n")
+	p.logger.Debug("parsing group by clause")
 
 	for {
 		err := p.expectPeekMany([]lexer.TokenType{
@@ -585,7 +588,7 @@ func (p *Parser) parseHavingExpression() (ast.Expression, error) {
 	if !p.peekTokenIs(lexer.THaving) {
 		return nil, nil
 	}
-	fmt.Printf("parsing having\n")
+	p.logger.Debug("parsing having")
 
 	// go to where token
 	p.nextToken()
@@ -624,7 +627,7 @@ func (p *Parser) parseOrderByClause() (*ast.OrderByClause, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("parsing order by clause\n")
+	p.logger.Debug("parsing order by clause")
 	args, err := p.parseOrderByArgs()
 	if err != nil {
 		return nil, err
@@ -684,7 +687,7 @@ func (p *Parser) parseOrderByArgs() ([]ast.OrderByArg, error) {
 }
 
 func (p *Parser) parseOffsetFetchClause() (*ast.OffsetFetchClause, error) {
-	fmt.Printf("parsing offset fetch clause")
+	p.logger.Debug("parsing offset fetch clause")
 	p.nextToken()
 
 	offset, err := p.parseOffset()
@@ -867,14 +870,14 @@ func (p *Parser) parseWindowFrameClause() (*ast.WindowFrameClause, error) {
 	var windowFrameEnd ast.WindowFrameBound
 	followingNeeded := false
 	// parse between
-	fmt.Printf("p.currentToken.Value: %v\n", p.currentToken.Value)
-	fmt.Printf("p.peekToken.Value: %v\n", p.peekToken.Value)
+	p.logger.Debug("p.currentToken.Value: ", p.currentToken.Value)
+	p.logger.Debug("p.peekToken.Value: ", p.peekToken.Value)
 	if p.peekTokenIs(lexer.TBetween) {
 		followingNeeded = true
 		p.nextToken()
 	}
-	fmt.Printf("p.currentToken.Value: %v\n", p.currentToken.Value)
-	fmt.Printf("p.peekToken.Value: %v\n", p.peekToken.Value)
+	p.logger.Debug("p.currentToken.Value: ", p.currentToken.Value)
+	p.logger.Debug("p.peekToken.Value: ", p.peekToken.Value)
 	if p.peekTokenIs(lexer.TUnbounded) {
 		p.nextToken()
 		if err := p.expectPeek(lexer.TPreceding); err != nil {
@@ -890,7 +893,7 @@ func (p *Parser) parseWindowFrameClause() (*ast.WindowFrameClause, error) {
 	} else if p.peekTokenIs(lexer.TNumericLiteral) {
 		p.nextToken()
 		expr, err := p.parseExpression(PrecedenceLowest)
-		fmt.Printf("test\n")
+		p.logger.Debug("test")
 		if err != nil {
 			return nil, err
 		}
@@ -988,7 +991,7 @@ func (p *Parser) parseExpression(precedence Precedence) (ast.Expression, error) 
 }
 
 func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
-	// fmt.Printf("parsing prefix expression\n")
+	// p.logger.Debugf("parsing prefix expression\n")
 	var newExpr ast.Expression
 	switch p.currentToken.Type {
 	case lexer.TIdentifier, lexer.TNumericLiteral, lexer.TStringLiteral, lexer.TAsterisk, lexer.TLocalVariable, lexer.TQuotedIdentifier:
@@ -1010,18 +1013,18 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 		if p.peekToken.Type == lexer.TPeriod {
 			// we are dealing with a qualified identifier
 			compound := &[]ast.Expression{newExpr}
-			fmt.Printf("parsing compound identifier\n")
+			p.logger.Debug("parsing compound identifier")
 
 			// go to period token
 			p.nextToken()
-			fmt.Printf("current token: %v\n", p.currentToken)
+			p.logger.Debug("current token: ", p.currentToken)
 
 			for {
 				err := p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier, lexer.TQuotedIdentifier, lexer.TAsterisk})
 				if err != nil {
 					return nil, err
 				}
-				fmt.Printf("current token: %v\n", p.currentToken)
+				p.logger.Debug("current token: ", p.currentToken)
 
 				if p.currentToken.Type == lexer.TAsterisk {
 					expr := &ast.ExprStar{}
@@ -1243,7 +1246,7 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 
 		err = p.expectPeek(lexer.TRightParen)
 		if err != nil {
-			fmt.Printf("expected right parenthesis, got %s\n", p.peekToken.Value)
+			p.logger.Debug("expected right parenthesis, got ", p.peekToken.Value)
 			return nil, err
 		}
 
@@ -1319,7 +1322,7 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 				return nil, err
 			}
 			p.expectPeek(lexer.TRightParen)
-			fmt.Printf("stmt: %v\n", stmt)
+			p.logger.Debug("stmt: ", stmt)
 			return &stmt, nil
 		}
 	case lexer.TPlus, lexer.TMinus:
@@ -1385,7 +1388,7 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 }
 
 func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, error) {
-	fmt.Printf("parsing infix expression, %s\n", p.currentToken.String())
+	p.logger.Debug("parsing infix expression, ", p.currentToken.String())
 	switch p.currentToken.Type {
 	case lexer.TAnd:
 		precedence := checkPrecedence(p.currentToken.Type)
