@@ -185,16 +185,66 @@ func (f *Formatter) visitSelectTableArg(selectTableArg *ast.TableArg) {
 		return
 	}
 
-    f.printNewLine()
+	f.printNewLine()
 	f.printKeyword("from ")
-	// f.visitTableSource(selectTableArg.Table)
-    if len(selectTableArg.Joins) > 0 {
-        f.printNewLine()
-    }
-    for _, join := range selectTableArg.Joins {
-        _ = join
-        // f.visitTableJoin(join)
-    }
+	f.visitTableSource(selectTableArg.Table)
+	if len(selectTableArg.Joins) > 0 {
+		f.printNewLine()
+	}
+	for _, join := range selectTableArg.Joins {
+		_ = join
+		f.visitTableJoin(join)
+	}
+}
+
+func (f *Formatter) visitTableSource(tableSource *ast.TableSource) {
+	if tableSource == nil {
+		return
+	}
+
+	// not needed for now
+	/* switch tableSource.Type {
+	case ast.TSTTable:
+		break
+	case ast.TSTDerived:
+		break
+	case ast.TSTTableValuedFunction:
+		break
+	} */
+
+	f.visitExpression(tableSource.Source)
+}
+
+func (f *Formatter) visitTableJoin(tableJoin ast.Join) {
+	switch tableJoin.Type {
+	case ast.JTInner:
+		f.printKeyword("inner join ")
+		break
+	case ast.JTLeft:
+		f.printKeyword("left join ")
+		break
+	case ast.JTLeftOuter:
+		f.printKeyword("left outer join ")
+		break
+	case ast.JTRight:
+		f.printKeyword("right join ")
+		break
+	case ast.JTRightOuter:
+		f.printKeyword("right outer join ")
+		break
+	case ast.JTFull:
+		f.printKeyword("full join ")
+		break
+	case ast.JTFullOuter:
+		f.printKeyword("full outer join ")
+		break
+	}
+
+	f.visitTableSource(tableJoin.Table)
+	f.printKeyword(" on ")
+	if tableJoin.Condition != nil {
+		f.visitExpression(tableJoin.Condition)
+	}
 }
 
 func (f *Formatter) visitStringLiteralExpression(e *ast.ExprStringLiteral) {
