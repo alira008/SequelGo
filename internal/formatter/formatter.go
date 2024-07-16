@@ -21,20 +21,19 @@ func NewFormatter(settings Settings, logger *zap.SugaredLogger) Formatter {
 	return Formatter{settings: settings, logger: logger}
 }
 
-func (f *Formatter) Format(input string) string {
+func (f *Formatter) Format(input string) (string, error) {
 	l := lexer.NewLexer(input)
 	p := parser.NewParser(f.logger, l)
 	query := p.Parse()
 	if len(p.Errors()) > 0 {
-		return ""
+		return "", fmt.Errorf(strings.Join(p.Errors(), "\n"))
 	}
 
 	for _, s := range query.Statements {
 		f.walkQuery(s)
-
 	}
 
-	return ""
+	return f.formattedQuery, nil
 }
 
 func (f *Formatter) increaseIndent() {
@@ -152,7 +151,16 @@ func (f *Formatter) visitExpression(expression ast.Expression) {
 
 func (f *Formatter) visitSelectQuery(selectStatement *ast.SelectStatement) {
 	f.printKeyword("select ")
+	if selectStatement.SelectBody.Distinct {
+		f.printKeyword("distinct ")
+	}
 	f.visitSelectTopArg(selectStatement.SelectBody.Top)
+	f.visitSelectItems(selectStatement.SelectBody.SelectItems)
+	f.visitSelectTableArg(selectStatement.SelectBody.Table)
+	f.visitSelectWhereClause(selectStatement.SelectBody.WhereClause)
+	f.visitSelectGroupByClause(selectStatement.SelectBody.GroupByClause)
+	f.visitSelectHavingClause(selectStatement.SelectBody.HavingClause)
+	f.visitSelectOrderByClause(selectStatement.SelectBody.OrderByClause)
 }
 
 func (f *Formatter) visitSelectTopArg(selectTopArg *ast.TopArg) {
@@ -245,6 +253,123 @@ func (f *Formatter) visitTableJoin(tableJoin ast.Join) {
 	if tableJoin.Condition != nil {
 		f.visitExpression(tableJoin.Condition)
 	}
+}
+
+func (f *Formatter) visitSelectWhereClause(expression ast.Expression) {
+	if expression == nil {
+		return
+	}
+
+	f.printNewLine()
+	f.printKeyword("where ")
+	f.visitExpression(expression)
+}
+
+func (f *Formatter) visitSelectGroupByClause(expressions []ast.Expression) {
+	if expressions == nil {
+		return
+	}
+	if len(expressions) == 0 {
+		return
+	}
+
+	f.printNewLine()
+	f.printKeyword("group by ")
+	for i, e := range expressions {
+		if i > 0 {
+			f.printSelectColumnComma()
+		}
+		f.visitExpression(e)
+	}
+}
+
+func (f *Formatter) visitSelectHavingClause(expression ast.Expression) {
+	if expression == nil {
+		return
+	}
+
+	f.printNewLine()
+	f.printKeyword("having ")
+	f.visitExpression(expression)
+}
+
+func (f *Formatter) visitSelectOrderByClause(orderByClause *ast.OrderByClause) {
+	if orderByClause == nil {
+		return
+	}
+
+	f.printNewLine()
+	f.printKeyword("order by ")
+	for i, e := range orderByClause.Expressions {
+		if i > 0 {
+			f.printSelectColumnComma()
+		}
+		f.visitExpression(e.Column)
+		f.printSpace()
+		switch e.Type {
+		case ast.OBNone:
+			break
+		case ast.OBAsc:
+			f.printKeyword("asc ")
+			break
+		case ast.OBDesc:
+			f.printKeyword("desc ")
+			break
+		}
+	}
+	f.visitSelectOffsetFetchClause(orderByClause.OffsetFetch)
+}
+
+func (f *Formatter) visitSelectOffsetFetchClause(offsetFetchClause *ast.OffsetFetchClause) {
+	if offsetFetchClause == nil {
+		return
+	}
+
+	f.visitSelectOffsetClause(offsetFetchClause.Offset)
+	f.visitSelectFetchClause(offsetFetchClause.Fetch)
+}
+
+func (f *Formatter) visitSelectOffsetClause(offsetArg ast.OffsetArg) {
+	f.printNewLine()
+	f.printKeyword("offset ")
+	f.visitExpression(offsetArg.Value)
+	f.printSpace()
+	switch offsetArg.RowOrRows {
+	case ast.RRRow:
+		f.printKeyword("row ")
+		break
+	case ast.RRRows:
+		f.printKeyword("rows ")
+		break
+	}
+}
+
+func (f *Formatter) visitSelectFetchClause(fetchArg *ast.FetchArg) {
+	if fetchArg == nil {
+		return
+	}
+
+	f.printNewLine()
+	f.printKeyword("fetch ")
+	switch fetchArg.NextOrFirst {
+	case ast.NFNext:
+		f.printKeyword("next ")
+		break
+	case ast.NFFirst:
+		f.printKeyword("first ")
+		break
+	}
+	f.visitExpression(fetchArg.Value)
+	f.printSpace()
+	switch fetchArg.RowOrRows {
+	case ast.RRRow:
+		f.printKeyword("row ")
+		break
+	case ast.RRRows:
+		f.printKeyword("rows ")
+		break
+	}
+	f.printKeyword("only ")
 }
 
 func (f *Formatter) visitStringLiteralExpression(e *ast.ExprStringLiteral) {
