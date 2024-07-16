@@ -1,11 +1,13 @@
 # T-SQL Interpreter
 
-## Future Goals
+## Formatter
 
-### Formatter
+>[!WARNING]
+>
+> This is still a work in progress and I am still extending the formatter so it generates
+> SQL code correctly
 
-- Extending to make formatter from the AST that gets generated from parsing T-SQL code
-- This will work like opionated formatters like Prettier and
+This formatter works like opionated formatters like Prettier and
   [Poor Man's TSQL Formatter](https://github.com/TaoK/PoorMansTSqlFormatter)
 
 ### Example run 1
@@ -79,10 +81,6 @@ Flags:
   -u, --useTab                    choose whether or not you want to use tab instead of spaces.
 ```
 
-### LSP
-
-- Extending to make an LSP to get diagnostics in editors like Neovim
-
 ## TSQL Parser
 
 Parses T-SQL queries and places them into abstract syntax to make it easier for other crates
@@ -130,6 +128,12 @@ make sense of the queries that are given to it
 - [ ] Bulk Insert Queries
 - [ ] Delete Queries
 - [ ] Update Queries
+
+## Future Goals
+
+### LSP
+
+- Extending to make an LSP to get diagnostics in editors like Neovim
 
 ## Credits
 
