@@ -10,7 +10,9 @@
 
 ### Example run 1
 
-`SequelGo-formatter -k UpperCase "select hello from testtable where too"`
+```bash
+SequelGo-formatter -k UpperCase "select hello from testtable where too"
+```
 
 #### Output
 
@@ -22,9 +24,9 @@ select hello from testtable where too
 
 ### Example run 2
 
-`SequelGo-formatter -k LowerCase "Select top 30 percent with ties LastPrice,
-HighPrice , LowPrice, QuoteTime 'QuoTime' from MarketTable mkt where 'QuoTime' < '6:30' oRDer By Symbol
-"`
+```bash
+SequelGo-formatter -k LowerCase "Select top 30 percent with ties LastPrice, HighPrice , LowPrice, QuoteTime 'QuoTime' from MarketTable mkt where 'QuoTime' < '6:30' oRDer By Symbol"
+```
 
 #### Output
 
@@ -40,9 +42,9 @@ order by Symbol
 
 ### Example run 3
 
-`SequelGo-formatter -k UpperCase "Select top 30 percent with ties LastPrice,
-HighPrice , LowPrice, QuoteTime 'QuoTime' from MarketTable mkt where 'QuoTime' < '6:30' oRDer By Symbol
-"`
+```bash 
+SequelGo-formatter -k UpperCase "Select top 30 percent with ties LastPrice, HighPrice , LowPrice, QuoteTime 'QuoTime' from MarketTable mkt where 'QuoTime' < '6:30' oRDer By Symbol"
+```
 
 #### Output
 
