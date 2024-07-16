@@ -205,18 +205,16 @@ func (p *Parser) parseStatement() (ast.Statement, error) {
 }
 
 func (p *Parser) parseSelectStatement() *ast.SelectStatement {
-
 	return &ast.SelectStatement{}
 }
 
 func (p *Parser) parseTopArg() (*ast.TopArg, error) {
 	p.nextToken()
-	p.nextToken()
 
-	expr, err := p.parseExpression(PrecedenceLowest)
-	if err != nil {
+	if err := p.expectPeek(lexer.TNumericLiteral); err != nil {
 		return nil, err
 	}
+    expr := &ast.ExprNumberLiteral{Value: p.currentToken.Value}
 
 	topArg := ast.TopArg{Quantity: expr}
 	if p.peekTokenIs(lexer.TPercent) {
@@ -227,12 +225,11 @@ func (p *Parser) parseTopArg() (*ast.TopArg, error) {
 	if p.peekTokenIs(lexer.TWith) {
 		p.nextToken()
 
-		err = p.expectPeek(lexer.TTies)
+        err := p.expectPeek(lexer.TTies)
 		if err != nil {
 			return nil, err
 		}
-		topArg.Percent = true
-		p.nextToken()
+		topArg.WithTies = true
 	}
 
 	return &topArg, nil
@@ -360,7 +357,8 @@ func (p *Parser) parseSelectSubquery() (ast.ExprSubquery, error) {
 
 func (p *Parser) parseSelectItems() ([]ast.Expression, error) {
 	items := []ast.Expression{}
-
+	p.logger.Debug(p.currentToken)
+	p.logger.Debug(p.peekToken)
 	for {
 		err := p.expectPeekMany(append([]lexer.TokenType{lexer.TIdentifier,
 			lexer.TNumericLiteral,
