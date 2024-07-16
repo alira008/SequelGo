@@ -38,7 +38,7 @@ select top 30 percent with ties LastPrice
     ,LowPrice
     ,QuoteTime 'QuoTime'
 from MarketTable mkt
-where 'QuoTime' < '6:30'
+where QuoTime < '6:30'
 order by Symbol
 ```
 
@@ -56,7 +56,7 @@ SELECT TOP 30 PERCENT WITH TIES LastPrice
     ,LowPrice
     ,QuoteTime 'QuoTime'
 FROM MarketTable mkt
-WHERE 'QuoTime' < '6:30'
+WHERE QuoTime < '6:30'
 ORDER BY Symbol
 ```
 
