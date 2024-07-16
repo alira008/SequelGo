@@ -125,20 +125,36 @@ func (p *Parser) peekErrorMany(ts []lexer.TokenType) error {
 	}
 
 	p.errorToken = ETPeek
+	arrows := ""
+	for i := 0; i < p.peekToken.Start.Col-1; i++ {
+		arrows += " "
+	}
+	for i := p.peekToken.Start.Col; i <= p.peekToken.End.Col; i++ {
+		arrows += "^"
+	}
 	return fmt.Errorf(
-		"expected (%s) got (%s) instead\n%s",
+		"expected (%s) got (%s) instead\n%s\n%s",
 		strings.Join(expectedTokenTypes, " or "),
 		p.peekToken.Type.String(),
 		p.l.CurrentLine(),
+		arrows,
 	)
 }
 
 func (p *Parser) currentErrorString(expected string) error {
 	p.errorToken = ETCurrent
+	arrows := ""
+	for i := 0; i < p.currentToken.Start.Col-1; i++ {
+		arrows += " "
+	}
+	for i := p.currentToken.Start.Col; i <= p.currentToken.End.Col; i++ {
+		arrows += "^"
+	}
 	return fmt.Errorf(
-		"expected %s\n%s",
+		"expected %s\n%s\n%s",
 		expected,
 		p.l.CurrentLine(),
+		arrows,
 	)
 }
 
@@ -153,13 +169,15 @@ func (p *Parser) Parse() ast.Query {
 		stmt, err := p.parseStatement()
 
 		if err != nil {
+			var errMsg string
 			if p.errorToken == ETCurrent {
-				p.logger.Debugf("[Error Line: %d Col: %d]: %s", p.currentToken.End.Line,
+				errMsg = fmt.Sprintf("[Error Line: %d Col: %d]: %s", p.currentToken.End.Line,
 					p.currentToken.End.Col+1, err.Error())
 			} else {
-				p.logger.Debugf("[Error Line: %d Col: %d]: %s", p.peekToken.End.Line,
+				errMsg = fmt.Sprintf("[Error Line: %d Col: %d]: %s", p.peekToken.End.Line,
 					p.peekToken.End.Col+1, err.Error())
 			}
+			p.errors = append(p.errors, errMsg)
 			p.nextToken()
 			continue
 		}
@@ -1050,7 +1068,7 @@ func (p *Parser) parseNumericSize() (*ast.NumericSize, error) {
 	}
 	precision32 := uint32(precision)
 	if p.peekTokenIs(lexer.TRightParen) {
-        p.nextToken()
+		p.nextToken()
 		return &ast.NumericSize{Precision: precision32}, nil
 	}
 
