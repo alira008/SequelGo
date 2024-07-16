@@ -146,6 +146,12 @@ func (f *Formatter) visitExpression(expression ast.Expression) {
 	case *ast.ExprStar:
 		f.visitStarExpression()
 		break
+	case *ast.ExprWithAlias:
+		f.visitExpressionWithAlias(e)
+		break
+	case *ast.ExprComparisonOperator:
+		f.visitComparisonOperatorExpression(e)
+		break
 	}
 }
 
@@ -373,7 +379,7 @@ func (f *Formatter) visitSelectFetchClause(fetchArg *ast.FetchArg) {
 }
 
 func (f *Formatter) visitStringLiteralExpression(e *ast.ExprStringLiteral) {
-	f.formattedQuery += e.Value
+	f.formattedQuery += fmt.Sprintf("'%s'", e.Value)
 }
 
 func (f *Formatter) visitNumberLiteralExpression(e *ast.ExprNumberLiteral) {
@@ -394,4 +400,40 @@ func (f *Formatter) visitQuotedIdentifierExpression(e *ast.ExprQuotedIdentifier)
 
 func (f *Formatter) visitStarExpression() {
 	f.formattedQuery += "*"
+}
+
+func (f *Formatter) visitExpressionWithAlias(e *ast.ExprWithAlias) {
+	f.visitExpression(e.Expression)
+	f.printSpace()
+	if e.AsTokenPresent {
+		f.printKeyword("as ")
+	}
+	f.visitExpression(e.Alias)
+}
+
+func (f *Formatter) visitComparisonOperatorExpression(e *ast.ExprComparisonOperator) {
+	f.visitExpression(e.Left)
+	f.printSpace()
+    f.visitComparisonOperatorType(e.Operator)
+	f.printSpace()
+	f.visitExpression(e.Right)
+}
+
+func (f *Formatter) visitComparisonOperatorType(op ast.ComparisonOperatorType) {
+	switch op {
+	case ast.ComparisonOpEqual:
+		f.formattedQuery += "="
+	case ast.ComparisonOpGreater:
+		f.formattedQuery += ">"
+	case ast.ComparisonOpGreaterEqual:
+		f.formattedQuery += ">="
+	case ast.ComparisonOpLess:
+		f.formattedQuery += "<"
+	case ast.ComparisonOpLessEqual:
+		f.formattedQuery += "<="
+	case ast.ComparisonOpNotEqualArrow:
+		f.formattedQuery += "<>"
+	case ast.ComparisonOpNotEqualBang:
+		f.formattedQuery += "!="
+	}
 }
