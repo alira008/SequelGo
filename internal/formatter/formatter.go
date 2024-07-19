@@ -149,9 +149,66 @@ func (f *Formatter) visitExpression(expression ast.Expression) {
 	case *ast.ExprWithAlias:
 		f.visitExpressionWithAlias(e)
 		break
-	case *ast.ExprComparisonOperator:
-		f.visitComparisonOperatorExpression(e)
+	case *ast.ExprCompoundIdentifier:
+		f.visitExpressionCompoundIdentifier(e)
 		break
+	case *ast.ExprSubquery:
+		f.visitExpressionSubquery(e)
+		break
+	case *ast.ExprExpressionList:
+		f.visitExpressionExpresssionList(e)
+		break
+	// case *ast.ExprFunction:
+	// 	f.visitExpressionFunction(e)
+	// 	break
+	case *ast.ExprFunctionCall:
+		f.visitExpressionFunctionCall(e)
+		break
+	// case *ast.ExprCast:
+	// 	f.visitExpressionCast(e)
+	// 	break
+	// case *ast.ExprUnaryOperator:
+	// 	f.visitUnaryOperatorExpression(e)
+	// 	break
+	// case *ast.ExprComparisonOperator:
+	// 	f.visitComparisonOperatorExpression(e)
+	// 	break
+	// case *ast.ExprArithmeticOperator:
+	// 	f.visitArithmeticOperatorExpression(e)
+	// 	break
+	// case *ast.ExprAndLogicalOperator:
+	// 	f.visitAndLogicalOperatorExpression(e)
+	// 	break
+	// case *ast.ExprAllLogicalOperator:
+	// 	f.visitAllLogicalOperatorExpression(e)
+	// 	break
+	// case *ast.ExprBetweenLogicalOperator:
+	// 	f.visitBetweenLogicalOperatorExpression(e)
+	// 	break
+	// case *ast.ExprExistsLogicalOperator:
+	// 	f.visitExistsLogicalOperatorExpression(e)
+	// 	break
+	// case *ast.ExprInSubqueryLogicalOperator:
+	// 	f.visitInSubqueryLogicalOperatorExpression(e)
+	// 	break
+	// case *ast.ExprInLogicalOperator:
+	// 	f.visitInLogicalOperatorExpression(e)
+	// 	break
+	// case *ast.ExprLikeLogicalOperator:
+	// 	f.visitLikeLogicalOperatorExpression(e)
+	// 	break
+	// case *ast.ExprNotLogicalOperator:
+	// 	f.visitNotLogicalOperatorExpression(e)
+	// 	break
+	// case *ast.ExprOrLogicalOperator:
+	// 	f.visitOrLogicalOperatorExpression(e)
+	// 	break
+	// case *ast.ExprSomeLogicalOperator:
+	// 	f.visitSomeLogicalOperatorExpression(e)
+	// 	break
+	// case *ast.ExprAnyLogicalOperator:
+	// 	f.visitAnyLogicalOperatorExpression(e)
+	// 	break
 	}
 }
 
@@ -414,9 +471,75 @@ func (f *Formatter) visitExpressionWithAlias(e *ast.ExprWithAlias) {
 func (f *Formatter) visitComparisonOperatorExpression(e *ast.ExprComparisonOperator) {
 	f.visitExpression(e.Left)
 	f.printSpace()
-    f.visitComparisonOperatorType(e.Operator)
+	f.visitComparisonOperatorType(e.Operator)
 	f.printSpace()
 	f.visitExpression(e.Right)
+}
+
+func (f *Formatter) visitExpressionCompoundIdentifier(e *ast.ExprCompoundIdentifier) {
+	for i, e := range e.Identifiers {
+		if i > 0 {
+			f.printSelectColumnComma()
+		}
+		f.visitExpression(e)
+	}
+}
+
+func (f *Formatter) visitExpressionSubquery(e *ast.ExprSubquery) {
+	f.formattedQuery += "("
+	f.increaseIndent()
+	f.printNewLine()
+
+	f.printKeyword("select ")
+	if e.Distinct {
+		f.printKeyword("distinct ")
+	}
+	f.visitSelectTopArg(e.Top)
+	f.visitSelectItems(e.SelectItems)
+	f.visitSelectTableArg(e.Table)
+	f.visitSelectWhereClause(e.WhereClause)
+	f.visitSelectGroupByClause(e.GroupByClause)
+	f.visitSelectHavingClause(e.HavingClause)
+	f.visitSelectOrderByClause(e.OrderByClause)
+
+	f.printNewLine()
+	f.decreaseIndent()
+	f.formattedQuery += ")"
+}
+
+func (f *Formatter) visitExpressionExpresssionList(e *ast.ExprExpressionList) {
+	f.formattedQuery += "("
+	for i, e := range e.List {
+		if i > 0 {
+			f.printExpressionListComma()
+		}
+		f.visitExpression(e)
+	}
+	f.formattedQuery += ")"
+}
+
+func (f *Formatter) visitExpressionFunction(e *ast.ExprFunction) {
+	switch e.Type {
+	case ast.FuncUserDefined:
+		f.visitExpression(e)
+		break
+	default:
+		f.printKeyword(e.Name.TokenLiteral())
+		break
+	}
+}
+
+func (f *Formatter) visitExpressionFunctionCall(e *ast.ExprFunctionCall) {
+    f.visitExpressionFunction(e.Name)
+	f.formattedQuery += "("
+	for i, e := range e.Args {
+		if i > 0 {
+			f.printExpressionListComma()
+		}
+		f.visitExpression(e)
+	}
+	f.formattedQuery += ")"
+    // f.visitOverClause(e.OverClause)
 }
 
 func (f *Formatter) visitComparisonOperatorType(op ast.ComparisonOperatorType) {
