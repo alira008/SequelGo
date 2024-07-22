@@ -100,6 +100,14 @@ func (f *Formatter) printInListComma() {
 	}
 }
 
+func (f *Formatter) printInListNewLine() {
+	if f.settings.IndentInLists {
+		f.increaseIndent()
+		f.printNewLine()
+		f.decreaseIndent()
+	}
+}
+
 func (f *Formatter) printColumnListOpenParen() {
 	f.increaseIndent()
 	f.formattedQuery += "("
@@ -164,58 +172,58 @@ func (f *Formatter) visitExpression(expression ast.Expression) {
 	case *ast.ExprFunctionCall:
 		f.visitExpressionFunctionCall(e)
 		break
-	// case *ast.ExprCast:
-	// 	f.visitExpressionCast(e)
-	// 	break
-	// case *ast.ExprUnaryOperator:
-	// 	f.visitUnaryOperatorExpression(e)
-	// 	break
-	// case *ast.ExprComparisonOperator:
-	// 	f.visitComparisonOperatorExpression(e)
-	// 	break
-	// case *ast.ExprArithmeticOperator:
-	// 	f.visitArithmeticOperatorExpression(e)
-	// 	break
-	// case *ast.ExprAndLogicalOperator:
-	// 	f.visitAndLogicalOperatorExpression(e)
-	// 	break
-	// case *ast.ExprAllLogicalOperator:
-	// 	f.visitAllLogicalOperatorExpression(e)
-	// 	break
-	// case *ast.ExprBetweenLogicalOperator:
-	// 	f.visitBetweenLogicalOperatorExpression(e)
-	// 	break
-	// case *ast.ExprExistsLogicalOperator:
-	// 	f.visitExistsLogicalOperatorExpression(e)
-	// 	break
-	// case *ast.ExprInSubqueryLogicalOperator:
-	// 	f.visitInSubqueryLogicalOperatorExpression(e)
-	// 	break
-	// case *ast.ExprInLogicalOperator:
-	// 	f.visitInLogicalOperatorExpression(e)
-	// 	break
-	// case *ast.ExprLikeLogicalOperator:
-	// 	f.visitLikeLogicalOperatorExpression(e)
-	// 	break
-	// case *ast.ExprNotLogicalOperator:
-	// 	f.visitNotLogicalOperatorExpression(e)
-	// 	break
-	// case *ast.ExprOrLogicalOperator:
-	// 	f.visitOrLogicalOperatorExpression(e)
-	// 	break
-	// case *ast.ExprSomeLogicalOperator:
-	// 	f.visitSomeLogicalOperatorExpression(e)
-	// 	break
-	// case *ast.ExprAnyLogicalOperator:
-	// 	f.visitAnyLogicalOperatorExpression(e)
-	// 	break
+	case *ast.ExprCast:
+		f.visitExpressionCast(e)
+		break
+	case *ast.ExprUnaryOperator:
+		f.visitUnaryOperatorExpression(e)
+		break
+	case *ast.ExprComparisonOperator:
+		f.visitComparisonOperatorExpression(e)
+		break
+	case *ast.ExprArithmeticOperator:
+		f.visitArithmeticOperatorExpression(e)
+		break
+	case *ast.ExprAndLogicalOperator:
+		f.visitAndLogicalOperatorExpression(e)
+		break
+	case *ast.ExprAllLogicalOperator:
+		f.visitAllLogicalOperatorExpression(e)
+		break
+	case *ast.ExprBetweenLogicalOperator:
+		f.visitBetweenLogicalOperatorExpression(e)
+		break
+	case *ast.ExprExistsLogicalOperator:
+		f.visitExistsLogicalOperatorExpression(e)
+		break
+	case *ast.ExprInSubqueryLogicalOperator:
+		f.visitInSubqueryLogicalOperatorExpression(e)
+		break
+	case *ast.ExprInLogicalOperator:
+		f.visitInLogicalOperatorExpression(e)
+		break
+	case *ast.ExprLikeLogicalOperator:
+		f.visitLikeLogicalOperatorExpression(e)
+		break
+	case *ast.ExprNotLogicalOperator:
+		f.visitNotLogicalOperatorExpression(e)
+		break
+	case *ast.ExprOrLogicalOperator:
+		f.visitOrLogicalOperatorExpression(e)
+		break
+	case *ast.ExprSomeLogicalOperator:
+		f.visitSomeLogicalOperatorExpression(e)
+		break
+	case *ast.ExprAnyLogicalOperator:
+		f.visitAnyLogicalOperatorExpression(e)
+		break
 	}
 }
 
 func (f *Formatter) visitSelectQuery(selectStatement *ast.SelectStatement) {
-	f.printKeyword("select ")
+	f.printKeyword("select")
 	if selectStatement.SelectBody.Distinct {
-		f.printKeyword("distinct ")
+		f.printKeyword(" distinct")
 	}
 	f.visitSelectTopArg(selectStatement.SelectBody.Top)
 	f.visitSelectItems(selectStatement.SelectBody.SelectItems)
@@ -231,19 +239,23 @@ func (f *Formatter) visitSelectTopArg(selectTopArg *ast.TopArg) {
 		return
 	}
 
-	f.printKeyword("top ")
+	f.printKeyword(" top ")
 	f.visitExpression(selectTopArg.Quantity)
-	f.printSpace()
 	if selectTopArg.Percent {
-		f.printKeyword("percent ")
+		f.printKeyword(" percent")
 	}
 	if selectTopArg.WithTies {
-		f.printKeyword("with ties ")
+		f.printKeyword(" with ties")
 	}
 }
 
 func (f *Formatter) visitSelectItems(items []ast.Expression) {
 	for i, e := range items {
+        if i == 0 {
+            f.increaseIndent()
+            f.printNewLine()
+            f.decreaseIndent()
+        }
 		if i > 0 {
 			f.printSelectColumnComma()
 		}
@@ -368,15 +380,14 @@ func (f *Formatter) visitSelectOrderByClause(orderByClause *ast.OrderByClause) {
 			f.printSelectColumnComma()
 		}
 		f.visitExpression(e.Column)
-		f.printSpace()
 		switch e.Type {
 		case ast.OBNone:
 			break
 		case ast.OBAsc:
-			f.printKeyword("asc ")
+			f.printKeyword(" asc")
 			break
 		case ast.OBDesc:
-			f.printKeyword("desc ")
+			f.printKeyword(" desc")
 			break
 		}
 	}
@@ -394,7 +405,7 @@ func (f *Formatter) visitSelectOffsetFetchClause(offsetFetchClause *ast.OffsetFe
 
 func (f *Formatter) visitSelectOffsetClause(offsetArg ast.OffsetArg) {
 	f.printNewLine()
-	f.printKeyword("offset ")
+	f.printKeyword(" offset ")
 	f.visitExpression(offsetArg.Value)
 	f.printSpace()
 	switch offsetArg.RowOrRows {
@@ -479,7 +490,7 @@ func (f *Formatter) visitComparisonOperatorExpression(e *ast.ExprComparisonOpera
 func (f *Formatter) visitExpressionCompoundIdentifier(e *ast.ExprCompoundIdentifier) {
 	for i, e := range e.Identifiers {
 		if i > 0 {
-			f.printSelectColumnComma()
+			f.formattedQuery += "."
 		}
 		f.visitExpression(e)
 	}
@@ -488,11 +499,12 @@ func (f *Formatter) visitExpressionCompoundIdentifier(e *ast.ExprCompoundIdentif
 func (f *Formatter) visitExpressionSubquery(e *ast.ExprSubquery) {
 	f.formattedQuery += "("
 	f.increaseIndent()
+	f.increaseIndent()
 	f.printNewLine()
 
-	f.printKeyword("select ")
+	f.printKeyword("select")
 	if e.Distinct {
-		f.printKeyword("distinct ")
+		f.printKeyword(" distinct")
 	}
 	f.visitSelectTopArg(e.Top)
 	f.visitSelectItems(e.SelectItems)
@@ -502,6 +514,7 @@ func (f *Formatter) visitExpressionSubquery(e *ast.ExprSubquery) {
 	f.visitSelectHavingClause(e.HavingClause)
 	f.visitSelectOrderByClause(e.OrderByClause)
 
+	f.decreaseIndent()
 	f.printNewLine()
 	f.decreaseIndent()
 	f.formattedQuery += ")"
@@ -530,7 +543,7 @@ func (f *Formatter) visitExpressionFunction(e *ast.ExprFunction) {
 }
 
 func (f *Formatter) visitExpressionFunctionCall(e *ast.ExprFunctionCall) {
-    f.visitExpressionFunction(e.Name)
+	f.visitExpressionFunction(e.Name)
 	f.formattedQuery += "("
 	for i, e := range e.Args {
 		if i > 0 {
@@ -539,7 +552,55 @@ func (f *Formatter) visitExpressionFunctionCall(e *ast.ExprFunctionCall) {
 		f.visitExpression(e)
 	}
 	f.formattedQuery += ")"
-    // f.visitOverClause(e.OverClause)
+	if e.OverClause != nil {
+		f.visitOverClause(e.OverClause)
+	}
+}
+
+func (f *Formatter) visitOverClause(oc *ast.FunctionOverClause) {
+	if len(oc.PartitionByClause) > 0 {
+		f.printKeyword("partition by ")
+	}
+	for i, e := range oc.PartitionByClause {
+		if i > 0 {
+			f.printExpressionListComma()
+		}
+		f.visitExpression(e)
+	}
+
+	if len(oc.OrderByClause) > 0 {
+		f.printKeyword("order by ")
+	}
+	for i, e := range oc.OrderByClause {
+		if i > 0 {
+			f.printExpressionListComma()
+		}
+		f.visitExpression(e)
+	}
+
+	if oc.WindowFrameClause != nil {
+		f.visitWindowFrameClause(oc.WindowFrameClause)
+	}
+}
+
+func (f *Formatter) visitWindowFrameClause(wf *ast.WindowFrameClause) {
+	f.visitRowsOrRange(wf.RowsOrRange)
+
+	if wf.End != nil {
+		f.printKeyword("between ")
+	}
+
+	f.visitWindowFrameBoundType(wf.Start.Type)
+	f.visitExpression(wf.Start.Expression)
+
+	if wf.End == nil {
+		return
+	}
+
+	f.printKeyword("and ")
+	f.visitWindowFrameBoundType(wf.End.Type)
+	f.visitExpression(wf.End.Expression)
+
 }
 
 func (f *Formatter) visitComparisonOperatorType(op ast.ComparisonOperatorType) {
@@ -559,4 +620,238 @@ func (f *Formatter) visitComparisonOperatorType(op ast.ComparisonOperatorType) {
 	case ast.ComparisonOpNotEqualBang:
 		f.formattedQuery += "!="
 	}
+}
+
+func (f *Formatter) visitWindowFrameBoundType(b ast.WindowFrameBoundType) {
+	switch b {
+	case ast.WFBTPreceding:
+		f.printKeyword("preceding ")
+	case ast.WFBTFollowing:
+		f.printKeyword("following ")
+	case ast.WFBTCurrentRow:
+		f.printKeyword("current row ")
+	case ast.WFBTUnboundedPreceding:
+		f.printKeyword("unbounded preceding ")
+	case ast.WFBTUnboundedFollowing:
+		f.printKeyword("unbounded following ")
+	}
+}
+
+func (f *Formatter) visitRowsOrRange(r ast.RowsOrRangeType) {
+	switch r {
+	case ast.RRTRows:
+		f.printKeyword("rows ")
+	case ast.RRTRange:
+		f.printKeyword("range ")
+	}
+}
+
+func (f *Formatter) visitExpressionCast(e *ast.ExprCast) {
+	f.printKeyword("cast(")
+	f.visitExpression(e.Expression)
+	f.printKeyword(" as ")
+	f.visitDataType(&e.DataType)
+	f.formattedQuery += ")"
+}
+
+func (f *Formatter) visitDataType(dt *ast.DataType) {
+	switch dt.Kind {
+	case ast.DTInt:
+		f.printKeyword("INT")
+		break
+	case ast.DTBigInt:
+		f.printKeyword("BIGINT")
+		break
+	case ast.DTTinyInt:
+		f.printKeyword("TINYINT")
+		break
+	case ast.DTSmallInt:
+		f.printKeyword("SMALLINT")
+		break
+	case ast.DTBit:
+		f.printKeyword("BIT")
+		break
+	case ast.DTFloat:
+		f.printKeyword("FLOAT")
+		if dt.FloatPrecision != nil {
+			f.formattedQuery += fmt.Sprintf("(%d)", *dt.FloatPrecision)
+		}
+		break
+	case ast.DTReal:
+		f.printKeyword("REAL")
+		break
+	case ast.DTDate:
+		f.printKeyword("DATE")
+		break
+	case ast.DTDatetime:
+		f.printKeyword("DATETIME")
+		break
+	case ast.DTTime:
+		f.printKeyword("TIME")
+		break
+	case ast.DTDecimal:
+		f.printKeyword("DECIMAL")
+		if dt.DecimalNumericSize != nil {
+			f.visitNumericSize(dt.DecimalNumericSize)
+		}
+		break
+	case ast.DTNumeric:
+		f.printKeyword("NUMERIC")
+		if dt.DecimalNumericSize != nil {
+			f.visitNumericSize(dt.DecimalNumericSize)
+		}
+		break
+	case ast.DTVarchar:
+		f.printKeyword("VARCHAR")
+		if dt.VarcharLength != nil {
+			f.formattedQuery += fmt.Sprintf("(%d)", *dt.VarcharLength)
+		}
+		break
+	}
+}
+
+func (f *Formatter) visitNumericSize(ns *ast.NumericSize) {
+	f.formattedQuery += fmt.Sprintf("%d", ns.Precision)
+	if ns.Scale != nil {
+		f.formattedQuery += fmt.Sprintf(", %d", *ns.Scale)
+	}
+}
+
+func (f *Formatter) visitUnaryOperatorExpression(e *ast.ExprUnaryOperator) {
+	f.visitUnaryOperatorType(e.Operator)
+	f.visitExpression(e.Right)
+}
+
+func (f *Formatter) visitUnaryOperatorType(o ast.UnaryOperatorType) {
+	switch o {
+	case ast.UnaryOpPlus:
+		f.formattedQuery += "+"
+	case ast.UnaryOpMinus:
+		f.formattedQuery += "-"
+	}
+}
+
+func (f *Formatter) visitArithmeticOperatorExpression(e *ast.ExprArithmeticOperator) {
+	f.visitExpression(e.Left)
+	f.visitArithmeticOperatorType(e.Operator)
+	f.visitExpression(e.Right)
+}
+
+func (f *Formatter) visitArithmeticOperatorType(o ast.ArithmeticOperatorType) {
+	switch o {
+	case ast.ArithmeticOpPlus:
+		f.formattedQuery += "+"
+	case ast.ArithmeticOpMinus:
+		f.formattedQuery += "-"
+	case ast.ArithmeticOpMult:
+		f.formattedQuery += "*"
+	case ast.ArithmeticOpDiv:
+		f.formattedQuery += "/"
+	case ast.ArithmeticOpMod:
+		f.formattedQuery += "%"
+	}
+}
+
+func (f *Formatter) visitAndLogicalOperatorExpression(e *ast.ExprAndLogicalOperator) {
+	f.visitExpression(e.Left)
+
+	f.increaseIndent()
+	f.printNewLine()
+
+	f.printKeyword("and ")
+	f.visitExpression(e.Right)
+
+	f.decreaseIndent()
+}
+
+func (f *Formatter) visitAllLogicalOperatorExpression(e *ast.ExprAllLogicalOperator) {
+	f.visitExpression(e.ScalarExpression)
+	f.visitComparisonOperatorType(e.ComparisonOperator)
+	f.printKeyword(" all ")
+	f.visitExpressionSubquery(e.Subquery)
+}
+
+func (f *Formatter) visitBetweenLogicalOperatorExpression(e *ast.ExprBetweenLogicalOperator) {
+	f.visitExpression(e.TestExpression)
+	if e.Not {
+		f.printKeyword(" not")
+	}
+	f.printKeyword(" between ")
+	f.visitExpression(e.Begin)
+	f.printKeyword(" and ")
+	f.visitExpression(e.End)
+}
+
+func (f *Formatter) visitExistsLogicalOperatorExpression(e *ast.ExprExistsLogicalOperator) {
+	f.printKeyword("exists")
+	f.visitExpressionSubquery(e.Subquery)
+}
+
+func (f *Formatter) visitInSubqueryLogicalOperatorExpression(e *ast.ExprInSubqueryLogicalOperator) {
+	f.visitExpression(e.TestExpression)
+	if e.Not {
+		f.printKeyword(" not")
+	}
+	f.printKeyword(" in ")
+	f.visitExpressionSubquery(e.Subquery)
+}
+
+func (f *Formatter) visitInLogicalOperatorExpression(e *ast.ExprInLogicalOperator) {
+	f.visitExpression(e.TestExpression)
+	if e.Not {
+		f.printKeyword(" not")
+	}
+	f.printKeyword(" in ")
+	f.formattedQuery += "("
+	for i, e := range e.Expressions {
+		if i == 0 && f.settings.IndentInLists {
+			f.increaseIndent()
+			f.increaseIndent()
+			f.printNewLine()
+			f.decreaseIndent()
+		}
+		if i > 0 {
+			f.printInListComma()
+		}
+		f.visitExpression(e)
+	}
+	if f.settings.IndentInLists {
+		f.printNewLine()
+		f.decreaseIndent()
+	}
+	f.formattedQuery += ")"
+}
+
+func (f *Formatter) visitLikeLogicalOperatorExpression(e *ast.ExprLikeLogicalOperator) {
+	f.visitExpression(e.MatchExpression)
+	if e.Not {
+		f.printKeyword(" not")
+	}
+	f.printKeyword(" like ")
+	f.visitExpression(e.Pattern)
+}
+
+func (f *Formatter) visitNotLogicalOperatorExpression(e *ast.ExprNotLogicalOperator) {
+	f.printKeyword("not ")
+	f.visitExpression(e.Expression)
+}
+
+func (f *Formatter) visitOrLogicalOperatorExpression(e *ast.ExprOrLogicalOperator) {
+	f.visitExpression(e.Left)
+	f.printKeyword(" or ")
+	f.visitExpression(e.Right)
+}
+
+func (f *Formatter) visitSomeLogicalOperatorExpression(e *ast.ExprSomeLogicalOperator) {
+	f.visitExpression(e.ScalarExpression)
+	f.visitComparisonOperatorType(e.ComparisonOperator)
+	f.printKeyword(" some ")
+	f.visitExpressionSubquery(e.Subquery)
+}
+
+func (f *Formatter) visitAnyLogicalOperatorExpression(e *ast.ExprAnyLogicalOperator) {
+	f.visitExpression(e.ScalarExpression)
+	f.visitComparisonOperatorType(e.ComparisonOperator)
+	f.printKeyword(" any ")
+	f.visitExpressionSubquery(e.Subquery)
 }

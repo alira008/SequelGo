@@ -214,7 +214,7 @@ func (p *Parser) parseTopArg() (*ast.TopArg, error) {
 	if err := p.expectPeek(lexer.TNumericLiteral); err != nil {
 		return nil, err
 	}
-    expr := &ast.ExprNumberLiteral{Value: p.currentToken.Value}
+	expr := &ast.ExprNumberLiteral{Value: p.currentToken.Value}
 
 	topArg := ast.TopArg{Quantity: expr}
 	if p.peekTokenIs(lexer.TPercent) {
@@ -225,7 +225,7 @@ func (p *Parser) parseTopArg() (*ast.TopArg, error) {
 	if p.peekTokenIs(lexer.TWith) {
 		p.nextToken()
 
-        err := p.expectPeek(lexer.TTies)
+		err := p.expectPeek(lexer.TTies)
 		if err != nil {
 			return nil, err
 		}
@@ -619,6 +619,7 @@ func (p *Parser) parseWhereExpression() (ast.Expression, error) {
 		p.errorToken = ETCurrent
 		return nil, p.currentErrorString("expected expression after 'WHERE' keyword")
 	}
+	p.logger.Debugf("expr: %s\n", expr)
 	return expr, nil
 }
 
@@ -1252,7 +1253,7 @@ func (p *Parser) parseExpression(precedence Precedence) (ast.Expression, error) 
 }
 
 func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
-	// p.logger.Debugf("parsing prefix expression\n")
+	p.logger.Debugf("parsing prefix expression. currentToken %s", p.currentToken)
 	var newExpr ast.Expression
 	switch p.currentToken.Type {
 	case lexer.TIdentifier, lexer.TNumericLiteral, lexer.TStringLiteral, lexer.TAsterisk, lexer.TLocalVariable, lexer.TQuotedIdentifier:
@@ -1635,6 +1636,8 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		p.logger.Debugln(expr.TokenLiteral())
 		// check if it is a subquery
 		newExpr = &ast.ExprNotLogicalOperator{
 			Expression: expr,
@@ -1802,26 +1805,30 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 			Right:    right,
 		}, nil
 	case lexer.TBetween:
-		precedence := checkPrecedence(p.currentToken.Type)
 		p.nextToken()
 
-		right, err := p.parseExpression(precedence)
+		begin, err := p.parsePrefixExpression()
 		if err != nil {
 			return nil, err
 		}
+		p.logger.Debugf("between: begin %s", begin.TokenLiteral())
+		if err := p.expectPeek(lexer.TAnd); err != nil {
+			return nil, err
+		}
+
+		p.nextToken()
+		end, err := p.parsePrefixExpression()
+		if err != nil {
+			return nil, err
+		}
+		p.logger.Debugf("between: end %s", end.TokenLiteral())
 
 		// check if we have and operator
-		switch v := right.(type) {
-		case *ast.ExprAndLogicalOperator:
-			return &ast.ExprBetweenLogicalOperator{
-				TestExpression: left,
-				Begin:          v.Left,
-				End:            v.Right,
-			}, nil
-		default:
-			p.errorToken = ETCurrent
-			return nil, p.currentErrorString("Expected 'AND' logical operator after 'BETWEEN' keyword")
-		}
+		return &ast.ExprBetweenLogicalOperator{
+			TestExpression: left,
+			Begin:          begin,
+			End:            end,
+		}, nil
 	case lexer.TIn:
 		p.expectPeek(lexer.TLeftParen)
 		if p.peekTokenIs(lexer.TSelect) {
@@ -1871,27 +1878,31 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 		p.nextToken()
 
 		if p.currentTokenIs(lexer.TBetween) {
-			precedence := checkPrecedence(p.currentToken.Type)
 			p.nextToken()
 
-			right, err := p.parseExpression(precedence)
+			begin, err := p.parsePrefixExpression()
 			if err != nil {
 				return nil, err
 			}
+			p.logger.Debugf("between: begin %s", begin.TokenLiteral())
+			if err := p.expectPeek(lexer.TAnd); err != nil {
+				return nil, err
+			}
+
+			p.nextToken()
+			end, err := p.parsePrefixExpression()
+			if err != nil {
+				return nil, err
+			}
+			p.logger.Debugf("between: end %s", end.TokenLiteral())
 
 			// check if we have and operator
-			switch v := right.(type) {
-			case *ast.ExprAndLogicalOperator:
-				return &ast.ExprBetweenLogicalOperator{
-					TestExpression: left,
-					Not:            true,
-					Begin:          v.Left,
-					End:            v.Right,
-				}, nil
-			default:
-				p.errorToken = ETCurrent
-				return nil, p.currentErrorString("Expected (Subquery) after 'NOT BETWEEN' keyword")
-			}
+			return &ast.ExprBetweenLogicalOperator{
+				TestExpression: left,
+                Not: true,
+				Begin:          begin,
+				End:            end,
+			}, nil
 		} else if p.currentTokenIs(lexer.TIn) {
 			p.expectPeek(lexer.TLeftParen)
 			if p.peekTokenIs(lexer.TSelect) {
