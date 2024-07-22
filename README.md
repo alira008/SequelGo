@@ -1,4 +1,6 @@
-# T-SQL Interpreter
+# SequelGo
+
+T-SQL tools built upon interpreter built in Go
 
 ## Formatter
 
