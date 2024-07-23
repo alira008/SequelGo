@@ -198,14 +198,99 @@ func (p *Parser) parseStatement() (ast.Statement, error) {
 		}
 
 		return &ast.SelectStatement{SelectBody: &body}, nil
+	case lexer.TWith:
+		select_statement, err := p.parseSelectStatement()
+		if err != nil {
+			return nil, err
+		}
+
+		return select_statement, nil
 	default:
 		return nil, nil
 		// return nil, fmt.Errorf("unknown statement type %s", p.currentToken.Value)
 	}
 }
 
-func (p *Parser) parseSelectStatement() *ast.SelectStatement {
-	return &ast.SelectStatement{}
+func (p *Parser) parseSelectStatement() (*ast.SelectStatement, error) {
+	p.logger.Debugln("parsing select statement with cte")
+	ctes := []ast.CommmonTableExpression{}
+	for !p.peekTokenIs(lexer.TSelect) {
+		if len(ctes) > 0 {
+			if err := p.expectPeek(lexer.TComma); err != nil {
+				return nil, err
+			}
+		}
+		p.logger.Debugln("cte")
+
+		// check for expression name
+		if err := p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier, lexer.TQuotedIdentifier}); err != nil {
+			return nil, err
+		}
+
+		cteName := p.currentToken.Value
+		var exprList *ast.ExprExpressionList
+
+		if p.peekTokenIs(lexer.TLeftParen) {
+			// go to the left paren
+			p.nextToken()
+
+			// parse column list
+			expressionList, err := p.parseExpressionList()
+			if err != nil {
+				return nil, err
+			}
+			exprList = &expressionList
+
+			// go to the right paren
+			p.nextToken()
+		}
+
+		if err := p.expectPeek(lexer.TAs); err != nil {
+			return nil, err
+		}
+
+		if err := p.expectPeek(lexer.TLeftParen); err != nil {
+			return nil, err
+		}
+
+		if err := p.expectPeek(lexer.TSelect); err != nil {
+			return nil, err
+		}
+
+		selectBody, err := p.parseSelectBody()
+		if err != nil {
+			return nil, err
+		}
+
+		if selectBody.OrderByClause != nil && len(selectBody.OrderByClause.Expressions) > 0 && selectBody.Top == nil {
+			return nil, p.currentErrorString("Order by is not allowed in cte query unless top clause is specified")
+		}
+
+		if err := p.expectPeek(lexer.TRightParen); err != nil {
+			return nil, err
+		}
+
+		cte := ast.CommmonTableExpression{
+			Name:    cteName,
+			Columns: exprList,
+			Query:   selectBody,
+		}
+		ctes = append(ctes, cte)
+	}
+
+	if err := p.expectPeekMany([]lexer.TokenType{lexer.TSelect}); err != nil {
+		return nil, err
+	}
+
+	p.logger.Debugln("select body of select statement with cte")
+	if p.currentTokenIs(lexer.TSelect) {
+		selectBody, err := p.parseSelectBody()
+		if err != nil {
+			return nil, err
+		}
+		return &ast.SelectStatement{CTE: &ctes, SelectBody: &selectBody}, nil
+	}
+	return &ast.SelectStatement{}, nil
 }
 
 func (p *Parser) parseTopArg() (*ast.TopArg, error) {
@@ -1899,7 +1984,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 			// check if we have and operator
 			return &ast.ExprBetweenLogicalOperator{
 				TestExpression: left,
-                Not: true,
+				Not:            true,
 				Begin:          begin,
 				End:            end,
 			}, nil

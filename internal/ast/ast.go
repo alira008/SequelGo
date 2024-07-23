@@ -29,10 +29,14 @@ type SetLocalVariableStatement struct{}
 type InsertStatement struct{}
 type UpdateStatement struct{}
 type DeleteStatement struct{}
-type CommmonTableExpression struct{}
+type CommmonTableExpression struct {
+	Name    string
+	Columns *ExprExpressionList
+	Query   SelectBody
+}
 
 type SelectStatement struct {
-	CTE        *CommmonTableExpression
+	CTE        *[]CommmonTableExpression
 	SelectBody *SelectBody
 }
 
@@ -59,8 +63,8 @@ type TableArg struct {
 }
 
 type TableSource struct {
-	Type           TableSourceType
-	Source         Expression
+	Type   TableSourceType
+	Source Expression
 }
 
 type TableSourceType uint8
@@ -152,9 +156,31 @@ func (ds DeclareStatement) TokenLiteral() string {
 	return ""
 }
 
+func (cte CommmonTableExpression) expressionNode() {}
+func (cte CommmonTableExpression) TokenLiteral() string {
+	var str strings.Builder
+	str.WriteString(fmt.Sprintf("WITH AS %s", cte.Name))
+	if cte.Columns != nil {
+		str.WriteString(cte.Columns.TokenLiteral())
+	}
+	str.WriteString(" ( ")
+	str.WriteString(cte.Query.TokenLiteral())
+	str.WriteString(" )")
+	return str.String()
+}
+
 func (ss SelectStatement) statementNode() {}
 func (ss SelectStatement) TokenLiteral() string {
-	// fmt.Printf("select statement %s\n", ss.SelectBody.TokenLiteral())
+	var str strings.Builder
+    if(ss.CTE != nil){
+        ctes:= []string{}
+
+        for _, cte := range *ss.CTE {
+            ctes = append(ctes, cte.TokenLiteral())
+        }
+
+        str.WriteString(strings.Join(ctes, ", "))
+    }
 	return ss.SelectBody.TokenLiteral()
 }
 

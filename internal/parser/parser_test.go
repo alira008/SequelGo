@@ -43,6 +43,80 @@ func TestParseBasicSelectQuery(t *testing.T) {
 	test(t, expected, input)
 }
 
+func TestParseBasicSelectQueryWithCte(t *testing.T) {
+	select_statement := ast.SelectStatement{
+		CTE: &[]ast.CommmonTableExpression{
+			{
+				Name: "testctename",
+				Columns: &ast.ExprExpressionList{
+					List: []ast.Expression{
+						&ast.ExprIdentifier{Value: "LastPrice"},
+						&ast.ExprIdentifier{Value: "PercentChange"},
+					},
+				},
+				Query: ast.SelectBody{
+					SelectItems: []ast.Expression{
+						&ast.ExprStar{},
+						&ast.ExprIdentifier{Value: "hello"},
+						&ast.ExprStringLiteral{Value: "yes"},
+					},
+					Table: &ast.TableArg{
+						Table: &ast.TableSource{
+							Type:   ast.TSTTable,
+							Source: &ast.ExprIdentifier{Value: "testtable"},
+						},
+					},
+				},
+			},
+			{
+				Name: "testctenamedos",
+				Query: ast.SelectBody{
+					SelectItems: []ast.Expression{
+						&ast.ExprIdentifier{Value: "FirstName"},
+						&ast.ExprIdentifier{Value: "LastName"},
+					},
+					Table: &ast.TableArg{
+						Table: &ast.TableSource{
+							Type:   ast.TSTTable,
+							Source: &ast.ExprIdentifier{Value: "Users"},
+						},
+					},
+				},
+			},
+		},
+		SelectBody: &ast.SelectBody{
+			SelectItems: []ast.Expression{
+				&ast.ExprStar{},
+				&ast.ExprIdentifier{Value: "hello"},
+				&ast.ExprStringLiteral{Value: "yes"},
+				&ast.ExprQuotedIdentifier{Value: "yessir"},
+				&ast.ExprLocalVariable{Value: "nosir"},
+				&ast.ExprCompoundIdentifier{Identifiers: []ast.Expression{
+					&ast.ExprQuotedIdentifier{Value: "superdb"},
+					&ast.ExprIdentifier{Value: "world"},
+					&ast.ExprStar{}}},
+			},
+			Table: &ast.TableArg{
+				Table: &ast.TableSource{
+					Type:   ast.TSTTable,
+					Source: &ast.ExprIdentifier{Value: "testtable"},
+				},
+			},
+			WhereClause: &ast.ExprComparisonOperator{
+				Left: &ast.ExprIdentifier{
+					Value: "LastPrice",
+				},
+				Operator: ast.ComparisonOpLess,
+				Right:    &ast.ExprNumberLiteral{Value: "10.0"}},
+		},
+	}
+	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
+
+	input := "with testctename (LastPrice, PercentChange) as (select *, hello, 'yes' FROM testtable), testctenamedos as (select FirstName, LastName from Users) select *,\n hello,\n 'yes',\n [yessir],\n @nosir, [superdb].world.* FROM testtable where LastPrice < 10.0"
+
+	test(t, expected, input)
+}
+
 func TestParseBasicSelectQueryWithCast(t *testing.T) {
 	float := uint32(24)
 	floatPrecision := &float
@@ -83,7 +157,7 @@ func TestParseBasicSelectQueryWithCast(t *testing.T) {
 	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
 
 	input := "select *,\n hello,\n 'yes',\n [yessir],\n @nosir, [superdb].world.* FROM"
-    input += " testtable where LastPrice < cast('10' as float(24))"
+	input += " testtable where LastPrice < cast('10' as float(24))"
 
 	test(t, expected, input)
 }
@@ -432,7 +506,7 @@ func test(t *testing.T, expected ast.Query, input string) {
 	query := p.Parse()
 
 	if len(query.Statements) != 1 {
-        t.Fatalf("expected 1 statement, got %d", len(query.Statements))
+		t.Fatalf("expected 1 statement, got %d", len(query.Statements))
 
 	}
 	for i, stmt := range query.Statements {
