@@ -17,7 +17,7 @@ type TokenType uint8
 const (
 	TEndOfFile TokenType = iota
 	TSyntaxError
-    TCommentLine
+	TCommentLine
 
 	TLocalVariable
 
@@ -253,6 +253,8 @@ const (
 	TWindow
 	TWith
 	TYear
+	TChecksum
+	TNewId
 )
 
 var Keywords = map[string]TokenType{
@@ -397,58 +399,60 @@ var Keywords = map[string]TokenType{
 	"round":         TRound,
 	"row":           TRow,
 	// "rowid":         TRowid,
-	"rows":          TRows,
-	"row_number":    TRowNumber,
-	"second":        TSecond,
-	"select":        TSelect,
-	"set":           TSet,
-	"sign":          TSign,
-	"sin":           TSin,
-	"smallint":      TSmallint,
-	"snapshot":      TSnapshot,
-	"some":          TSome,
-	"sqrt":          TSqrt,
-	"square":        TSquare,
-	"stage":         TStage,
-	"start":         TStart,
-	"tstatistics":   TStatistics,
-	"stdev":         TStdev,
-	"stdevp":        TStdevp,
-	"sum":           TSum,
-	"table":         TTable,
-	"tan":           TTan,
-	"temp":          TTemp,
-	"then":          TThen,
-	"ties":          TTies,
-	"time":          TTime,
-	"tinyint":       TTinyint,
-	"top":           TTop,
-	"transaction":   TTransaction,
-	"trigger":       TTrigger,
-	"true":          TTrue,
-	"truncate":      TTruncate,
-	"unbounded":     TUnbounded,
-	"uncommitted":   TUncommitted,
-	"union":         TUnion,
-	"unique":        TUnique,
-	"unlock":        TUnlock,
-	"update":        TUpdate,
-	"upper":         TUpper,
-	"use":           TUse,
-	"user":          TUser,
-	"uuid":          TUuid,
-	"value":         TValue,
-	"values":        TValues,
-	"varbinary":     TVarbinary,
-	"varchar":       TVarchar,
-	"var":           TVar,
-	"varp":          TVarp,
-	"week":          TWeek,
-	"when":          TWhen,
-	"where":         TWhere,
-	"window":        TWindow,
-	"with":          TWith,
-	"year":          TYear,
+	"rows":        TRows,
+	"row_number":  TRowNumber,
+	"second":      TSecond,
+	"select":      TSelect,
+	"set":         TSet,
+	"sign":        TSign,
+	"sin":         TSin,
+	"smallint":    TSmallint,
+	"snapshot":    TSnapshot,
+	"some":        TSome,
+	"sqrt":        TSqrt,
+	"square":      TSquare,
+	"stage":       TStage,
+	"start":       TStart,
+	"tstatistics": TStatistics,
+	"stdev":       TStdev,
+	"stdevp":      TStdevp,
+	"sum":         TSum,
+	"table":       TTable,
+	"tan":         TTan,
+	"temp":        TTemp,
+	"then":        TThen,
+	"ties":        TTies,
+	"time":        TTime,
+	"tinyint":     TTinyint,
+	"top":         TTop,
+	"transaction": TTransaction,
+	"trigger":     TTrigger,
+	"true":        TTrue,
+	"truncate":    TTruncate,
+	"unbounded":   TUnbounded,
+	"uncommitted": TUncommitted,
+	"union":       TUnion,
+	"unique":      TUnique,
+	"unlock":      TUnlock,
+	"update":      TUpdate,
+	"upper":       TUpper,
+	"use":         TUse,
+	"user":        TUser,
+	"uuid":        TUuid,
+	"value":       TValue,
+	"values":      TValues,
+	"varbinary":   TVarbinary,
+	"varchar":     TVarchar,
+	"var":         TVar,
+	"varp":        TVarp,
+	"week":        TWeek,
+	"when":        TWhen,
+	"where":       TWhere,
+	"window":      TWindow,
+	"with":        TWith,
+	"year":        TYear,
+	"checksum":    TChecksum,
+	"newid":       TNewId,
 }
 
 func (t TokenType) IsBuiltinFunction() bool {
@@ -491,7 +495,9 @@ func (t TokenType) IsBuiltinFunction() bool {
 		TSum,
 		TVar,
 		TVarp,
-		TGetdate:
+		TGetdate,
+        TChecksum,
+        TNewId:
 		return true
 	default:
 		return false
@@ -964,6 +970,10 @@ func (t TokenType) String() string {
 		return "With"
 	case TYear:
 		return "Year"
+	case TChecksum:
+		return "Checksum"
+	case TNewId:
+		return "NewId"
 	}
 	return "Unimplemented"
 }

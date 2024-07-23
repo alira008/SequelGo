@@ -1526,7 +1526,9 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 		lexer.TSum,
 		lexer.TVar,
 		lexer.TVarp,
-		lexer.TGetdate:
+		lexer.TGetdate,
+		lexer.TChecksum,
+		lexer.TNewId:
 		var funcType ast.FuncType
 		switch p.currentToken.Type {
 		case lexer.TDenseRank:
@@ -1607,6 +1609,10 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 			funcType = ast.FuncVarp
 		case lexer.TGetdate:
 			funcType = ast.FuncGetdate
+		case lexer.TChecksum:
+			funcType = ast.FuncChecksum
+		case lexer.TNewId:
+			funcType = ast.FuncNewId
 		}
 		p.logger.Debug("in function parse")
 		function := &ast.ExprFunction{Type: funcType, Name: &ast.ExprIdentifier{Value: p.currentToken.Value}}

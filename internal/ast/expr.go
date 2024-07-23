@@ -95,6 +95,8 @@ const (
 	FuncVar
 	FuncVarp
 	FuncGetdate
+	FuncChecksum
+	FuncNewId
 	FuncUserDefined
 )
 
@@ -105,6 +107,7 @@ var BuiltinFunctionsTokenType = []lexer.TokenType{
 	lexer.TSign, lexer.TSin, lexer.TSqrt, lexer.TSquare, lexer.TTan, lexer.TFirstValue,
 	lexer.TLastValue, lexer.TLag, lexer.TLead, lexer.TAvg, lexer.TCount, lexer.TMax, lexer.TMin,
 	lexer.TStdev, lexer.TStdevp, lexer.TSum, lexer.TVar, lexer.TVarp, lexer.TGetdate,
+	lexer.TChecksum, lexer.TNewId,
 }
 
 type FunctionOverClause struct {
@@ -357,6 +360,10 @@ func (e ExprFunction) TokenLiteral() string {
 		return "VARP"
 	case FuncGetdate:
 		return "GETDATE"
+	case FuncChecksum:
+		return "CHECKSUM"
+	case FuncNewId:
+		return "NEWID"
 	case FuncUserDefined:
 		return e.Name.TokenLiteral()
 	default:
