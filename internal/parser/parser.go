@@ -1412,8 +1412,8 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 
 				p.logger.Debug("parsing function args")
 				for {
-					p.logger.Info(p.currentToken)
-					p.logger.Info(p.peekToken)
+					p.logger.Debug(p.currentToken)
+					p.logger.Debug(p.peekToken)
 					err = p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier,
 						lexer.TNumericLiteral,
 						lexer.TStringLiteral,
@@ -1443,11 +1443,11 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 				}
 			}
 
-			p.logger.Info(args)
+			p.logger.Debug(args)
 			err = p.expectPeek(lexer.TRightParen)
 			if err != nil {
-				p.logger.Info("expected right parenthesis, got ", p.peekToken.Value)
-				p.logger.Info(p.currentToken)
+				p.logger.Debug("expected right parenthesis, got ", p.peekToken.Value)
+				p.logger.Debug(p.currentToken)
 				return nil, err
 			}
 
