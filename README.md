@@ -7,8 +7,8 @@ T-SQL tools built upon interpreter built in Go
 >[!WARNING]
 >
 > This is still a work in progress and I am still extending the formatter so it generates
-> SQL code correctly.
-> Currently comments break the interpreter
+> SQL code correctly. Need to figure out how to preserve comments. Currently line comments get
+> deleted. Block comments are not supported yet
 
 This formatter works like opionated formatters like Prettier and
   [Poor Man's TSQL Formatter](https://github.com/TaoK/PoorMansTSqlFormatter)
