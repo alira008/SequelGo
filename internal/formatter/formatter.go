@@ -29,7 +29,10 @@ func (f *Formatter) Format(input string) (string, error) {
 		return "", fmt.Errorf(strings.Join(p.Errors(), "\n"))
 	}
 
-	for _, s := range query.Statements {
+	for i, s := range query.Statements {
+		if i > 0 {
+			f.formattedQuery += "\n\n"
+		}
 		f.walkQuery(s)
 	}
 
@@ -251,10 +254,12 @@ func (f *Formatter) visitSelectTopArg(selectTopArg *ast.TopArg) {
 
 func (f *Formatter) visitSelectItems(items []ast.Expression) {
 	for i, e := range items {
-        if i == 0 {
-            f.increaseIndent()
-            f.printNewLine()
-            f.decreaseIndent()
+		if i == 0 && len(items) > 1 {
+			f.increaseIndent()
+			f.printNewLine()
+			f.decreaseIndent()
+		} else if i == 0 && len(items) == 1 {
+            f.printSpace()
         }
 		if i > 0 {
 			f.printSelectColumnComma()
@@ -558,6 +563,7 @@ func (f *Formatter) visitExpressionFunctionCall(e *ast.ExprFunctionCall) {
 }
 
 func (f *Formatter) visitOverClause(oc *ast.FunctionOverClause) {
+    f.printKeyword(" OVER (")
 	if len(oc.PartitionByClause) > 0 {
 		f.printKeyword("partition by ")
 	}
@@ -569,18 +575,30 @@ func (f *Formatter) visitOverClause(oc *ast.FunctionOverClause) {
 	}
 
 	if len(oc.OrderByClause) > 0 {
-		f.printKeyword("order by ")
+		f.printKeyword(" order by ")
 	}
 	for i, e := range oc.OrderByClause {
 		if i > 0 {
 			f.printExpressionListComma()
 		}
-		f.visitExpression(e)
+		f.visitExpression(e.Column)
+		switch e.Type {
+		case ast.OBNone:
+			break
+		case ast.OBAsc:
+			f.printKeyword(" asc")
+			break
+		case ast.OBDesc:
+			f.printKeyword(" desc")
+			break
+		}
 	}
 
 	if oc.WindowFrameClause != nil {
 		f.visitWindowFrameClause(oc.WindowFrameClause)
 	}
+
+    f.formattedQuery += ")"
 }
 
 func (f *Formatter) visitWindowFrameClause(wf *ast.WindowFrameClause) {
@@ -597,7 +615,7 @@ func (f *Formatter) visitWindowFrameClause(wf *ast.WindowFrameClause) {
 		return
 	}
 
-	f.printKeyword("and ")
+	f.printKeyword(" and ")
 	f.visitWindowFrameBoundType(wf.End.Type)
 	f.visitExpression(wf.End.Expression)
 
@@ -625,24 +643,24 @@ func (f *Formatter) visitComparisonOperatorType(op ast.ComparisonOperatorType) {
 func (f *Formatter) visitWindowFrameBoundType(b ast.WindowFrameBoundType) {
 	switch b {
 	case ast.WFBTPreceding:
-		f.printKeyword("preceding ")
+		f.printKeyword("preceding")
 	case ast.WFBTFollowing:
-		f.printKeyword("following ")
+		f.printKeyword("following")
 	case ast.WFBTCurrentRow:
-		f.printKeyword("current row ")
+		f.printKeyword("current row")
 	case ast.WFBTUnboundedPreceding:
-		f.printKeyword("unbounded preceding ")
+		f.printKeyword("unbounded preceding")
 	case ast.WFBTUnboundedFollowing:
-		f.printKeyword("unbounded following ")
+		f.printKeyword("unbounded following")
 	}
 }
 
 func (f *Formatter) visitRowsOrRange(r ast.RowsOrRangeType) {
 	switch r {
 	case ast.RRTRows:
-		f.printKeyword("rows ")
+		f.printKeyword(" rows ")
 	case ast.RRTRange:
-		f.printKeyword("range ")
+		f.printKeyword(" range ")
 	}
 }
 

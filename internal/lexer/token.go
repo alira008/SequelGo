@@ -199,7 +199,7 @@ const (
 	TRollback
 	TRound
 	TRow
-	TRowid
+	// TRowid
 	TRows
 	TRowNumber
 	TSecond
@@ -395,7 +395,7 @@ var Keywords = map[string]TokenType{
 	"rollback":      TRollback,
 	"round":         TRound,
 	"row":           TRow,
-	"rowid":         TRowid,
+	// "rowid":         TRowid,
 	"rows":          TRows,
 	"row_number":    TRowNumber,
 	"second":        TSecond,
@@ -855,8 +855,8 @@ func (t TokenType) String() string {
 		return "Round"
 	case TRow:
 		return "Row"
-	case TRowid:
-		return "Rowid"
+	// case TRowid:
+	// 	return "Rowid"
 	case TRows:
 		return "Rows"
 	case TRowNumber:
