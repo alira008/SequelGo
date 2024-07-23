@@ -10,7 +10,7 @@ T-SQL tools built upon interpreter built in Go
 > SQL code correctly. Need to figure out how to preserve comments. Currently line comments get
 > deleted. Block comments are not supported yet
 
-This formatter works like opionated formatters like Prettier and
+This formatter works like opinionated formatters like Prettier and
   [Poor Man's TSQL Formatter](https://github.com/TaoK/PoorMansTSqlFormatter)
 
 ### Example run 1
