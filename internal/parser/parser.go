@@ -42,6 +42,9 @@ func (p *Parser) nextToken() {
 	p.currentToken = p.peekToken
 	p.peekToken = p.peekToken2
 	p.peekToken2 = p.l.NextToken()
+	for p.peekToken2Is(lexer.TCommentLine) {
+		p.peekToken2 = p.l.NextToken()
+	}
 	p.errorToken = ETNone
 }
 
@@ -1409,8 +1412,8 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 
 				p.logger.Debug("parsing function args")
 				for {
-				p.logger.Info(p.currentToken)
-				p.logger.Info(p.peekToken)
+					p.logger.Info(p.currentToken)
+					p.logger.Info(p.peekToken)
 					err = p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier,
 						lexer.TNumericLiteral,
 						lexer.TStringLiteral,
@@ -1440,7 +1443,7 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 				}
 			}
 
-            p.logger.Info(args)
+			p.logger.Info(args)
 			err = p.expectPeek(lexer.TRightParen)
 			if err != nil {
 				p.logger.Info("expected right parenthesis, got ", p.peekToken.Value)
