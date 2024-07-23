@@ -82,7 +82,7 @@ func (l *Lexer) NextToken() Token {
 			l.readChar()
 			token.Type = TNotEqualArrow
 			token.Value = "<>"
-        } else {
+		} else {
 			token.Type = TLessThan
 			token.Value = "<"
 		}
@@ -109,6 +109,10 @@ func (l *Lexer) NextToken() Token {
 			l.readChar()
 			token.Type = TMinusEqual
 			token.Value = "-="
+		} else if l.peekChar() == '-' {
+            comment:=l.readCommentLine()
+            token.Type = TCommentLine
+            token.Value = comment
 		} else {
 			token.Type = TMinus
 			token.Value = "-"
@@ -306,6 +310,25 @@ func (l *Lexer) isDigit(ch byte) bool {
 
 func (l *Lexer) isAlphaNumeric(ch byte) bool {
 	return l.isLetter(ch) || l.isDigit(ch)
+}
+
+func (l *Lexer) readCommentLine() string {
+	// skip the -- characters
+	l.readChar()
+	l.readChar()
+
+	// read the identifier until next quote
+	start := l.current
+
+	for {
+		peekChar := l.peekChar()
+		if peekChar == '\n' || peekChar == 0 {
+			break
+		}
+		l.readChar()
+	}
+
+	return l.input[start:l.current+1]
 }
 
 func (l *Lexer) readQuotedIdentifier() string {

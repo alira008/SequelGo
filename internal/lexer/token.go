@@ -17,6 +17,7 @@ type TokenType uint8
 const (
 	TEndOfFile TokenType = iota
 	TSyntaxError
+    TCommentLine
 
 	TLocalVariable
 
@@ -503,6 +504,8 @@ func (t TokenType) String() string {
 		return "EndOfFile"
 	case TSyntaxError:
 		return "SyntaxError"
+	case TCommentLine:
+		return "CommentLine"
 	case TLocalVariable:
 		return "LocalVariable"
 	case TIdentifier:
