@@ -539,7 +539,7 @@ func (f *Formatter) visitExpressionExpresssionList(e *ast.ExprExpressionList) {
 func (f *Formatter) visitExpressionFunction(e *ast.ExprFunction) {
 	switch e.Type {
 	case ast.FuncUserDefined:
-		f.visitExpression(e)
+		f.visitExpression(e.Name)
 		break
 	default:
 		f.printKeyword(e.Name.TokenLiteral())

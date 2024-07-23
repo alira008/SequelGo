@@ -181,8 +181,9 @@ func (p *Parser) Parse() ast.Query {
 			p.nextToken()
 			continue
 		}
-
-		query.Statements = append(query.Statements, stmt)
+		if stmt != nil {
+			query.Statements = append(query.Statements, stmt)
+		}
 
 		p.nextToken()
 	}
@@ -1395,6 +1396,64 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 			newExpr = &ast.ExprCompoundIdentifier{Identifiers: *compound}
 		}
 
+		if p.peekTokenIs(lexer.TLeftParen) {
+			p.logger.Debugln("parsing user defined function")
+			function := &ast.ExprFunction{Type: ast.FuncUserDefined, Name: newExpr}
+			// parse function arguments
+			err := p.expectPeek(lexer.TLeftParen)
+			if err != nil {
+				return nil, err
+			}
+			args := []ast.Expression{}
+			if !p.peekTokenIs(lexer.TRightParen) {
+
+				p.logger.Debug("parsing function args")
+				for {
+				p.logger.Info(p.currentToken)
+				p.logger.Info(p.peekToken)
+					err = p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier,
+						lexer.TNumericLiteral,
+						lexer.TStringLiteral,
+						lexer.TLocalVariable,
+						lexer.TQuotedIdentifier,
+					})
+					if err != nil {
+						return nil, err
+					}
+
+					if p.currentToken.Type == lexer.TLocalVariable {
+						args = append(args, &ast.ExprLocalVariable{Value: p.currentToken.Value})
+					} else if p.currentToken.Type == lexer.TQuotedIdentifier {
+						args = append(args, &ast.ExprQuotedIdentifier{Value: p.currentToken.Value})
+					} else if p.currentToken.Type == lexer.TStringLiteral {
+						args = append(args, &ast.ExprStringLiteral{Value: p.currentToken.Value})
+					} else if p.currentToken.Type == lexer.TNumericLiteral {
+						args = append(args, &ast.ExprNumberLiteral{Value: p.currentToken.Value})
+					} else {
+						args = append(args, &ast.ExprIdentifier{Value: p.currentToken.Value})
+					}
+
+					if p.peekTokenIs(lexer.TRightParen) {
+						break
+					}
+					p.nextToken()
+				}
+			}
+
+            p.logger.Info(args)
+			err = p.expectPeek(lexer.TRightParen)
+			if err != nil {
+				p.logger.Info("expected right parenthesis, got ", p.peekToken.Value)
+				p.logger.Info(p.currentToken)
+				return nil, err
+			}
+
+			newExpr = &ast.ExprFunctionCall{
+				Name: function,
+				Args: args,
+			}
+		}
+
 		if (p.peekTokenIs(lexer.TAs) || p.peekTokenIs(lexer.TIdentifier) ||
 			p.peekTokenIs(lexer.TStringLiteral) || p.peekTokenIs(lexer.TQuotedIdentifier)) &&
 			!p.peekToken2IsAny(ast.DataTypeTokenTypes) {
@@ -1580,7 +1639,7 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 					args = append(args, &ast.ExprIdentifier{Value: p.currentToken.Value})
 				}
 
-				if p.peekTokenIs(lexer.TRightParen) || p.peekTokenIs(lexer.TComma) {
+				if p.peekTokenIs(lexer.TRightParen) {
 					break
 				}
 				p.nextToken()
