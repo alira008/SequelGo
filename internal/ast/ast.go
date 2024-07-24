@@ -1,6 +1,7 @@
 package ast
 
 import (
+	"SequelGo/internal/lexer"
 	"fmt"
 	"strings"
 )
@@ -21,7 +22,26 @@ type Expression interface {
 
 type Query struct {
 	Statements []Statement
+	Comments   []Comment
 }
+
+type Comment struct {
+	Value              string
+	StartLine, EndLine uint64
+}
+	func (c Comment)TokenLiteral() string {
+    return fmt.Sprintf("--%s", c.Value)
+}
+
+func NewComment(token lexer.Token) Comment {
+	return Comment{
+		Value:     token.Value,
+		StartLine: uint64(token.Start.Line),
+		EndLine:   uint64(token.End.Line),
+	}
+}
+
+
 
 type DeclareStatement struct{}
 type ExecuteStatement struct{}
@@ -172,15 +192,15 @@ func (cte CommmonTableExpression) TokenLiteral() string {
 func (ss SelectStatement) statementNode() {}
 func (ss SelectStatement) TokenLiteral() string {
 	var str strings.Builder
-    if(ss.CTE != nil){
-        ctes:= []string{}
+	if ss.CTE != nil {
+		ctes := []string{}
 
-        for _, cte := range *ss.CTE {
-            ctes = append(ctes, cte.TokenLiteral())
-        }
+		for _, cte := range *ss.CTE {
+			ctes = append(ctes, cte.TokenLiteral())
+		}
 
-        str.WriteString(strings.Join(ctes, ", "))
-    }
+		str.WriteString(strings.Join(ctes, ", "))
+	}
 	return ss.SelectBody.TokenLiteral()
 }
 
@@ -227,7 +247,7 @@ func (sb SelectBody) TokenLiteral() string {
 	}
 
 	if sb.OrderByClause != nil {
-		str.WriteString(sb.OrderByClause.TokenLiteral())
+        str.WriteString(sb.OrderByClause.TokenLiteral())
 	}
 
 	return str.String()

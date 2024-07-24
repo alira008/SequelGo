@@ -15,10 +15,12 @@ type Formatter struct {
 	settings       Settings
 	indentLevel    uint32
 	formattedQuery string
+	currentLine    uint64
+	comments       []ast.Comment
 }
 
 func NewFormatter(settings Settings, logger *zap.SugaredLogger) Formatter {
-	return Formatter{settings: settings, logger: logger}
+	return Formatter{settings: settings, logger: logger, currentLine: 1}
 }
 
 func (f *Formatter) Format(input string) (string, error) {
@@ -28,12 +30,27 @@ func (f *Formatter) Format(input string) (string, error) {
 	if len(p.Errors()) > 0 {
 		return "", fmt.Errorf(strings.Join(p.Errors(), "\n"))
 	}
+	f.comments = query.Comments
 
 	for i, s := range query.Statements {
 		if i > 0 {
-			f.formattedQuery += "\n\n"
+			f.printNewLine()
+			f.printNewLine()
 		}
 		f.walkQuery(s)
+	}
+
+	// pop out any comments left
+	fmt.Printf("num of comments: %d\n", len(query.Comments))
+	for {
+		if f.comments == nil || len(f.comments) == 0 {
+			break
+		}
+
+		comment := f.comments[0]
+	fmt.Printf("comment: \t%s\n", comment.TokenLiteral())
+		f.comments = f.comments[1:]
+		f.formattedQuery += fmt.Sprintf("    %s", comment.TokenLiteral())
 	}
 
 	return f.formattedQuery, nil
@@ -72,7 +89,18 @@ func (f *Formatter) printSpace() {
 }
 
 func (f *Formatter) printNewLine() {
+	if f.comments != nil && len(f.comments) > 0 && f.comments[0].StartLine == f.currentLine {
+		comment := f.comments[0]
+		f.formattedQuery += fmt.Sprintf("    %s", comment.TokenLiteral())
+		f.comments = f.comments[1:]
+		for i := uint64(0); i < comment.EndLine-comment.StartLine+1; i++ {
+			f.formattedQuery += "\n"
+			f.currentLine += 1
+			f.printIndent()
+		}
+	}
 	f.formattedQuery += "\n"
+	f.currentLine += 1
 	f.printIndent()
 }
 
@@ -259,8 +287,8 @@ func (f *Formatter) visitSelectItems(items []ast.Expression) {
 			f.printNewLine()
 			f.decreaseIndent()
 		} else if i == 0 && len(items) == 1 {
-            f.printSpace()
-        }
+			f.printSpace()
+		}
 		if i > 0 {
 			f.printSelectColumnComma()
 		}
@@ -563,7 +591,7 @@ func (f *Formatter) visitExpressionFunctionCall(e *ast.ExprFunctionCall) {
 }
 
 func (f *Formatter) visitOverClause(oc *ast.FunctionOverClause) {
-    f.printKeyword(" OVER (")
+	f.printKeyword(" OVER (")
 	if len(oc.PartitionByClause) > 0 {
 		f.printKeyword("partition by ")
 	}
@@ -598,7 +626,7 @@ func (f *Formatter) visitOverClause(oc *ast.FunctionOverClause) {
 		f.visitWindowFrameClause(oc.WindowFrameClause)
 	}
 
-    f.formattedQuery += ")"
+	f.formattedQuery += ")"
 }
 
 func (f *Formatter) visitWindowFrameClause(wf *ast.WindowFrameClause) {

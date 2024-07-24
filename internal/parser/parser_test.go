@@ -492,7 +492,7 @@ func TestDistinctTopArg(t *testing.T) {
 	}
 	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
 
-	input := "select distinct top 44 percent hello, potate Potate FROM testtable"
+	input := "select distinct top 44 percent hello, potate Potate FROM testtable -- hello lmao"
 
 	test(t, expected, input)
 }
@@ -507,7 +507,6 @@ func test(t *testing.T, expected ast.Query, input string) {
 
 	if len(query.Statements) != 1 {
 		t.Fatalf("expected 1 statement, got %d", len(query.Statements))
-
 	}
 	for i, stmt := range query.Statements {
 		if stmt.TokenLiteral() != expected.Statements[i].TokenLiteral() {

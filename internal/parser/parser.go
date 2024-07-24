@@ -26,6 +26,7 @@ type Parser struct {
 	peekToken2   lexer.Token
 	errorToken   ErrorToken
 	errors       []string
+	comments     []ast.Comment
 }
 
 func NewParser(logger *zap.SugaredLogger, lexer *lexer.Lexer) *Parser {
@@ -43,6 +44,7 @@ func (p *Parser) nextToken() {
 	p.peekToken = p.peekToken2
 	p.peekToken2 = p.l.NextToken()
 	for p.peekToken2Is(lexer.TCommentLine) {
+		p.comments = append(p.comments, ast.NewComment(p.peekToken2))
 		p.peekToken2 = p.l.NextToken()
 	}
 	p.errorToken = ETNone
@@ -166,7 +168,7 @@ func (p *Parser) Errors() []string {
 }
 
 func (p *Parser) Parse() ast.Query {
-	query := ast.Query{Statements: []ast.Statement{}}
+	query := ast.Query{}
 
 	for p.currentToken.Type != lexer.TEndOfFile {
 		stmt, err := p.parseStatement()
@@ -190,6 +192,9 @@ func (p *Parser) Parse() ast.Query {
 
 		p.nextToken()
 	}
+	fmt.Printf("num of comments: %d\n", len(p.comments))
+    query.Comments = p.comments
+    p.comments = nil
 	return query
 }
 
