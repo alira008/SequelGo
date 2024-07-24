@@ -33,6 +33,7 @@ var DataTypeTokenTypes = []lexer.TokenType{
 }
 
 type DataType struct {
+	BaseNode
 	Kind               DataTypeKind
 	FloatPrecision     *uint32
 	DecimalNumericSize *NumericSize
@@ -40,6 +41,7 @@ type DataType struct {
 }
 
 type NumericSize struct {
+	BaseNode
 	Precision uint32
 	Scale     *uint32
 }

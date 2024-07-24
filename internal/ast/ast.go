@@ -10,6 +10,34 @@ type Node interface {
 	TokenLiteral() string
 }
 
+type Position struct {
+	Line, Col uint64
+}
+
+type BaseNode struct {
+	StartPosition, EndPosition Position
+}
+
+func NewBaseNodeFromLexerPosition(Start, End lexer.Position) BaseNode {
+	return BaseNode{
+		StartPosition: Position{
+			Line: uint64(Start.Line),
+			Col:  uint64(Start.Col),
+		},
+		EndPosition: Position{
+			Line: uint64(End.Line),
+			Col:  uint64(End.Col),
+		},
+	}
+}
+
+func NewBaseNode(Start, End Position) BaseNode {
+	return BaseNode{
+		StartPosition: Start,
+		EndPosition:   End,
+	}
+}
+
 type Statement interface {
 	Node
 	statementNode()
@@ -18,30 +46,30 @@ type Statement interface {
 type Expression interface {
 	Node
 	expressionNode()
+	SetBaseNode(baseNode BaseNode)
 }
 
 type Query struct {
+	BaseNode
 	Statements []Statement
 	Comments   []Comment
 }
 
 type Comment struct {
-	Value              string
-	StartLine, EndLine uint64
+	BaseNode
+	Value string
 }
-	func (c Comment)TokenLiteral() string {
-    return fmt.Sprintf("--%s", c.Value)
+
+func (c Comment) TokenLiteral() string {
+	return fmt.Sprintf("--%s", c.Value)
 }
 
 func NewComment(token lexer.Token) Comment {
 	return Comment{
-		Value:     token.Value,
-		StartLine: uint64(token.Start.Line),
-		EndLine:   uint64(token.End.Line),
+		BaseNode: NewBaseNodeFromLexerPosition(token.Start, token.End),
+		Value:    token.Value,
 	}
 }
-
-
 
 type DeclareStatement struct{}
 type ExecuteStatement struct{}
@@ -50,17 +78,20 @@ type InsertStatement struct{}
 type UpdateStatement struct{}
 type DeleteStatement struct{}
 type CommmonTableExpression struct {
+	BaseNode
 	Name    string
 	Columns *ExprExpressionList
 	Query   SelectBody
 }
 
 type SelectStatement struct {
+	BaseNode
 	CTE        *[]CommmonTableExpression
 	SelectBody *SelectBody
 }
 
 type SelectBody struct {
+	BaseNode
 	Distinct      bool
 	Top           *TopArg
 	SelectItems   []Expression
@@ -72,17 +103,20 @@ type SelectBody struct {
 }
 
 type TopArg struct {
+	BaseNode
 	WithTies bool
 	Percent  bool
 	Quantity Expression
 }
 
 type TableArg struct {
+	BaseNode
 	Table *TableSource
 	Joins []Join
 }
 
 type TableSource struct {
+	BaseNode
 	Type   TableSourceType
 	Source Expression
 }
@@ -96,6 +130,7 @@ const (
 )
 
 type Join struct {
+	BaseNode
 	Type      JoinType
 	Table     *TableSource
 	Condition Expression
@@ -114,16 +149,19 @@ const (
 )
 
 type OrderByClause struct {
+	BaseNode
 	Expressions []OrderByArg
 	OffsetFetch *OffsetFetchClause
 }
 
 type OffsetFetchClause struct {
+	BaseNode
 	Offset OffsetArg
 	Fetch  *FetchArg
 }
 
 type OrderByArg struct {
+	BaseNode
 	Column Expression
 	Type   OrderByType
 }
@@ -151,11 +189,13 @@ const (
 )
 
 type OffsetArg struct {
+	BaseNode
 	Value     Expression
 	RowOrRows RowOrRows
 }
 
 type FetchArg struct {
+	BaseNode
 	Value       Expression
 	NextOrFirst NextOrFirst
 	RowOrRows   RowOrRows
@@ -188,6 +228,9 @@ func (cte CommmonTableExpression) TokenLiteral() string {
 	str.WriteString(" )")
 	return str.String()
 }
+func (cte CommmonTableExpression) SetBaseNode(baseNode BaseNode) {
+    cte.BaseNode = baseNode
+}
 
 func (ss SelectStatement) statementNode() {}
 func (ss SelectStatement) TokenLiteral() string {
@@ -202,6 +245,9 @@ func (ss SelectStatement) TokenLiteral() string {
 		str.WriteString(strings.Join(ctes, ", "))
 	}
 	return ss.SelectBody.TokenLiteral()
+}
+func (ss SelectStatement) SetBaseNode(baseNode BaseNode) {
+    ss.BaseNode = baseNode
 }
 
 func (sb SelectBody) statementNode() {}
@@ -247,10 +293,13 @@ func (sb SelectBody) TokenLiteral() string {
 	}
 
 	if sb.OrderByClause != nil {
-        str.WriteString(sb.OrderByClause.TokenLiteral())
+		str.WriteString(sb.OrderByClause.TokenLiteral())
 	}
 
 	return str.String()
+}
+func (sb SelectBody) SetBaseNode(baseNode BaseNode) {
+    sb.BaseNode = baseNode
 }
 
 func (ta TableArg) expressionNode() {}
@@ -272,6 +321,9 @@ func (ta TableArg) TokenLiteral() string {
 
 	return str.String()
 }
+func (ta TableArg) SetBaseNode(baseNode BaseNode) {
+    ta.BaseNode = baseNode
+}
 
 func (ts TableSource) expressionNode() {}
 func (ts TableSource) TokenLiteral() string {
@@ -280,6 +332,9 @@ func (ts TableSource) TokenLiteral() string {
 	str.WriteString(ts.Source.TokenLiteral())
 
 	return str.String()
+}
+func (ts TableSource) SetBaseNode(baseNode BaseNode) {
+    ts.BaseNode = baseNode
 }
 
 func (j Join) expressionNode() {}
@@ -319,6 +374,9 @@ func (j Join) TokenLiteral() string {
 
 	return str.String()
 }
+func (j Join) SetBaseNode(baseNode BaseNode) {
+    j.BaseNode = baseNode
+}
 
 func (ta TopArg) expressionNode() {}
 func (ta TopArg) TokenLiteral() string {
@@ -334,6 +392,9 @@ func (ta TopArg) TokenLiteral() string {
 	}
 
 	return str.String()
+}
+func (ta TopArg) SetBaseNode(baseNode BaseNode) {
+    ta.BaseNode = baseNode
 }
 
 func (o OrderByClause) expressionNode() {}
@@ -360,6 +421,9 @@ func (o OrderByClause) TokenLiteral() string {
 
 	return str.String()
 }
+func (o OrderByClause) SetBaseNode(baseNode BaseNode) {
+    o.BaseNode = baseNode
+}
 
 func (o OffsetFetchClause) expressionNode() {}
 func (o OffsetFetchClause) TokenLiteral() string {
@@ -373,6 +437,9 @@ func (o OffsetFetchClause) TokenLiteral() string {
 
 	str.WriteString(o.Fetch.TokenLiteral())
 	return str.String()
+}
+func (o OffsetFetchClause) SetBaseNode(baseNode BaseNode) {
+    o.BaseNode = baseNode
 }
 
 func (o OrderByArg) expressionNode() {}
@@ -392,6 +459,9 @@ func (o OrderByArg) TokenLiteral() string {
 
 	return str.String()
 }
+func (o OrderByArg) SetBaseNode(baseNode BaseNode) {
+    o.BaseNode = baseNode
+}
 
 func (o OffsetArg) expressionNode() {}
 func (o OffsetArg) TokenLiteral() string {
@@ -407,6 +477,9 @@ func (o OffsetArg) TokenLiteral() string {
 		break
 	}
 	return str.String()
+}
+func (o OffsetArg) SetBaseNode(baseNode BaseNode) {
+    o.BaseNode = baseNode
 }
 
 func (f FetchArg) expressionNode() {}
@@ -435,4 +508,7 @@ func (f FetchArg) TokenLiteral() string {
 
 	str.WriteString(" ONLY")
 	return str.String()
+}
+func (f FetchArg) SetBaseNode(baseNode BaseNode) {
+    f.BaseNode = baseNode
 }
