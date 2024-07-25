@@ -157,7 +157,7 @@ func (e ExprUnaryOperator) TokenLiteral() string {
 	str.WriteString(e.Right.TokenLiteral())
 	return str.String()
 }
-func (e ExprUnaryOperator) SetBaseNode(baseNode BaseNode) {
+func (e *ExprUnaryOperator) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }
 
@@ -169,7 +169,7 @@ func (e ExprComparisonOperator) TokenLiteral() string {
 	str.WriteString(e.Right.TokenLiteral())
 	return str.String()
 }
-func (e ExprComparisonOperator) SetBaseNode(baseNode BaseNode) {
+func (e *ExprComparisonOperator) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }
 
@@ -192,7 +192,7 @@ func (e ExprArithmeticOperator) TokenLiteral() string {
 	str.WriteString(e.Right.TokenLiteral())
 	return str.String()
 }
-func (e ExprArithmeticOperator) SetBaseNode(baseNode BaseNode) {
+func (e *ExprArithmeticOperator) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }
 
@@ -204,7 +204,7 @@ func (e ExprAndLogicalOperator) TokenLiteral() string {
 	str.WriteString(e.Right.TokenLiteral())
 	return str.String()
 }
-func (e ExprAndLogicalOperator) SetBaseNode(baseNode BaseNode) {
+func (e *ExprAndLogicalOperator) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }
 
@@ -217,7 +217,7 @@ func (e ExprAllLogicalOperator) TokenLiteral() string {
 	str.WriteString(e.Subquery.TokenLiteral())
 	return str.String()
 }
-func (e ExprAllLogicalOperator) SetBaseNode(baseNode BaseNode) {
+func (e *ExprAllLogicalOperator) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }
 
@@ -234,7 +234,7 @@ func (e ExprBetweenLogicalOperator) TokenLiteral() string {
 	str.WriteString(e.End.TokenLiteral())
 	return str.String()
 }
-func (e ExprBetweenLogicalOperator) SetBaseNode(baseNode BaseNode) {
+func (e *ExprBetweenLogicalOperator) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }
 
@@ -246,7 +246,7 @@ func (e ExprExistsLogicalOperator) TokenLiteral() string {
 	str.WriteString(")")
 	return str.String()
 }
-func (e ExprExistsLogicalOperator) SetBaseNode(baseNode BaseNode) {
+func (e *ExprExistsLogicalOperator) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }
 
@@ -262,7 +262,7 @@ func (e ExprInSubqueryLogicalOperator) TokenLiteral() string {
 	str.WriteString(")")
 	return str.String()
 }
-func (e ExprInSubqueryLogicalOperator) SetBaseNode(baseNode BaseNode) {
+func (e *ExprInSubqueryLogicalOperator) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }
 
@@ -285,7 +285,7 @@ func (e ExprInLogicalOperator) TokenLiteral() string {
 
 	return str.String()
 }
-func (e ExprInLogicalOperator) SetBaseNode(baseNode BaseNode) {
+func (e *ExprInLogicalOperator) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }
 
@@ -300,7 +300,7 @@ func (e ExprLikeLogicalOperator) TokenLiteral() string {
 	str.WriteString(e.Pattern.TokenLiteral())
 	return str.String()
 }
-func (e ExprLikeLogicalOperator) SetBaseNode(baseNode BaseNode) {
+func (e *ExprLikeLogicalOperator) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }
 
@@ -311,7 +311,7 @@ func (e ExprNotLogicalOperator) TokenLiteral() string {
 	str.WriteString(e.Expression.TokenLiteral())
 	return str.String()
 }
-func (e ExprNotLogicalOperator) SetBaseNode(baseNode BaseNode) {
+func (e *ExprNotLogicalOperator) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }
 
@@ -323,7 +323,7 @@ func (e ExprOrLogicalOperator) TokenLiteral() string {
 	str.WriteString(e.Right.TokenLiteral())
 	return str.String()
 }
-func (e ExprOrLogicalOperator) SetBaseNode(baseNode BaseNode) {
+func (e *ExprOrLogicalOperator) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }
 
@@ -336,7 +336,7 @@ func (e ExprSomeLogicalOperator) TokenLiteral() string {
 	str.WriteString(e.Subquery.TokenLiteral())
 	return str.String()
 }
-func (e ExprSomeLogicalOperator) SetBaseNode(baseNode BaseNode) {
+func (e *ExprSomeLogicalOperator) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }
 
@@ -349,6 +349,6 @@ func (e ExprAnyLogicalOperator) TokenLiteral() string {
 	str.WriteString(e.Subquery.TokenLiteral())
 	return str.String()
 }
-func (e ExprAnyLogicalOperator) SetBaseNode(baseNode BaseNode) {
+func (e *ExprAnyLogicalOperator) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }

@@ -41,6 +41,7 @@ func NewBaseNode(Start, End Position) BaseNode {
 type Statement interface {
 	Node
 	statementNode()
+	SetBaseNode(baseNode BaseNode)
 }
 
 type Expression interface {
@@ -228,7 +229,7 @@ func (cte CommmonTableExpression) TokenLiteral() string {
 	str.WriteString(" )")
 	return str.String()
 }
-func (cte CommmonTableExpression) SetBaseNode(baseNode BaseNode) {
+func (cte *CommmonTableExpression) SetBaseNode(baseNode BaseNode) {
     cte.BaseNode = baseNode
 }
 
@@ -246,7 +247,7 @@ func (ss SelectStatement) TokenLiteral() string {
 	}
 	return ss.SelectBody.TokenLiteral()
 }
-func (ss SelectStatement) SetBaseNode(baseNode BaseNode) {
+func (ss *SelectStatement) SetBaseNode(baseNode BaseNode) {
     ss.BaseNode = baseNode
 }
 
@@ -298,7 +299,7 @@ func (sb SelectBody) TokenLiteral() string {
 
 	return str.String()
 }
-func (sb SelectBody) SetBaseNode(baseNode BaseNode) {
+func (sb *SelectBody) SetBaseNode(baseNode BaseNode) {
     sb.BaseNode = baseNode
 }
 
@@ -321,7 +322,7 @@ func (ta TableArg) TokenLiteral() string {
 
 	return str.String()
 }
-func (ta TableArg) SetBaseNode(baseNode BaseNode) {
+func (ta *TableArg) SetBaseNode(baseNode BaseNode) {
     ta.BaseNode = baseNode
 }
 
@@ -333,7 +334,7 @@ func (ts TableSource) TokenLiteral() string {
 
 	return str.String()
 }
-func (ts TableSource) SetBaseNode(baseNode BaseNode) {
+func (ts *TableSource) SetBaseNode(baseNode BaseNode) {
     ts.BaseNode = baseNode
 }
 
@@ -374,7 +375,7 @@ func (j Join) TokenLiteral() string {
 
 	return str.String()
 }
-func (j Join) SetBaseNode(baseNode BaseNode) {
+func (j *Join) SetBaseNode(baseNode BaseNode) {
     j.BaseNode = baseNode
 }
 
@@ -393,7 +394,7 @@ func (ta TopArg) TokenLiteral() string {
 
 	return str.String()
 }
-func (ta TopArg) SetBaseNode(baseNode BaseNode) {
+func (ta *TopArg) SetBaseNode(baseNode BaseNode) {
     ta.BaseNode = baseNode
 }
 
@@ -421,7 +422,7 @@ func (o OrderByClause) TokenLiteral() string {
 
 	return str.String()
 }
-func (o OrderByClause) SetBaseNode(baseNode BaseNode) {
+func (o *OrderByClause) SetBaseNode(baseNode BaseNode) {
     o.BaseNode = baseNode
 }
 
@@ -438,7 +439,7 @@ func (o OffsetFetchClause) TokenLiteral() string {
 	str.WriteString(o.Fetch.TokenLiteral())
 	return str.String()
 }
-func (o OffsetFetchClause) SetBaseNode(baseNode BaseNode) {
+func (o *OffsetFetchClause) SetBaseNode(baseNode BaseNode) {
     o.BaseNode = baseNode
 }
 
@@ -459,7 +460,7 @@ func (o OrderByArg) TokenLiteral() string {
 
 	return str.String()
 }
-func (o OrderByArg) SetBaseNode(baseNode BaseNode) {
+func (o *OrderByArg) SetBaseNode(baseNode BaseNode) {
     o.BaseNode = baseNode
 }
 
@@ -478,7 +479,7 @@ func (o OffsetArg) TokenLiteral() string {
 	}
 	return str.String()
 }
-func (o OffsetArg) SetBaseNode(baseNode BaseNode) {
+func (o *OffsetArg) SetBaseNode(baseNode BaseNode) {
     o.BaseNode = baseNode
 }
 
@@ -509,6 +510,6 @@ func (f FetchArg) TokenLiteral() string {
 	str.WriteString(" ONLY")
 	return str.String()
 }
-func (f FetchArg) SetBaseNode(baseNode BaseNode) {
+func (f *FetchArg) SetBaseNode(baseNode BaseNode) {
     f.BaseNode = baseNode
 }

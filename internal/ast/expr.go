@@ -181,7 +181,7 @@ func (e ExprStringLiteral) expressionNode() {}
 func (e ExprStringLiteral) TokenLiteral() string {
 	return fmt.Sprintf("'%s'", e.Value)
 }
-func (e ExprStringLiteral) SetBaseNode(baseNode BaseNode) {
+func (e *ExprStringLiteral) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }
 
@@ -189,7 +189,7 @@ func (e ExprNumberLiteral) expressionNode() {}
 func (e ExprNumberLiteral) TokenLiteral() string {
 	return e.Value
 }
-func (e ExprNumberLiteral) SetBaseNode(baseNode BaseNode) {
+func (e *ExprNumberLiteral) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }
 
@@ -197,7 +197,7 @@ func (e ExprLocalVariable) expressionNode() {}
 func (e ExprLocalVariable) TokenLiteral() string {
 	return fmt.Sprintf("@%s", e.Value)
 }
-func (e ExprLocalVariable) SetBaseNode(baseNode BaseNode) {
+func (e *ExprLocalVariable) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }
 
@@ -205,7 +205,7 @@ func (e ExprIdentifier) expressionNode() {}
 func (e ExprIdentifier) TokenLiteral() string {
 	return e.Value
 }
-func (e ExprIdentifier) SetBaseNode(baseNode BaseNode) {
+func (e *ExprIdentifier) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }
 
@@ -213,7 +213,7 @@ func (e ExprQuotedIdentifier) expressionNode() {}
 func (e ExprQuotedIdentifier) TokenLiteral() string {
 	return fmt.Sprintf("[%s]", e.Value)
 }
-func (e ExprQuotedIdentifier) SetBaseNode(baseNode BaseNode) {
+func (e *ExprQuotedIdentifier) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }
 
@@ -221,7 +221,7 @@ func (e ExprStar) expressionNode() {}
 func (e ExprStar) TokenLiteral() string {
 	return "*"
 }
-func (e ExprStar) SetBaseNode(baseNode BaseNode) {
+func (e *ExprStar) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }
 
@@ -237,7 +237,7 @@ func (e ExprWithAlias) TokenLiteral() string {
 	str.WriteString(e.Alias.TokenLiteral())
 	return str.String()
 }
-func (e ExprWithAlias) SetBaseNode(baseNode BaseNode) {
+func (e *ExprWithAlias) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }
 
@@ -252,7 +252,7 @@ func (e ExprCompoundIdentifier) TokenLiteral() string {
 	}
 	return str.String()
 }
-func (e ExprCompoundIdentifier) SetBaseNode(baseNode BaseNode) {
+func (e *ExprCompoundIdentifier) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }
 
@@ -306,7 +306,7 @@ func (e ExprSubquery) TokenLiteral() string {
 	str.WriteString(")")
 	return str.String()
 }
-func (e ExprSubquery) SetBaseNode(baseNode BaseNode) {
+func (e *ExprSubquery) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }
 
@@ -322,7 +322,7 @@ func (e ExprExpressionList) TokenLiteral() string {
 	}
 	return str.String()
 }
-func (e ExprExpressionList) SetBaseNode(baseNode BaseNode) {
+func (e *ExprExpressionList) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }
 
@@ -417,7 +417,7 @@ func (e ExprFunction) TokenLiteral() string {
 		return "unimplemented function type"
 	}
 }
-func (e ExprFunction) SetBaseNode(baseNode BaseNode) {
+func (e *ExprFunction) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }
 
@@ -447,7 +447,7 @@ func (w WindowFrameBound) TokenLiteral() string {
 
 	return str.String()
 }
-func (w WindowFrameBound) SetBaseNode(baseNode BaseNode) {
+func (w *WindowFrameBound) SetBaseNode(baseNode BaseNode) {
     w.BaseNode = baseNode
 }
 
@@ -477,7 +477,7 @@ func (w WindowFrameClause) TokenLiteral() string {
 
 	return str.String()
 }
-func (w WindowFrameClause) SetBaseNode(baseNode BaseNode) {
+func (w *WindowFrameClause) SetBaseNode(baseNode BaseNode) {
     w.BaseNode = baseNode
 }
 
@@ -513,7 +513,7 @@ func (e FunctionOverClause) TokenLiteral() string {
 
 	return str.String()
 }
-func (e FunctionOverClause) SetBaseNode(baseNode BaseNode) {
+func (e *FunctionOverClause) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }
 
@@ -536,7 +536,7 @@ func (e ExprFunctionCall) TokenLiteral() string {
 
 	return str.String()
 }
-func (e ExprFunctionCall) SetBaseNode(baseNode BaseNode) {
+func (e *ExprFunctionCall) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }
 
@@ -552,6 +552,6 @@ func (e ExprCast) TokenLiteral() string {
 
 	return str.String()
 }
-func (e ExprCast) SetBaseNode(baseNode BaseNode) {
+func (e *ExprCast) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }

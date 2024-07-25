@@ -194,17 +194,17 @@ func TestParseBasicSelectQueryWithJoin(t *testing.T) {
 								Alias:      &ast.ExprIdentifier{Value: "t2"},
 							},
 						},
-						Condition: ast.ExprComparisonOperator{
+						Condition: &ast.ExprComparisonOperator{
 							Left: &ast.ExprCompoundIdentifier{
 								Identifiers: []ast.Expression{
-									ast.ExprIdentifier{Value: "t"},
-									ast.ExprIdentifier{Value: "InsertDate"},
+									&ast.ExprIdentifier{Value: "t"},
+									&ast.ExprIdentifier{Value: "InsertDate"},
 								},
 							},
 							Right: &ast.ExprCompoundIdentifier{
 								Identifiers: []ast.Expression{
-									ast.ExprIdentifier{Value: "t2"},
-									ast.ExprIdentifier{Value: "InsertDate"},
+									&ast.ExprIdentifier{Value: "t2"},
+									&ast.ExprIdentifier{Value: "InsertDate"},
 								},
 							},
 							Operator: ast.ComparisonOpEqual,
@@ -243,17 +243,17 @@ func TestParseBuiltinFunctionCall(t *testing.T) {
 					},
 					OverClause: &ast.FunctionOverClause{
 						PartitionByClause: []ast.Expression{
-							ast.ExprIdentifier{Value: "InsertDate"},
-							ast.ExprIdentifier{Value: "Stock"},
+							&ast.ExprIdentifier{Value: "InsertDate"},
+							&ast.ExprIdentifier{Value: "Stock"},
 						},
 						OrderByClause: []ast.OrderByArg{
-							{Column: ast.ExprIdentifier{Value: "InsertTime"}, Type: ast.OBAsc},
+							{Column: &ast.ExprIdentifier{Value: "InsertTime"}, Type: ast.OBAsc},
 						},
 						WindowFrameClause: &ast.WindowFrameClause{
 							RowsOrRange: ast.RRTRows,
 							Start: &ast.WindowFrameBound{
 								Type:       ast.WFBTPreceding,
-								Expression: ast.ExprNumberLiteral{Value: "10"},
+								Expression: &ast.ExprNumberLiteral{Value: "10"},
 							},
 							End: &ast.WindowFrameBound{
 								Type: ast.WFBTCurrentRow,
@@ -325,7 +325,7 @@ func TestParseSubqueryCall(t *testing.T) {
 					Expression: &ast.ExprSubquery{
 						Top: &ast.TopArg{
 							Percent:  true,
-							Quantity: ast.ExprNumberLiteral{Value: "20"},
+							Quantity: &ast.ExprNumberLiteral{Value: "20"},
 						},
 						SelectItems: []ast.Expression{
 							&ast.ExprIdentifier{Value: "yesirr"},
@@ -345,7 +345,7 @@ func TestParseSubqueryCall(t *testing.T) {
 						OrderByClause: &ast.OrderByClause{
 							Expressions: []ast.OrderByArg{
 								{
-									Column: ast.ExprIdentifier{Value: "LastPrice"},
+									Column: &ast.ExprIdentifier{Value: "LastPrice"},
 									Type:   ast.OBDesc,
 								},
 							},

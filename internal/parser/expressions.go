@@ -10,10 +10,10 @@ func (p *Parser) parseExpression(precedence Precedence) (ast.Expression, error) 
 	startPosition := p.currentToken.Start
 	leftExpr, err := p.parsePrefixExpression()
 	endPosition := p.currentToken.End
-	leftExpr.SetBaseNode(ast.NewBaseNodeFromLexerPosition(startPosition, endPosition))
 	if err != nil {
 		return nil, err
 	}
+	leftExpr.SetBaseNode(ast.NewBaseNodeFromLexerPosition(startPosition, endPosition))
 
 	// parse infix sql expressions using stacks to keep track of precedence
 	for precedence < checkPrecedence(p.peekToken.Type) {
