@@ -40,19 +40,6 @@ func (f *Formatter) Format(input string) (string, error) {
 		f.walkQuery(s)
 	}
 
-	// pop out any comments left
-	// fmt.Printf("num of comments: %d\n", len(query.Comments))
-	// for {
-	// 	if f.comments == nil || len(f.comments) == 0 {
-	// 		break
-	// 	}
-	//
-	// 	comment := f.comments[0]
-	// fmt.Printf("comment: \t%s\n", comment.TokenLiteral())
-	// 	f.comments = f.comments[1:]
-	// 	f.formattedQuery += fmt.Sprintf("    %s", comment.TokenLiteral())
-	// }
-
 	return f.formattedQuery, nil
 }
 
@@ -89,16 +76,6 @@ func (f *Formatter) printSpace() {
 }
 
 func (f *Formatter) printNewLine() {
-	// if f.comments != nil && len(f.comments) > 0 && f.comments[0].StartLine == f.currentLine {
-	// 	comment := f.comments[0]
-	// 	f.formattedQuery += fmt.Sprintf("    %s", comment.TokenLiteral())
-	// 	f.comments = f.comments[1:]
-	// 	for i := uint64(0); i < comment.EndLine-comment.StartLine+1; i++ {
-	// 		f.formattedQuery += "\n"
-	// 		f.currentLine += 1
-	// 		f.printIndent()
-	// 	}
-	// }
 	f.formattedQuery += "\n"
 	f.currentLine += 1
 	f.printIndent()
