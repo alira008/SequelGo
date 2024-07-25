@@ -21,11 +21,11 @@ func (p *Parser) parseExpression(precedence Precedence) (ast.Expression, error) 
 
 		startPosition = p.currentToken.Start
 		leftExpr, err = p.parseInfixExpression(leftExpr)
-		endPosition = p.currentToken.End
-		leftExpr.SetBaseNode(ast.NewBaseNodeFromLexerPosition(startPosition, endPosition))
 		if err != nil {
 			return nil, err
 		}
+		endPosition = p.currentToken.End
+		leftExpr.SetBaseNode(ast.NewBaseNodeFromLexerPosition(startPosition, endPosition))
 	}
 
 	return leftExpr, nil
@@ -79,7 +79,7 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 			p.logger.Debug("current token: ", p.currentToken)
 
 			for {
-                startPosition := p.currentToken.Start
+				startPosition := p.currentToken.Start
 				err := p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier, lexer.TQuotedIdentifier, lexer.TAsterisk})
 				if err != nil {
 					return nil, err
@@ -114,9 +114,9 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 			}
 
 			newExpr = &ast.ExprCompoundIdentifier{
-                Identifiers: *compound,
-                BaseNode: ast.NewBaseNodeFromLexerPosition(startPositionCompound, p.currentToken.End),
-            }
+				Identifiers: *compound,
+				BaseNode:    ast.NewBaseNodeFromLexerPosition(startPositionCompound, p.currentToken.End),
+			}
 		}
 
 		if p.peekTokenIs(lexer.TLeftParen) {
@@ -502,7 +502,9 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 			if err != nil {
 				return nil, err
 			}
-			p.expectPeek(lexer.TRightParen)
+			if err := p.expectPeek(lexer.TRightParen); err != nil {
+				return nil, err
+			}
 			p.logger.Debug("stmt: ", stmt)
 			return &stmt, nil
 		}
@@ -755,7 +757,9 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 			if err != nil {
 				return nil, err
 			}
-			p.expectPeek(lexer.TRightParen)
+			if err := p.expectPeek(lexer.TRightParen); err != nil {
+				return nil, err
+			}
 
 			return &ast.ExprInSubqueryLogicalOperator{
 				TestExpression: left,
@@ -770,7 +774,10 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 			if err != nil {
 				return nil, err
 			}
-			p.expectPeek(lexer.TRightParen)
+			p.logger.Info("hello")
+			if err := p.expectPeek(lexer.TRightParen); err != nil {
+				return nil, err
+			}
 
 			return &ast.ExprInLogicalOperator{
 				TestExpression: left,
@@ -829,7 +836,9 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 				if err != nil {
 					return nil, err
 				}
-				p.expectPeek(lexer.TRightParen)
+				if err := p.expectPeek(lexer.TRightParen); err != nil {
+					return nil, err
+				}
 
 				return &ast.ExprInSubqueryLogicalOperator{
 					TestExpression: left,
@@ -845,7 +854,9 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 				if err != nil {
 					return nil, err
 				}
-				p.expectPeek(lexer.TRightParen)
+				if err := p.expectPeek(lexer.TRightParen); err != nil {
+					return nil, err
+				}
 
 				return &ast.ExprInLogicalOperator{
 					TestExpression: left,
