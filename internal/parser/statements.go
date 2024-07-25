@@ -195,7 +195,7 @@ func (p *Parser) parseSelectBody() (ast.SelectBody, error) {
 	}
 	stmt.Table = table
 
-	if !p.peekTokenIs(lexer.TWhere) {
+	if p.peekTokenIs(lexer.TWhere) {
 		whereExpression, err := p.parseWhereExpression()
 		if err != nil {
 			return stmt, err
@@ -203,7 +203,7 @@ func (p *Parser) parseSelectBody() (ast.SelectBody, error) {
 		stmt.WhereClause = whereExpression
 	}
 
-	if !p.peekTokenIs(lexer.TGroup) {
+	if p.peekTokenIs(lexer.TGroup) {
 		groupByClause, err := p.parseGroupByClause()
 		if err != nil {
 			return stmt, err
@@ -211,7 +211,7 @@ func (p *Parser) parseSelectBody() (ast.SelectBody, error) {
 		stmt.GroupByClause = groupByClause
 	}
 
-	if !p.peekTokenIs(lexer.THaving) {
+	if p.peekTokenIs(lexer.THaving) {
 		havingExpression, err := p.parseHavingExpression()
 		if err != nil {
 			return stmt, err
@@ -219,7 +219,7 @@ func (p *Parser) parseSelectBody() (ast.SelectBody, error) {
 		stmt.HavingClause = havingExpression
 	}
 
-	if !p.peekTokenIs(lexer.TOrder) {
+	if p.peekTokenIs(lexer.TOrder) {
 		orderByClause, err := p.parseOrderByClause()
 		if err != nil {
 			return stmt, err
@@ -270,7 +270,7 @@ func (p *Parser) parseSelectSubquery() (ast.ExprSubquery, error) {
 	}
 	stmt.Table = table
 
-	if !p.peekTokenIs(lexer.TWhere) {
+	if p.peekTokenIs(lexer.TWhere) {
 		whereExpression, err := p.parseWhereExpression()
 		if err != nil {
 			return stmt, err
@@ -278,7 +278,7 @@ func (p *Parser) parseSelectSubquery() (ast.ExprSubquery, error) {
 		stmt.WhereClause = whereExpression
 	}
 
-	if !p.peekTokenIs(lexer.TGroup) {
+	if p.peekTokenIs(lexer.TGroup) {
 		groupByClause, err := p.parseGroupByClause()
 		if err != nil {
 			return stmt, err
@@ -286,7 +286,7 @@ func (p *Parser) parseSelectSubquery() (ast.ExprSubquery, error) {
 		stmt.GroupByClause = groupByClause
 	}
 
-	if !p.peekTokenIs(lexer.THaving) {
+	if p.peekTokenIs(lexer.THaving) {
 		havingExpression, err := p.parseHavingExpression()
 		if err != nil {
 			return stmt, err
@@ -294,7 +294,7 @@ func (p *Parser) parseSelectSubquery() (ast.ExprSubquery, error) {
 		stmt.HavingClause = havingExpression
 	}
 
-	if !p.peekTokenIs(lexer.TOrder) {
+	if p.peekTokenIs(lexer.TOrder) {
 		orderByClause, err := p.parseOrderByClause()
 		if err != nil {
 			return stmt, err

@@ -3,6 +3,7 @@ package parser
 import (
 	"SequelGo/internal/ast"
 	"SequelGo/internal/lexer"
+	"strings"
 	"testing"
 
 	"go.uber.org/zap"
@@ -506,7 +507,7 @@ func test(t *testing.T, expected ast.Query, input string) {
 	query := p.Parse()
 
 	if len(query.Statements) != 1 {
-		t.Fatalf("expected 1 statement, got %d", len(query.Statements))
+		t.Fatalf("expected 1 statement, got %d\n %s", len(query.Statements), strings.Join(p.Errors(), "\n"))
 	}
 	for i, stmt := range query.Statements {
 		if stmt.TokenLiteral() != expected.Statements[i].TokenLiteral() {
