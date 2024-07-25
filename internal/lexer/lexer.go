@@ -328,7 +328,7 @@ func (l *Lexer) readCommentLine() string {
 		l.readChar()
 	}
 
-	return l.input[start:l.current+1]
+	return strings.TrimSpace(l.input[start:l.current+1])
 }
 
 func (l *Lexer) readQuotedIdentifier() string {
