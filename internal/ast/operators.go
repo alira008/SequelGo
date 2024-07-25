@@ -160,6 +160,9 @@ func (e ExprUnaryOperator) TokenLiteral() string {
 func (e *ExprUnaryOperator) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }
+func (e *ExprUnaryOperator) GetBaseNode() BaseNode {
+    return e.BaseNode
+}
 
 func (e ExprComparisonOperator) expressionNode() {}
 func (e ExprComparisonOperator) TokenLiteral() string {
@@ -171,6 +174,9 @@ func (e ExprComparisonOperator) TokenLiteral() string {
 }
 func (e *ExprComparisonOperator) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
+}
+func (e *ExprComparisonOperator) GetBaseNode() BaseNode {
+    return e.BaseNode
 }
 
 func (e ExprArithmeticOperator) expressionNode() {}
@@ -195,6 +201,9 @@ func (e ExprArithmeticOperator) TokenLiteral() string {
 func (e *ExprArithmeticOperator) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }
+func (e *ExprArithmeticOperator) GetBaseNode() BaseNode {
+    return e.BaseNode
+}
 
 func (e ExprAndLogicalOperator) expressionNode() {}
 func (e ExprAndLogicalOperator) TokenLiteral() string {
@@ -206,6 +215,9 @@ func (e ExprAndLogicalOperator) TokenLiteral() string {
 }
 func (e *ExprAndLogicalOperator) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
+}
+func (e *ExprAndLogicalOperator) GetBaseNode() BaseNode {
+    return e.BaseNode
 }
 
 func (e ExprAllLogicalOperator) expressionNode() {}
@@ -219,6 +231,9 @@ func (e ExprAllLogicalOperator) TokenLiteral() string {
 }
 func (e *ExprAllLogicalOperator) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
+}
+func (e *ExprAllLogicalOperator) GetBaseNode() BaseNode {
+    return e.BaseNode
 }
 
 func (e ExprBetweenLogicalOperator) expressionNode() {}
@@ -237,6 +252,9 @@ func (e ExprBetweenLogicalOperator) TokenLiteral() string {
 func (e *ExprBetweenLogicalOperator) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }
+func (e *ExprBetweenLogicalOperator) GetBaseNode() BaseNode {
+    return e.BaseNode
+}
 
 func (e ExprExistsLogicalOperator) expressionNode() {}
 func (e ExprExistsLogicalOperator) TokenLiteral() string {
@@ -248,6 +266,9 @@ func (e ExprExistsLogicalOperator) TokenLiteral() string {
 }
 func (e *ExprExistsLogicalOperator) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
+}
+func (e *ExprExistsLogicalOperator) GetBaseNode() BaseNode {
+    return e.BaseNode
 }
 
 func (e ExprInSubqueryLogicalOperator) expressionNode() {}
@@ -264,6 +285,9 @@ func (e ExprInSubqueryLogicalOperator) TokenLiteral() string {
 }
 func (e *ExprInSubqueryLogicalOperator) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
+}
+func (e *ExprInSubqueryLogicalOperator) GetBaseNode() BaseNode {
+    return e.BaseNode
 }
 
 func (e ExprInLogicalOperator) expressionNode() {}
@@ -288,6 +312,9 @@ func (e ExprInLogicalOperator) TokenLiteral() string {
 func (e *ExprInLogicalOperator) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }
+func (e *ExprInLogicalOperator) GetBaseNode() BaseNode {
+    return e.BaseNode
+}
 
 func (e ExprLikeLogicalOperator) expressionNode() {}
 func (e ExprLikeLogicalOperator) TokenLiteral() string {
@@ -303,6 +330,9 @@ func (e ExprLikeLogicalOperator) TokenLiteral() string {
 func (e *ExprLikeLogicalOperator) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }
+func (e *ExprLikeLogicalOperator) GetBaseNode() BaseNode {
+    return e.BaseNode
+}
 
 func (e ExprNotLogicalOperator) expressionNode() {}
 func (e ExprNotLogicalOperator) TokenLiteral() string {
@@ -313,6 +343,9 @@ func (e ExprNotLogicalOperator) TokenLiteral() string {
 }
 func (e *ExprNotLogicalOperator) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
+}
+func (e *ExprNotLogicalOperator) GetBaseNode() BaseNode {
+    return e.BaseNode
 }
 
 func (e ExprOrLogicalOperator) expressionNode() {}
@@ -325,6 +358,9 @@ func (e ExprOrLogicalOperator) TokenLiteral() string {
 }
 func (e *ExprOrLogicalOperator) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
+}
+func (e *ExprOrLogicalOperator) GetBaseNode() BaseNode {
+    return e.BaseNode
 }
 
 func (e ExprSomeLogicalOperator) expressionNode() {}
@@ -339,6 +375,9 @@ func (e ExprSomeLogicalOperator) TokenLiteral() string {
 func (e *ExprSomeLogicalOperator) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
 }
+func (e *ExprSomeLogicalOperator) GetBaseNode() BaseNode {
+    return e.BaseNode
+}
 
 func (e ExprAnyLogicalOperator) expressionNode() {}
 func (e ExprAnyLogicalOperator) TokenLiteral() string {
@@ -351,4 +390,7 @@ func (e ExprAnyLogicalOperator) TokenLiteral() string {
 }
 func (e *ExprAnyLogicalOperator) SetBaseNode(baseNode BaseNode) {
     e.BaseNode = baseNode
+}
+func (e *ExprAnyLogicalOperator) GetBaseNode() BaseNode {
+    return e.BaseNode
 }

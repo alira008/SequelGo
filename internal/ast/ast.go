@@ -8,6 +8,8 @@ import (
 
 type Node interface {
 	TokenLiteral() string
+	SetBaseNode(baseNode BaseNode)
+	GetBaseNode() BaseNode
 }
 
 type Position struct {
@@ -41,13 +43,11 @@ func NewBaseNode(Start, End Position) BaseNode {
 type Statement interface {
 	Node
 	statementNode()
-	SetBaseNode(baseNode BaseNode)
 }
 
 type Expression interface {
 	Node
 	expressionNode()
-	SetBaseNode(baseNode BaseNode)
 }
 
 type Query struct {
@@ -232,6 +232,9 @@ func (cte CommmonTableExpression) TokenLiteral() string {
 func (cte *CommmonTableExpression) SetBaseNode(baseNode BaseNode) {
     cte.BaseNode = baseNode
 }
+func (cte *CommmonTableExpression) GetBaseNode() BaseNode {
+    return cte.BaseNode
+}
 
 func (ss SelectStatement) statementNode() {}
 func (ss SelectStatement) TokenLiteral() string {
@@ -249,6 +252,9 @@ func (ss SelectStatement) TokenLiteral() string {
 }
 func (ss *SelectStatement) SetBaseNode(baseNode BaseNode) {
     ss.BaseNode = baseNode
+}
+func (ss *SelectStatement) GetBaseNode() BaseNode {
+    return ss.BaseNode
 }
 
 func (sb SelectBody) statementNode() {}
@@ -302,6 +308,9 @@ func (sb SelectBody) TokenLiteral() string {
 func (sb *SelectBody) SetBaseNode(baseNode BaseNode) {
     sb.BaseNode = baseNode
 }
+func (sb *SelectBody) GetBaseNode() BaseNode {
+    return sb.BaseNode
+}
 
 func (ta TableArg) expressionNode() {}
 func (ta TableArg) TokenLiteral() string {
@@ -325,6 +334,9 @@ func (ta TableArg) TokenLiteral() string {
 func (ta *TableArg) SetBaseNode(baseNode BaseNode) {
     ta.BaseNode = baseNode
 }
+func (ta *TableArg) GetBaseNode() BaseNode {
+    return ta.BaseNode
+}
 
 func (ts TableSource) expressionNode() {}
 func (ts TableSource) TokenLiteral() string {
@@ -336,6 +348,9 @@ func (ts TableSource) TokenLiteral() string {
 }
 func (ts *TableSource) SetBaseNode(baseNode BaseNode) {
     ts.BaseNode = baseNode
+}
+func (ts *TableSource) GetBaseNode() BaseNode {
+    return ts.BaseNode
 }
 
 func (j Join) expressionNode() {}
@@ -378,6 +393,9 @@ func (j Join) TokenLiteral() string {
 func (j *Join) SetBaseNode(baseNode BaseNode) {
     j.BaseNode = baseNode
 }
+func (j *Join) GetBaseNode() BaseNode {
+    return j.BaseNode
+}
 
 func (ta TopArg) expressionNode() {}
 func (ta TopArg) TokenLiteral() string {
@@ -396,6 +414,9 @@ func (ta TopArg) TokenLiteral() string {
 }
 func (ta *TopArg) SetBaseNode(baseNode BaseNode) {
     ta.BaseNode = baseNode
+}
+func (ta *TopArg) GetBaseNode() BaseNode {
+    return ta.BaseNode
 }
 
 func (o OrderByClause) expressionNode() {}
@@ -425,6 +446,9 @@ func (o OrderByClause) TokenLiteral() string {
 func (o *OrderByClause) SetBaseNode(baseNode BaseNode) {
     o.BaseNode = baseNode
 }
+func (o *OrderByClause) GetBaseNode() BaseNode {
+    return o.BaseNode
+}
 
 func (o OffsetFetchClause) expressionNode() {}
 func (o OffsetFetchClause) TokenLiteral() string {
@@ -441,6 +465,9 @@ func (o OffsetFetchClause) TokenLiteral() string {
 }
 func (o *OffsetFetchClause) SetBaseNode(baseNode BaseNode) {
     o.BaseNode = baseNode
+}
+func (o *OffsetFetchClause) GetBaseNode() BaseNode {
+    return o.BaseNode
 }
 
 func (o OrderByArg) expressionNode() {}
@@ -463,6 +490,9 @@ func (o OrderByArg) TokenLiteral() string {
 func (o *OrderByArg) SetBaseNode(baseNode BaseNode) {
     o.BaseNode = baseNode
 }
+func (o *OrderByArg) GetBaseNode() BaseNode {
+    return o.BaseNode
+}
 
 func (o OffsetArg) expressionNode() {}
 func (o OffsetArg) TokenLiteral() string {
@@ -481,6 +511,9 @@ func (o OffsetArg) TokenLiteral() string {
 }
 func (o *OffsetArg) SetBaseNode(baseNode BaseNode) {
     o.BaseNode = baseNode
+}
+func (o *OffsetArg) GetBaseNode() BaseNode {
+    return o.BaseNode
 }
 
 func (f FetchArg) expressionNode() {}
@@ -512,4 +545,7 @@ func (f FetchArg) TokenLiteral() string {
 }
 func (f *FetchArg) SetBaseNode(baseNode BaseNode) {
     f.BaseNode = baseNode
+}
+func (f *FetchArg) GetBaseNode() BaseNode {
+    return f.BaseNode
 }
