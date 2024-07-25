@@ -195,29 +195,38 @@ func (p *Parser) parseSelectBody() (ast.SelectBody, error) {
 	}
 	stmt.Table = table
 
-	whereExpression, err := p.parseWhereExpression()
-	if err != nil {
-		return stmt, err
+	if !p.peekTokenIs(lexer.TWhere) {
+		whereExpression, err := p.parseWhereExpression()
+		if err != nil {
+			return stmt, err
+		}
+		stmt.WhereClause = whereExpression
 	}
-	stmt.WhereClause = whereExpression
 
-	groupByClause, err := p.parseGroupByClause()
-	if err != nil {
-		return stmt, err
+	if !p.peekTokenIs(lexer.TGroup) {
+		groupByClause, err := p.parseGroupByClause()
+		if err != nil {
+			return stmt, err
+		}
+		stmt.GroupByClause = groupByClause
 	}
-	stmt.GroupByClause = groupByClause
 
-	havingExpression, err := p.parseHavingExpression()
-	if err != nil {
-		return stmt, err
+	if !p.peekTokenIs(lexer.THaving) {
+		havingExpression, err := p.parseHavingExpression()
+		if err != nil {
+			return stmt, err
+		}
+		stmt.HavingClause = havingExpression
 	}
-	stmt.HavingClause = havingExpression
 
-	orderByClause, err := p.parseOrderByClause()
-	if err != nil {
-		return stmt, err
+	if !p.peekTokenIs(lexer.TOrder) {
+		orderByClause, err := p.parseOrderByClause()
+		if err != nil {
+			return stmt, err
+		}
+		stmt.OrderByClause = orderByClause
 	}
-	stmt.OrderByClause = orderByClause
+
 	stmt.BaseNode = ast.NewBaseNodeFromLexerPosition(
 		startPositionSelectBody,
 		p.currentToken.End,
@@ -261,33 +270,38 @@ func (p *Parser) parseSelectSubquery() (ast.ExprSubquery, error) {
 	}
 	stmt.Table = table
 
-	// startPosition := p.currentToken.Start
-	whereExpression, err := p.parseWhereExpression()
-	if err != nil {
-		return stmt, err
+	if !p.peekTokenIs(lexer.TWhere) {
+		whereExpression, err := p.parseWhereExpression()
+		if err != nil {
+			return stmt, err
+		}
+		stmt.WhereClause = whereExpression
 	}
-	// whereExpression.SetBaseNode(ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End))
-	stmt.WhereClause = whereExpression
 
-	groupByClause, err := p.parseGroupByClause()
-	if err != nil {
-		return stmt, err
+	if !p.peekTokenIs(lexer.TGroup) {
+		groupByClause, err := p.parseGroupByClause()
+		if err != nil {
+			return stmt, err
+		}
+		stmt.GroupByClause = groupByClause
 	}
-	stmt.GroupByClause = groupByClause
 
-	// startPosition = p.currentToken.Start
-	havingExpression, err := p.parseHavingExpression()
-	if err != nil {
-		return stmt, err
+	if !p.peekTokenIs(lexer.THaving) {
+		havingExpression, err := p.parseHavingExpression()
+		if err != nil {
+			return stmt, err
+		}
+		stmt.HavingClause = havingExpression
 	}
-	// havingExpression.SetBaseNode(ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End))
-	stmt.HavingClause = havingExpression
 
-	orderByClause, err := p.parseOrderByClause()
-	if err != nil {
-		return stmt, err
+	if !p.peekTokenIs(lexer.TOrder) {
+		orderByClause, err := p.parseOrderByClause()
+		if err != nil {
+			return stmt, err
+		}
+		stmt.OrderByClause = orderByClause
 	}
-	stmt.OrderByClause = orderByClause
+
 	stmt.BaseNode = ast.NewBaseNodeFromLexerPosition(
 		startPositionSubquery,
 		p.currentToken.End,
@@ -552,13 +566,10 @@ func (p *Parser) parseJoins() ([]ast.Join, error) {
 }
 
 func (p *Parser) parseWhereExpression() (ast.Expression, error) {
-	if !p.peekTokenIs(lexer.TWhere) {
-		return nil, nil
-	}
-	p.logger.Debug("parsing where")
-
 	// go to where token
 	p.nextToken()
+	p.logger.Debug("parsing where")
+
 	p.nextToken()
 	expr, err := p.parseExpression(PrecedenceLowest)
 	if err != nil {
@@ -589,9 +600,6 @@ func (p *Parser) parseWhereExpression() (ast.Expression, error) {
 
 func (p *Parser) parseGroupByClause() ([]ast.Expression, error) {
 	items := []ast.Expression{}
-	if !p.peekTokenIs(lexer.TGroup) {
-		return items, nil
-	}
 	p.nextToken()
 	err := p.expectPeek(lexer.TBy)
 	if err != nil {
@@ -629,14 +637,11 @@ func (p *Parser) parseGroupByClause() ([]ast.Expression, error) {
 }
 
 func (p *Parser) parseHavingExpression() (ast.Expression, error) {
-	if !p.peekTokenIs(lexer.THaving) {
-		return nil, nil
-	}
+	p.nextToken()
 	p.logger.Debug("parsing having")
 
-	// go to where token
 	p.nextToken()
-	p.nextToken()
+	// go to having token
 	expr, err := p.parseExpression(PrecedenceLowest)
 	if err != nil {
 		return expr, err
@@ -663,11 +668,8 @@ func (p *Parser) parseHavingExpression() (ast.Expression, error) {
 }
 
 func (p *Parser) parseOrderByClause() (*ast.OrderByClause, error) {
-	startPosition := p.currentToken.Start
-	if !p.peekTokenIs(lexer.TOrder) {
-		return nil, nil
-	}
 	p.nextToken()
+	startPosition := p.currentToken.Start
 	err := p.expectPeek(lexer.TBy)
 	if err != nil {
 		return nil, err
