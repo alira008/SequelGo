@@ -61,8 +61,14 @@ type Comment struct {
 	Value string
 }
 
-func (c Comment) TokenLiteral() string {
+func (c *Comment) TokenLiteral() string {
 	return fmt.Sprintf("--%s", c.Value)
+}
+func (c *Comment) SetBaseNode(baseNode BaseNode) {
+    c.BaseNode = baseNode
+}
+func (c *Comment) GetBaseNode() BaseNode {
+    return c.BaseNode
 }
 
 func NewComment(token lexer.Token) Comment {
