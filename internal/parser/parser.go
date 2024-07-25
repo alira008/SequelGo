@@ -197,15 +197,6 @@ func (p *Parser) Parse() ast.Query {
 			continue
 		}
 		if stmt != nil {
-			// p.logger.Debugw(stmt)
-			// objJSON, err := json.MarshalIndent(stmt, "", "  ")
-			// if err != nil {
-			// 	p.logger.Errorw("Failed to marshal object", "error", err)
-			// 	continue
-			// }
-
-			// Log the pretty JSON string
-			p.logger.Infow("Detailed object log", "object", stmt)
 			stmt.SetBaseNode(ast.NewBaseNodeFromLexerPosition(startPosition, endPosition))
 			query.Statements = append(query.Statements, stmt)
 		}
