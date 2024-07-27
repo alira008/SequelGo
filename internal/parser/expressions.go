@@ -69,7 +69,7 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 		}
 
 		// parsing compound identifiers
-		if p.currentTokenIs(lexer.TIdentifier) {
+		if p.currentTokenIs(lexer.TIdentifier) || p.currentTokenIs(lexer.TQuotedIdentifier) {
 			parsedCompoundIdentifier, err := p.parseCompoundIdentifier(newExpr)
 			if err != nil {
 				return nil, err
