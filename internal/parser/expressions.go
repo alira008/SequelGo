@@ -90,10 +90,10 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 				Span: ast.NewSpanFromLexerPosition(p.currentToken.Start, p.currentToken.End),
 			}
 
-            functionCall, err := p.parseFunctionCall(function)
-            if err != nil {
-                return nil, err
-            }
+			functionCall, err := p.parseFunctionCall(function)
+			if err != nil {
+				return nil, err
+			}
 
 			newExpr = functionCall
 		}
