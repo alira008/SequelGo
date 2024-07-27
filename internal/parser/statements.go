@@ -17,7 +17,7 @@ func (p *Parser) parseStatement() (ast.Statement, error) {
 		}
 
 		return &ast.SelectStatement{
-			BaseNode:   ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End),
+			Span:       ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
 			SelectBody: &body,
 		}, nil
 	case lexer.TWith:
@@ -28,7 +28,7 @@ func (p *Parser) parseStatement() (ast.Statement, error) {
 			return nil, err
 		}
 
-		select_statement.BaseNode = ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End)
+		select_statement.Span = ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End)
 		return select_statement, nil
 	default:
 		return nil, nil
@@ -39,7 +39,7 @@ func (p *Parser) parseStatement() (ast.Statement, error) {
 func (p *Parser) parseSelectStatement() (*ast.SelectStatement, error) {
 	p.logger.Debugln("parsing select statement with cte")
 	startPositionSelectStatement := p.currentToken.Start
-	ctes := []ast.CommmonTableExpression{}
+	ctes := []ast.CommonTableExpression{}
 	for !p.peekTokenIs(lexer.TSelect) {
 		if len(ctes) > 0 {
 			if err := p.expectPeek(lexer.TComma); err != nil {
@@ -97,11 +97,11 @@ func (p *Parser) parseSelectStatement() (*ast.SelectStatement, error) {
 		}
 		endPosition := p.currentToken.End
 
-		cte := ast.CommmonTableExpression{
-			BaseNode: ast.NewBaseNodeFromLexerPosition(startPosition, endPosition),
-			Name:     cteName,
-			Columns:  exprList,
-			Query:    selectBody,
+		cte := ast.CommonTableExpression{
+			Span:    ast.NewSpanFromLexerPosition(startPosition, endPosition),
+			Name:    cteName,
+			Columns: exprList,
+			Query:   selectBody,
 		}
 		ctes = append(ctes, cte)
 	}
@@ -119,7 +119,7 @@ func (p *Parser) parseSelectStatement() (*ast.SelectStatement, error) {
 		return &ast.SelectStatement{
 			CTE:        &ctes,
 			SelectBody: &selectBody,
-			BaseNode: ast.NewBaseNodeFromLexerPosition(
+			Span: ast.NewSpanFromLexerPosition(
 				startPositionSelectStatement,
 				p.currentToken.End,
 			),
@@ -138,8 +138,8 @@ func (p *Parser) parseTopArg() (*ast.TopArg, error) {
 		return nil, err
 	}
 	expr := &ast.ExprNumberLiteral{
-		Value:    p.currentToken.Value,
-		BaseNode: ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End),
+		Value: p.currentToken.Value,
+		Span:  ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
 	}
 
 	topArg := ast.TopArg{Quantity: expr}
@@ -158,7 +158,7 @@ func (p *Parser) parseTopArg() (*ast.TopArg, error) {
 		topArg.WithTies = true
 	}
 
-	topArg.BaseNode = ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End)
+	topArg.Span = ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End)
 	return &topArg, nil
 }
 
@@ -187,7 +187,7 @@ func (p *Parser) parseSelectBody() (ast.SelectBody, error) {
 	if err != nil {
 		return stmt, err
 	}
-	stmt.SelectItems = selectItems
+	stmt.SelectItems = *selectItems
 
 	table, err := p.parseTableArg()
 	if err != nil {
@@ -227,7 +227,7 @@ func (p *Parser) parseSelectBody() (ast.SelectBody, error) {
 		stmt.OrderByClause = orderByClause
 	}
 
-	stmt.BaseNode = ast.NewBaseNodeFromLexerPosition(
+	stmt.Span = ast.NewSpanFromLexerPosition(
 		startPositionSelectBody,
 		p.currentToken.End,
 	)
@@ -239,70 +239,13 @@ func (p *Parser) parseSelectSubquery() (ast.ExprSubquery, error) {
 	stmt := ast.ExprSubquery{}
 	startPositionSubquery := p.currentToken.Start
 	p.logger.Debug("parsing subquery")
-	if p.peekTokenIs(lexer.TDistinct) {
-		stmt.Distinct = true
-		p.nextToken()
-	}
 
-	// check for optional all keyword
-	if p.peekTokenIs(lexer.TAll) {
-		p.nextToken()
-	}
-
-	if p.peekTokenIs(lexer.TTop) {
-		topArg, err := p.parseTopArg()
-		if err != nil {
-			return stmt, err
-		}
-		stmt.Top = topArg
-	}
-
-	selectItems, err := p.parseSelectItems()
+	selectBody, err := p.parseSelectBody()
 	if err != nil {
 		return stmt, err
 	}
-
-	stmt.SelectItems = selectItems
-
-	table, err := p.parseTableArg()
-	if err != nil {
-		return stmt, err
-	}
-	stmt.Table = table
-
-	if p.peekTokenIs(lexer.TWhere) {
-		whereExpression, err := p.parseWhereExpression()
-		if err != nil {
-			return stmt, err
-		}
-		stmt.WhereClause = whereExpression
-	}
-
-	if p.peekTokenIs(lexer.TGroup) {
-		groupByClause, err := p.parseGroupByClause()
-		if err != nil {
-			return stmt, err
-		}
-		stmt.GroupByClause = groupByClause
-	}
-
-	if p.peekTokenIs(lexer.THaving) {
-		havingExpression, err := p.parseHavingExpression()
-		if err != nil {
-			return stmt, err
-		}
-		stmt.HavingClause = havingExpression
-	}
-
-	if p.peekTokenIs(lexer.TOrder) {
-		orderByClause, err := p.parseOrderByClause()
-		if err != nil {
-			return stmt, err
-		}
-		stmt.OrderByClause = orderByClause
-	}
-
-	stmt.BaseNode = ast.NewBaseNodeFromLexerPosition(
+	stmt.SelectBody = selectBody
+	stmt.Span = ast.NewSpanFromLexerPosition(
 		startPositionSubquery,
 		p.currentToken.End,
 	)
@@ -310,8 +253,9 @@ func (p *Parser) parseSelectSubquery() (ast.ExprSubquery, error) {
 	return stmt, nil
 }
 
-func (p *Parser) parseSelectItems() ([]ast.Expression, error) {
-	items := []ast.Expression{}
+func (p *Parser) parseSelectItems() (*ast.SelectItems, error) {
+	selectItems := ast.SelectItems{}
+	startPositionSelectItems := p.currentToken.Start
 	p.logger.Debug(p.currentToken)
 	p.logger.Debug(p.peekToken)
 	for {
@@ -329,23 +273,23 @@ func (p *Parser) parseSelectItems() ([]ast.Expression, error) {
 			lexer.TSum,
 			lexer.TQuotedIdentifier}, ast.BuiltinFunctionsTokenType...))
 		if err != nil {
-			return items, err
+			return nil, err
 		}
 
 		expr, err := p.parseExpression(PrecedenceLowest)
 		if err != nil {
-			return items, err
+			return nil, err
 		}
 		switch v := expr.(type) {
 		case *ast.ExprSubquery:
-			if len(v.SelectItems) > 1 {
-				return items, p.currentErrorString("Subquery must contain only one column")
+			if len(v.SelectItems.Items) > 1 {
+				return nil, p.currentErrorString("Subquery must contain only one column")
 			}
-			if len(v.GroupByClause) > 1 && v.Distinct {
-				return items, p.currentErrorString("The 'DISTINCT' keyword can't be used with subqueries that include 'GROUP BY'")
+			if v.GroupByClause != nil && len(v.GroupByClause.Items) > 1 && v.Distinct {
+				return nil, p.currentErrorString("The 'DISTINCT' keyword can't be used with subqueries that include 'GROUP BY'")
 			}
 			if v.OrderByClause != nil && len(v.OrderByClause.Expressions) > 1 && v.Top == nil {
-				return items, p.currentErrorString("'ORDER BY' can only be specified when 'TOP' is also specified")
+				return nil, p.currentErrorString("'ORDER BY' can only be specified when 'TOP' is also specified")
 			}
 			break
 		}
@@ -379,10 +323,10 @@ func (p *Parser) parseSelectItems() ([]ast.Expression, error) {
 				return nil, err
 			}
 			exprAlias.Alias = alias
-			exprAlias.BaseNode = ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End)
-			items = append(items, exprAlias)
+			exprAlias.Span = ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End)
+			selectItems.Items = append(selectItems.Items, exprAlias)
 		} else {
-			items = append(items, expr)
+			selectItems.Items = append(selectItems.Items, expr)
 		}
 
 		if p.peekToken.Type != lexer.TComma {
@@ -392,7 +336,8 @@ func (p *Parser) parseSelectItems() ([]ast.Expression, error) {
 		p.nextToken()
 	}
 
-	return items, nil
+	selectItems.SetSpan(ast.NewSpanFromLexerPosition(startPositionSelectItems, p.currentToken.End))
+	return &selectItems, nil
 }
 
 func (p *Parser) parseTableArg() (*ast.TableArg, error) {
@@ -414,8 +359,8 @@ func (p *Parser) parseTableArg() (*ast.TableArg, error) {
 		p.peekTokenIs(lexer.TRight) ||
 		p.peekTokenIs(lexer.TFull) {
 		return &ast.TableArg{
-			Table:    tableSource,
-			BaseNode: ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End),
+			Table: tableSource,
+			Span:  ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
 		}, nil
 	}
 
@@ -425,9 +370,9 @@ func (p *Parser) parseTableArg() (*ast.TableArg, error) {
 	}
 
 	return &ast.TableArg{
-		Table:    tableSource,
-		Joins:    joins,
-		BaseNode: ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End),
+		Table: tableSource,
+		Joins: joins,
+		Span:  ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
 	}, nil
 }
 
@@ -442,25 +387,25 @@ func (p *Parser) parseTableSource() (*ast.TableSource, error) {
 	if err != nil {
 		return nil, err
 	}
-	baseNode := ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End)
+	baseNode := ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End)
 	switch v := source.(type) {
 	case *ast.ExprIdentifier, *ast.ExprCompoundIdentifier, *ast.ExprLocalVariable:
 		return &ast.TableSource{
-			Type:     ast.TSTTable,
-			Source:   source,
-			BaseNode: baseNode,
+			Type:   ast.TSTTable,
+			Source: source,
+			Span:   baseNode,
 		}, err
 	case *ast.ExprFunctionCall:
 		return &ast.TableSource{
-			Type:     ast.TSTTableValuedFunction,
-			Source:   source,
-			BaseNode: baseNode,
+			Type:   ast.TSTTableValuedFunction,
+			Source: source,
+			Span:   baseNode,
 		}, err
 	case *ast.ExprSubquery:
 		return &ast.TableSource{
-			Type:     ast.TSTDerived,
-			Source:   source,
-			BaseNode: baseNode,
+			Type:   ast.TSTDerived,
+			Source: source,
+			Span:   baseNode,
 		}, err
 	case *ast.ExprWithAlias:
 		var tableType ast.TableSourceType
@@ -476,9 +421,9 @@ func (p *Parser) parseTableSource() (*ast.TableSource, error) {
 			break
 		}
 		return &ast.TableSource{
-			Type:     tableType,
-			Source:   v,
-			BaseNode: baseNode,
+			Type:   tableType,
+			Source: v,
+			Span:   baseNode,
 		}, err
 	default:
 		return nil, p.currentErrorString("expected Table Name or Function or Subquery")
@@ -558,14 +503,16 @@ func (p *Parser) parseJoins() ([]ast.Join, error) {
 			Type:      joinType,
 			Table:     tableSource,
 			Condition: searchCondition,
-			BaseNode:  ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End),
+			Span:      ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
 		})
 	}
 
 	return joins, nil
 }
 
-func (p *Parser) parseWhereExpression() (ast.Expression, error) {
+func (p *Parser) parseWhereExpression() (*ast.WhereClause, error) {
+	whereClause := ast.WhereClause{}
+	startPosition := p.currentToken.Start
 	// go to where token
 	p.nextToken()
 	p.logger.Debug("parsing where")
@@ -573,7 +520,7 @@ func (p *Parser) parseWhereExpression() (ast.Expression, error) {
 	p.nextToken()
 	expr, err := p.parseExpression(PrecedenceLowest)
 	if err != nil {
-		return expr, err
+		return nil, err
 	}
 
 	switch expr.(type) {
@@ -595,15 +542,20 @@ func (p *Parser) parseWhereExpression() (ast.Expression, error) {
 		return nil, p.currentErrorString("expected expression after 'WHERE' keyword")
 	}
 	p.logger.Debugf("expr: %s\n", expr)
-	return expr, nil
+	whereClause.Clause = expr
+	whereClause.Clause.SetSpan(ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End))
+	return &whereClause, nil
 }
 
-func (p *Parser) parseGroupByClause() ([]ast.Expression, error) {
+func (p *Parser) parseGroupByClause() (*ast.GroupByClause, error) {
+	groupByClause := ast.GroupByClause{}
+	startPosition := p.currentToken.Start
 	items := []ast.Expression{}
+
 	p.nextToken()
 	err := p.expectPeek(lexer.TBy)
 	if err != nil {
-		return items, err
+		return nil, err
 	}
 
 	p.logger.Debug("parsing group by clause")
@@ -616,12 +568,12 @@ func (p *Parser) parseGroupByClause() ([]ast.Expression, error) {
 			lexer.TQuotedIdentifier,
 		})
 		if err != nil {
-			return items, err
+			return nil, err
 		}
 
 		expr, err := p.parseExpression(PrecedenceLowest)
 		if err != nil {
-			return items, err
+			return nil, err
 		}
 		items = append(items, expr)
 
@@ -633,10 +585,14 @@ func (p *Parser) parseGroupByClause() ([]ast.Expression, error) {
 	}
 	p.nextToken()
 
-	return items, nil
+	groupByClause.Items = items
+	groupByClause.SetSpan(ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End))
+	return &groupByClause, nil
 }
 
-func (p *Parser) parseHavingExpression() (ast.Expression, error) {
+func (p *Parser) parseHavingExpression() (*ast.HavingClause, error) {
+	havingClause := ast.HavingClause{}
+	startPosition := p.currentToken.Start
 	p.nextToken()
 	p.logger.Debug("parsing having")
 
@@ -644,7 +600,7 @@ func (p *Parser) parseHavingExpression() (ast.Expression, error) {
 	// go to having token
 	expr, err := p.parseExpression(PrecedenceLowest)
 	if err != nil {
-		return expr, err
+		return nil, err
 	}
 
 	switch expr.(type) {
@@ -664,7 +620,9 @@ func (p *Parser) parseHavingExpression() (ast.Expression, error) {
 	default:
 		return nil, p.currentErrorString("expected expression after 'HAVING' keyword")
 	}
-	return expr, nil
+	havingClause.Clause = expr
+	havingClause.Clause.SetSpan(ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End))
+	return &havingClause, nil
 }
 
 func (p *Parser) parseOrderByClause() (*ast.OrderByClause, error) {
@@ -681,7 +639,7 @@ func (p *Parser) parseOrderByClause() (*ast.OrderByClause, error) {
 	}
 	orderByClause := &ast.OrderByClause{
 		Expressions: args,
-		BaseNode:    ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End),
+		Span:        ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
 	}
 
 	if !p.peekTokenIs(lexer.TOffset) {
@@ -694,7 +652,7 @@ func (p *Parser) parseOrderByClause() (*ast.OrderByClause, error) {
 	}
 
 	orderByClause.OffsetFetch = offsetFetchClause
-	orderByClause.BaseNode = ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End)
+	orderByClause.Span = ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End)
 
 	return orderByClause, nil
 }
@@ -721,24 +679,24 @@ func (p *Parser) parseOrderByArgs() ([]ast.OrderByArg, error) {
 		if p.peekTokenIs(lexer.TAsc) {
 			p.nextToken()
 			items = append(items, ast.OrderByArg{
-				Column:   expr,
-				Type:     ast.OBAsc,
-				BaseNode: ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End),
+				Column: expr,
+				Type:   ast.OBAsc,
+				Span:   ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
 			})
 		} else if p.peekTokenIs(lexer.TDesc) {
 
 			p.nextToken()
 			items = append(items, ast.OrderByArg{
-				Column:   expr,
-				Type:     ast.OBDesc,
-				BaseNode: ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End),
+				Column: expr,
+				Type:   ast.OBDesc,
+				Span:   ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
 			})
 		} else {
 
 			items = append(items, ast.OrderByArg{
-				Column:   expr,
-				Type:     ast.OBNone,
-				BaseNode: ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End),
+				Column: expr,
+				Type:   ast.OBNone,
+				Span:   ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
 			})
 		}
 
@@ -762,8 +720,8 @@ func (p *Parser) parseOffsetFetchClause() (*ast.OffsetFetchClause, error) {
 		return nil, err
 	}
 	offsetFetchClause := ast.OffsetFetchClause{
-		Offset:   offset,
-		BaseNode: ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End),
+		Offset: offset,
+		Span:   ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
 	}
 
 	if !p.peekTokenIs(lexer.TFetch) {
@@ -777,7 +735,7 @@ func (p *Parser) parseOffsetFetchClause() (*ast.OffsetFetchClause, error) {
 	}
 
 	offsetFetchClause.Fetch = &fetch
-	offsetFetchClause.BaseNode = ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End)
+	offsetFetchClause.Span = ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End)
 
 	return &offsetFetchClause, nil
 }
@@ -797,7 +755,7 @@ func (p *Parser) parseOffset() (ast.OffsetArg, error) {
 	}
 
 	offsetArg.Value = offset
-	offsetArg.BaseNode = ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End)
+	offsetArg.Span = ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End)
 	switch p.currentToken.Type {
 	case lexer.TRow:
 		offsetArg.RowOrRows = ast.RRRow
@@ -850,7 +808,7 @@ func (p *Parser) parseFetch() (ast.FetchArg, error) {
 	if err = p.expectPeek(lexer.TOnly); err != nil {
 		return fetchArg, err
 	}
-	fetchArg.BaseNode = ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End)
+	fetchArg.Span = ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End)
 
 	return fetchArg, nil
 }
@@ -896,7 +854,7 @@ func (p *Parser) parseOverClause() (*ast.FunctionOverClause, error) {
 	if err != nil {
 		return nil, err
 	}
-	functionOverClause.BaseNode = ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End)
+	functionOverClause.Span = ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End)
 
 	return &functionOverClause, nil
 }
@@ -962,8 +920,8 @@ func (p *Parser) parseWindowFrameClause() (*ast.WindowFrameClause, error) {
 			return nil, err
 		}
 		windowFrameStart = ast.WindowFrameBound{
-			Type:     ast.WFBTUnboundedPreceding,
-			BaseNode: ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End),
+			Type: ast.WFBTUnboundedPreceding,
+			Span: ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
 		}
 	} else if p.peekTokenIs(lexer.TCurrent) {
 		p.nextToken()
@@ -971,8 +929,8 @@ func (p *Parser) parseWindowFrameClause() (*ast.WindowFrameClause, error) {
 			return nil, err
 		}
 		windowFrameStart = ast.WindowFrameBound{
-			Type:     ast.WFBTCurrentRow,
-			BaseNode: ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End),
+			Type: ast.WFBTCurrentRow,
+			Span: ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
 		}
 	} else if p.peekTokenIs(lexer.TNumericLiteral) {
 		p.nextToken()
@@ -987,7 +945,7 @@ func (p *Parser) parseWindowFrameClause() (*ast.WindowFrameClause, error) {
 		windowFrameStart = ast.WindowFrameBound{
 			Type:       ast.WFBTPreceding,
 			Expression: expr,
-			BaseNode:   ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End),
+			Span:       ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
 		}
 	} else {
 		return nil, p.currentErrorString("Expected UNBOUNDED PRECEDING or CURRENT ROW or <NUMBER> PRECEDING")
@@ -997,7 +955,7 @@ func (p *Parser) parseWindowFrameClause() (*ast.WindowFrameClause, error) {
 		return &ast.WindowFrameClause{
 			RowsOrRange: rowsOrRangeType,
 			Start:       &windowFrameStart,
-			BaseNode:    ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End),
+			Span:        ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
 		}, nil
 	}
 
@@ -1012,8 +970,8 @@ func (p *Parser) parseWindowFrameClause() (*ast.WindowFrameClause, error) {
 			return nil, err
 		}
 		windowFrameEnd = ast.WindowFrameBound{
-			Type:     ast.WFBTUnboundedFollowing,
-			BaseNode: ast.NewBaseNodeFromLexerPosition(startPositionFrameEnd, p.currentToken.End),
+			Type: ast.WFBTUnboundedFollowing,
+			Span: ast.NewSpanFromLexerPosition(startPositionFrameEnd, p.currentToken.End),
 		}
 	} else if p.peekTokenIs(lexer.TCurrent) {
 		p.nextToken()
@@ -1021,8 +979,8 @@ func (p *Parser) parseWindowFrameClause() (*ast.WindowFrameClause, error) {
 			return nil, err
 		}
 		windowFrameEnd = ast.WindowFrameBound{
-			Type:     ast.WFBTCurrentRow,
-			BaseNode: ast.NewBaseNodeFromLexerPosition(startPositionFrameEnd, p.currentToken.End),
+			Type: ast.WFBTCurrentRow,
+			Span: ast.NewSpanFromLexerPosition(startPositionFrameEnd, p.currentToken.End),
 		}
 	} else if p.peekTokenIs(lexer.TNumericLiteral) {
 		p.nextToken()
@@ -1036,7 +994,7 @@ func (p *Parser) parseWindowFrameClause() (*ast.WindowFrameClause, error) {
 		windowFrameEnd = ast.WindowFrameBound{
 			Type:       ast.WFBTFollowing,
 			Expression: expr,
-			BaseNode:   ast.NewBaseNodeFromLexerPosition(startPositionFrameEnd, p.currentToken.End),
+			Span:       ast.NewSpanFromLexerPosition(startPositionFrameEnd, p.currentToken.End),
 		}
 	} else {
 		return nil, p.currentErrorString("Expected UNBOUNDED FOLLOWING or CURRENT ROW or <NUMBER> FOLLOWING")
@@ -1046,7 +1004,7 @@ func (p *Parser) parseWindowFrameClause() (*ast.WindowFrameClause, error) {
 		RowsOrRange: rowsOrRangeType,
 		Start:       &windowFrameStart,
 		End:         &windowFrameEnd,
-		BaseNode:    ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End),
+		Span:        ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
 	}, nil
 }
 
@@ -1077,7 +1035,7 @@ func (p *Parser) parseExpressionList() (ast.ExprExpressionList, error) {
 		p.nextToken()
 	}
 
-	expressionList.BaseNode = ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End)
+	expressionList.Span = ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End)
 	return expressionList, nil
 }
 
@@ -1101,7 +1059,7 @@ func (p *Parser) parseNumericSize() (*ast.NumericSize, error) {
 		p.nextToken()
 		return &ast.NumericSize{
 			Precision: precision32,
-			BaseNode:  ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End),
+			Span:      ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
 		}, nil
 	}
 
@@ -1129,7 +1087,7 @@ func (p *Parser) parseNumericSize() (*ast.NumericSize, error) {
 	return &ast.NumericSize{
 		Precision: precision32,
 		Scale:     &scale32,
-		BaseNode:  ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End),
+		Span:      ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
 	}, nil
 }
 
@@ -1238,7 +1196,7 @@ func (p *Parser) parseDataType() (*ast.DataType, error) {
 		return nil, p.currentErrorString("Expected a Builtin Datatype")
 	}
 
-	dataType.BaseNode = ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End)
+	dataType.Span = ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End)
 	return &dataType, nil
 }
 
@@ -1274,6 +1232,401 @@ func (p *Parser) parseCast() (*ast.ExprCast, error) {
 	return &ast.ExprCast{
 		Expression: expr,
 		DataType:   *dt,
-		BaseNode:   ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End),
+		Span:       ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
 	}, nil
+}
+
+func (p *Parser) parseCompoundIdentifier(expr ast.Expression) (*ast.ExprCompoundIdentifier, error) {
+	if p.peekToken.Type == lexer.TPeriod {
+		// we are dealing with a qualified identifier
+		startPositionCompound := p.currentToken.Start
+		compound := &[]ast.Expression{expr}
+		p.logger.Debug("parsing compound identifier")
+
+		// go to period token
+		p.nextToken()
+		p.logger.Debug("current token: ", p.currentToken)
+
+		for {
+			startPosition := p.currentToken.Start
+			err := p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier, lexer.TQuotedIdentifier, lexer.TAsterisk})
+			if err != nil {
+				return nil, err
+			}
+			p.logger.Debug("current token: ", p.currentToken)
+
+			if p.currentToken.Type == lexer.TAsterisk {
+				expr := &ast.ExprStar{
+					Span: ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+				}
+				*compound = append(*compound, expr)
+				break
+			} else if p.currentToken.Type == lexer.TQuotedIdentifier {
+				expr := &ast.ExprQuotedIdentifier{
+					Value: p.currentToken.Value,
+					Span:  ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+				}
+				*compound = append(*compound, expr)
+			} else {
+				expr := &ast.ExprIdentifier{
+					Value: p.currentToken.Value,
+					Span:  ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+				}
+				*compound = append(*compound, expr)
+			}
+
+			if p.peekToken.Type != lexer.TPeriod {
+				break
+			}
+
+			p.nextToken()
+		}
+
+		return &ast.ExprCompoundIdentifier{
+			Identifiers: *compound,
+			Span:        ast.NewSpanFromLexerPosition(startPositionCompound, p.currentToken.End),
+		}, nil
+	}
+
+	return nil, nil
+}
+
+func (p *Parser) parseFunction() (*ast.ExprFunction, error) {
+	var funcType ast.FuncType
+	switch p.currentToken.Type {
+	case lexer.TDenseRank:
+		funcType = ast.FuncDenseRank
+	case lexer.TRank:
+		funcType = ast.FuncRank
+	case lexer.TRowNumber:
+		funcType = ast.FuncRowNumber
+	case lexer.TAbs:
+		funcType = ast.FuncAbs
+	case lexer.TAcos:
+		funcType = ast.FuncAcos
+	case lexer.TAsin:
+		funcType = ast.FuncAsin
+	case lexer.TAtan:
+		funcType = ast.FuncAtan
+	case lexer.TCeiling:
+		funcType = ast.FuncCeiling
+	case lexer.TCos:
+		funcType = ast.FuncCos
+	case lexer.TCot:
+		funcType = ast.FuncCot
+	case lexer.TDegrees:
+		funcType = ast.FuncDegrees
+	case lexer.TExp:
+		funcType = ast.FuncExp
+	case lexer.TFloor:
+		funcType = ast.FuncFloor
+	case lexer.TLog:
+		funcType = ast.FuncLog
+	case lexer.TLog10:
+		funcType = ast.FuncLog10
+	case lexer.TPi:
+		funcType = ast.FuncPi
+	case lexer.TPower:
+		funcType = ast.FuncPower
+	case lexer.TRadians:
+		funcType = ast.FuncRadians
+	case lexer.TRands:
+		funcType = ast.FuncRands
+	case lexer.TRound:
+		funcType = ast.FuncRound
+	case lexer.TSign:
+		funcType = ast.FuncSign
+	case lexer.TSin:
+		funcType = ast.FuncSin
+	case lexer.TSqrt:
+		funcType = ast.FuncSqrt
+	case lexer.TSquare:
+		funcType = ast.FuncSquare
+	case lexer.TTan:
+		funcType = ast.FuncTan
+	case lexer.TFirstValue:
+		funcType = ast.FuncFirstValue
+	case lexer.TLastValue:
+		funcType = ast.FuncLastValue
+	case lexer.TLag:
+		funcType = ast.FuncLag
+	case lexer.TLead:
+		funcType = ast.FuncLead
+	case lexer.TAvg:
+		funcType = ast.FuncAvg
+	case lexer.TCount:
+		funcType = ast.FuncCount
+	case lexer.TMax:
+		funcType = ast.FuncMax
+	case lexer.TMin:
+		funcType = ast.FuncMin
+	case lexer.TStdev:
+		funcType = ast.FuncStdev
+	case lexer.TStdevp:
+		funcType = ast.FuncStdevp
+	case lexer.TSum:
+		funcType = ast.FuncSum
+	case lexer.TVar:
+		funcType = ast.FuncVar
+	case lexer.TVarp:
+		funcType = ast.FuncVarp
+	case lexer.TGetdate:
+		funcType = ast.FuncGetdate
+	case lexer.TChecksum:
+		funcType = ast.FuncChecksum
+	case lexer.TNewId:
+		funcType = ast.FuncNewId
+	}
+	p.logger.Debug("in function parse")
+	function := &ast.ExprFunction{
+		Type: funcType,
+		Name: &ast.ExprIdentifier{Value: p.currentToken.Value},
+		Span: ast.NewSpanFromLexerPosition(p.currentToken.Start, p.currentToken.End),
+	}
+
+	return function, nil
+}
+
+func (p *Parser) parseFunctionArgs() (*[]ast.Expression, error) {
+	args := []ast.Expression{}
+	p.logger.Debug("parsing function args")
+	for {
+		startPosition := p.currentToken.Start
+		err := p.expectPeekMany(append([]lexer.TokenType{
+			lexer.TIdentifier,
+			lexer.TNumericLiteral,
+			lexer.TStringLiteral,
+			lexer.TLocalVariable,
+			lexer.TQuotedIdentifier,
+		}, ast.BuiltinFunctionsTokenType...))
+		if err != nil {
+			return nil, err
+		}
+
+		if p.currentToken.Type == lexer.TLocalVariable {
+			args = append(args, &ast.ExprLocalVariable{
+				Value: p.currentToken.Value,
+				Span:  ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+			})
+		} else if p.currentToken.Type == lexer.TQuotedIdentifier {
+			args = append(args, &ast.ExprQuotedIdentifier{
+				Value: p.currentToken.Value,
+				Span:  ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+			})
+		} else if p.currentToken.Type == lexer.TStringLiteral {
+			args = append(args, &ast.ExprStringLiteral{
+				Value: p.currentToken.Value,
+				Span:  ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+			})
+		} else if p.currentToken.Type == lexer.TNumericLiteral {
+			args = append(args, &ast.ExprNumberLiteral{
+				Value: p.currentToken.Value,
+				Span:  ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+			})
+		} else if p.currentTokenIs(lexer.TIdentifier) {
+			// check if we have a compound identifier
+			identifier := &ast.ExprIdentifier{
+				Value: p.currentToken.Value,
+				Span:  ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+			}
+			compoundIdentifier, err := p.parseCompoundIdentifier(identifier)
+			if err != nil {
+				return nil, err
+			}
+
+			// we have a compoundIdentifier
+			if compoundIdentifier != nil {
+				compoundIdentifierPosition := p.currentToken.End
+				if p.peekTokenIs(lexer.TLeftParen) {
+					function := &ast.ExprFunction{
+						Type: ast.FuncUserDefined,
+						Name: compoundIdentifier,
+						Span: ast.NewSpanFromLexerPosition(startPosition, compoundIdentifierPosition),
+					}
+					functionCall, err := p.parseFunctionCall(function)
+					if err != nil {
+						return nil, err
+					}
+
+					args = append(args, functionCall)
+				} else {
+					args = append(args, compoundIdentifier)
+				}
+			} else if p.peekTokenIs(lexer.TLeftParen) {
+				p.logger.Info("iner func")
+				function := &ast.ExprFunction{
+					Type: ast.FuncUserDefined,
+					Name: identifier,
+					Span: ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+				}
+
+				functionCall, err := p.parseFunctionCall(function)
+				if err != nil {
+					return nil, err
+				}
+
+				args = append(args, functionCall)
+			} else {
+				args = append(args, identifier)
+			}
+
+		} else {
+			functionCall, err := p.parseFunctionCall(nil)
+			if err != nil {
+				return nil, err
+			}
+			args = append(args, functionCall)
+		}
+
+		if p.peekTokenIs(lexer.TRightParen) {
+			break
+		}
+		p.nextToken()
+	}
+
+	return &args, nil
+}
+
+func (p *Parser) parseFunctionCall(function *ast.ExprFunction) (*ast.ExprFunctionCall, error) {
+	if function == nil {
+		parsedFunction, err := p.parseFunction()
+		if err != nil {
+			return nil, err
+		}
+		function = parsedFunction
+	}
+	// compoundIdentifier, err := p.parseCompoundIdentifier(function.Name)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// if compoundIdentifier != nil {
+	// 	function.Name = compoundIdentifier
+	// }
+
+	// parse function arguments
+	err := p.expectPeek(lexer.TLeftParen)
+	if err != nil {
+		return nil, err
+	}
+	args := []ast.Expression{}
+	if !p.peekTokenIs(lexer.TRightParen) {
+		functionArgs, err := p.parseFunctionArgs()
+		if err != nil {
+			return nil, err
+		}
+		args = *functionArgs
+	}
+
+	err = p.expectPeek(lexer.TRightParen)
+	if err != nil {
+		p.logger.Debug("expected right parenthesis, got ", p.peekToken.Value)
+		return nil, err
+	}
+	// check for over clause
+	if !p.peekTokenIs(lexer.TOver) {
+		return &ast.ExprFunctionCall{
+			Name: function,
+			Args: args,
+		}, nil
+	}
+
+	overClause, err := p.parseOverClause()
+	if err != nil {
+		return nil, err
+	}
+
+	p.logger.Debug(overClause.TokenLiteral())
+
+	return &ast.ExprFunctionCall{
+		Name:       function,
+		Args:       args,
+		OverClause: overClause,
+	}, nil
+}
+
+func (p *Parser) parseBetweenLogicalOperator(left ast.Expression, not bool) (*ast.ExprBetweenLogicalOperator, error) {
+	p.nextToken()
+
+	begin, err := p.parsePrefixExpression()
+	if err != nil {
+		return nil, err
+	}
+	p.logger.Debugf("between: begin %s", begin.TokenLiteral())
+	if err := p.expectPeek(lexer.TAnd); err != nil {
+		return nil, err
+	}
+
+	p.nextToken()
+	end, err := p.parsePrefixExpression()
+	if err != nil {
+		return nil, err
+	}
+	p.logger.Debugf("between: end %s", end.TokenLiteral())
+
+	// check if we have and operator
+	return &ast.ExprBetweenLogicalOperator{
+		TestExpression: left,
+		Not:            not,
+		Begin:          begin,
+		End:            end,
+	}, nil
+}
+
+func (p *Parser) parseInSubqueryLogicalOperator(left ast.Expression, not bool) (*ast.ExprInSubqueryLogicalOperator, error) {
+	p.nextToken()
+	statement, err := p.parseSelectSubquery()
+	if err != nil {
+		return nil, err
+	}
+	if err := p.expectPeek(lexer.TRightParen); err != nil {
+		return nil, err
+	}
+
+	return &ast.ExprInSubqueryLogicalOperator{
+		TestExpression: left,
+		Not:            not,
+		Subquery:       &statement,
+	}, nil
+}
+
+func (p *Parser) parseInExpressionListLogicalOperator(left ast.Expression, not bool) (*ast.ExprInLogicalOperator, error) {
+	stmt, err := p.parseExpressionList()
+	if err != nil {
+		return nil, err
+	}
+	p.logger.Info("hello")
+	if err := p.expectPeek(lexer.TRightParen); err != nil {
+		return nil, err
+	}
+
+	return &ast.ExprInLogicalOperator{
+		TestExpression: left,
+		Not:            not,
+		Expressions:    stmt.List,
+	}, nil
+
+}
+
+func (p *Parser) parseInLogicalOperator(left ast.Expression, not bool) (ast.Expression, error) {
+	p.expectPeek(lexer.TLeftParen)
+	if p.peekTokenIs(lexer.TSelect) {
+		inSubquery, err := p.parseInSubqueryLogicalOperator(left, not)
+		if err != nil {
+			return nil, err
+		}
+		return inSubquery, nil
+	} else if p.peekTokenIs(lexer.TIdentifier) ||
+		p.peekTokenIs(lexer.TLocalVariable) ||
+		p.peekTokenIs(lexer.TQuotedIdentifier) ||
+		p.peekTokenIs(lexer.TStringLiteral) ||
+		p.peekTokenIs(lexer.TNumericLiteral) {
+		inExpressionList, err := p.parseInExpressionListLogicalOperator(left, not)
+		if err != nil {
+			return nil, err
+		}
+
+		return inExpressionList, nil
+	}
+	p.errorToken = ETCurrent
+	return nil, p.currentErrorString("Expected (Subquery or Expression List) after 'IN' keyword")
 }

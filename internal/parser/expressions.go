@@ -13,7 +13,7 @@ func (p *Parser) parseExpression(precedence Precedence) (ast.Expression, error) 
 	if err != nil {
 		return nil, err
 	}
-	leftExpr.SetBaseNode(ast.NewBaseNodeFromLexerPosition(startPosition, endPosition))
+	leftExpr.SetSpan(ast.NewSpanFromLexerPosition(startPosition, endPosition))
 
 	// parse infix sql expressions using stacks to keep track of precedence
 	for precedence < checkPrecedence(p.peekToken.Type) {
@@ -25,7 +25,7 @@ func (p *Parser) parseExpression(precedence Precedence) (ast.Expression, error) 
 			return nil, err
 		}
 		endPosition = p.currentToken.End
-		leftExpr.SetBaseNode(ast.NewBaseNodeFromLexerPosition(startPosition, endPosition))
+		leftExpr.SetSpan(ast.NewSpanFromLexerPosition(startPosition, endPosition))
 	}
 
 	return leftExpr, nil
@@ -39,161 +39,63 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 		switch p.currentToken.Type {
 		case lexer.TLocalVariable:
 			newExpr = &ast.ExprLocalVariable{
-				Value:    p.currentToken.Value,
-				BaseNode: ast.NewBaseNodeFromLexerPosition(p.currentToken.Start, p.currentToken.End),
+				Value: p.currentToken.Value,
+				Span:  ast.NewSpanFromLexerPosition(p.currentToken.Start, p.currentToken.End),
 			}
 		case lexer.TQuotedIdentifier:
 			newExpr = &ast.ExprQuotedIdentifier{
-				Value:    p.currentToken.Value,
-				BaseNode: ast.NewBaseNodeFromLexerPosition(p.currentToken.Start, p.currentToken.End),
+				Value: p.currentToken.Value,
+				Span:  ast.NewSpanFromLexerPosition(p.currentToken.Start, p.currentToken.End),
 			}
 		case lexer.TStringLiteral:
 			newExpr = &ast.ExprStringLiteral{
-				Value:    p.currentToken.Value,
-				BaseNode: ast.NewBaseNodeFromLexerPosition(p.currentToken.Start, p.currentToken.End),
+				Value: p.currentToken.Value,
+				Span:  ast.NewSpanFromLexerPosition(p.currentToken.Start, p.currentToken.End),
 			}
 		case lexer.TNumericLiteral:
 			newExpr = &ast.ExprNumberLiteral{
-				Value:    p.currentToken.Value,
-				BaseNode: ast.NewBaseNodeFromLexerPosition(p.currentToken.Start, p.currentToken.End),
+				Value: p.currentToken.Value,
+				Span:  ast.NewSpanFromLexerPosition(p.currentToken.Start, p.currentToken.End),
 			}
 		case lexer.TIdentifier:
 			newExpr = &ast.ExprIdentifier{
-				Value:    p.currentToken.Value,
-				BaseNode: ast.NewBaseNodeFromLexerPosition(p.currentToken.Start, p.currentToken.End),
+				Value: p.currentToken.Value,
+				Span:  ast.NewSpanFromLexerPosition(p.currentToken.Start, p.currentToken.End),
 			}
 		case lexer.TAsterisk:
 			newExpr = &ast.ExprStar{
-				BaseNode: ast.NewBaseNodeFromLexerPosition(p.currentToken.Start, p.currentToken.End),
+				Span: ast.NewSpanFromLexerPosition(p.currentToken.Start, p.currentToken.End),
 			}
 		}
 
-		if p.peekToken.Type == lexer.TPeriod {
-			// we are dealing with a qualified identifier
-			startPositionCompound := p.currentToken.Start
-			compound := &[]ast.Expression{newExpr}
-			p.logger.Debug("parsing compound identifier")
-
-			// go to period token
-			p.nextToken()
-			p.logger.Debug("current token: ", p.currentToken)
-
-			for {
-				startPosition := p.currentToken.Start
-				err := p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier, lexer.TQuotedIdentifier, lexer.TAsterisk})
-				if err != nil {
-					return nil, err
-				}
-				p.logger.Debug("current token: ", p.currentToken)
-
-				if p.currentToken.Type == lexer.TAsterisk {
-					expr := &ast.ExprStar{
-						BaseNode: ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End),
-					}
-					*compound = append(*compound, expr)
-					break
-				} else if p.currentToken.Type == lexer.TQuotedIdentifier {
-					expr := &ast.ExprQuotedIdentifier{
-						Value:    p.currentToken.Value,
-						BaseNode: ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End),
-					}
-					*compound = append(*compound, expr)
-				} else {
-					expr := &ast.ExprIdentifier{
-						Value:    p.currentToken.Value,
-						BaseNode: ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End),
-					}
-					*compound = append(*compound, expr)
-				}
-
-				if p.peekToken.Type != lexer.TPeriod {
-					break
-				}
-
-				p.nextToken()
+		// parsing compound identifiers
+		if p.currentTokenIs(lexer.TIdentifier) {
+			parsedCompoundIdentifier, err := p.parseCompoundIdentifier(newExpr)
+			if err != nil {
+				return nil, err
 			}
 
-			newExpr = &ast.ExprCompoundIdentifier{
-				Identifiers: *compound,
-				BaseNode:    ast.NewBaseNodeFromLexerPosition(startPositionCompound, p.currentToken.End),
+			// we have a compoundIdentifier
+			if parsedCompoundIdentifier != nil {
+				newExpr = parsedCompoundIdentifier
 			}
 		}
 
+		// parsing user functions
 		if p.peekTokenIs(lexer.TLeftParen) {
 			p.logger.Debugln("parsing user defined function")
 			function := &ast.ExprFunction{
-				Type:     ast.FuncUserDefined,
-				Name:     newExpr,
-				BaseNode: ast.NewBaseNodeFromLexerPosition(p.currentToken.Start, p.currentToken.End),
-			}
-			// parse function arguments
-			err := p.expectPeek(lexer.TLeftParen)
-			if err != nil {
-				return nil, err
-			}
-			args := []ast.Expression{}
-			if !p.peekTokenIs(lexer.TRightParen) {
-				p.logger.Debug("parsing function args")
-				for {
-					startPosition := p.currentToken.Start
-					p.logger.Debug(p.currentToken)
-					p.logger.Debug(p.peekToken)
-					err = p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier,
-						lexer.TNumericLiteral,
-						lexer.TStringLiteral,
-						lexer.TLocalVariable,
-						lexer.TQuotedIdentifier,
-					})
-					if err != nil {
-						return nil, err
-					}
-
-					if p.currentToken.Type == lexer.TLocalVariable {
-						args = append(args, &ast.ExprLocalVariable{
-							Value:    p.currentToken.Value,
-							BaseNode: ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End),
-						})
-					} else if p.currentToken.Type == lexer.TQuotedIdentifier {
-						args = append(args, &ast.ExprQuotedIdentifier{
-							Value:    p.currentToken.Value,
-							BaseNode: ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End),
-						})
-					} else if p.currentToken.Type == lexer.TStringLiteral {
-						args = append(args, &ast.ExprStringLiteral{
-							Value:    p.currentToken.Value,
-							BaseNode: ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End),
-						})
-					} else if p.currentToken.Type == lexer.TNumericLiteral {
-						args = append(args, &ast.ExprNumberLiteral{
-							Value:    p.currentToken.Value,
-							BaseNode: ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End),
-						})
-					} else {
-						args = append(args, &ast.ExprIdentifier{
-							Value:    p.currentToken.Value,
-							BaseNode: ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End),
-						})
-					}
-
-					if p.peekTokenIs(lexer.TRightParen) {
-						break
-					}
-					p.nextToken()
-				}
+				Type: ast.FuncUserDefined,
+				Name: newExpr,
+				Span: ast.NewSpanFromLexerPosition(p.currentToken.Start, p.currentToken.End),
 			}
 
-			p.logger.Debug(args)
-			err = p.expectPeek(lexer.TRightParen)
-			if err != nil {
-				p.logger.Debug("expected right parenthesis, got ", p.peekToken.Value)
-				p.logger.Debug(p.currentToken)
-				return nil, err
-			}
+            functionCall, err := p.parseFunctionCall(function)
+            if err != nil {
+                return nil, err
+            }
 
-			newExpr = &ast.ExprFunctionCall{
-				Name: function,
-				Args: args,
-			}
+			newExpr = functionCall
 		}
 
 		if (p.peekTokenIs(lexer.TAs) || p.peekTokenIs(lexer.TIdentifier) ||
@@ -268,178 +170,12 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 		lexer.TGetdate,
 		lexer.TChecksum,
 		lexer.TNewId:
-		var funcType ast.FuncType
-		switch p.currentToken.Type {
-		case lexer.TDenseRank:
-			funcType = ast.FuncDenseRank
-		case lexer.TRank:
-			funcType = ast.FuncRank
-		case lexer.TRowNumber:
-			funcType = ast.FuncRowNumber
-		case lexer.TAbs:
-			funcType = ast.FuncAbs
-		case lexer.TAcos:
-			funcType = ast.FuncAcos
-		case lexer.TAsin:
-			funcType = ast.FuncAsin
-		case lexer.TAtan:
-			funcType = ast.FuncAtan
-		case lexer.TCeiling:
-			funcType = ast.FuncCeiling
-		case lexer.TCos:
-			funcType = ast.FuncCos
-		case lexer.TCot:
-			funcType = ast.FuncCot
-		case lexer.TDegrees:
-			funcType = ast.FuncDegrees
-		case lexer.TExp:
-			funcType = ast.FuncExp
-		case lexer.TFloor:
-			funcType = ast.FuncFloor
-		case lexer.TLog:
-			funcType = ast.FuncLog
-		case lexer.TLog10:
-			funcType = ast.FuncLog10
-		case lexer.TPi:
-			funcType = ast.FuncPi
-		case lexer.TPower:
-			funcType = ast.FuncPower
-		case lexer.TRadians:
-			funcType = ast.FuncRadians
-		case lexer.TRands:
-			funcType = ast.FuncRands
-		case lexer.TRound:
-			funcType = ast.FuncRound
-		case lexer.TSign:
-			funcType = ast.FuncSign
-		case lexer.TSin:
-			funcType = ast.FuncSin
-		case lexer.TSqrt:
-			funcType = ast.FuncSqrt
-		case lexer.TSquare:
-			funcType = ast.FuncSquare
-		case lexer.TTan:
-			funcType = ast.FuncTan
-		case lexer.TFirstValue:
-			funcType = ast.FuncFirstValue
-		case lexer.TLastValue:
-			funcType = ast.FuncLastValue
-		case lexer.TLag:
-			funcType = ast.FuncLag
-		case lexer.TLead:
-			funcType = ast.FuncLead
-		case lexer.TAvg:
-			funcType = ast.FuncAvg
-		case lexer.TCount:
-			funcType = ast.FuncCount
-		case lexer.TMax:
-			funcType = ast.FuncMax
-		case lexer.TMin:
-			funcType = ast.FuncMin
-		case lexer.TStdev:
-			funcType = ast.FuncStdev
-		case lexer.TStdevp:
-			funcType = ast.FuncStdevp
-		case lexer.TSum:
-			funcType = ast.FuncSum
-		case lexer.TVar:
-			funcType = ast.FuncVar
-		case lexer.TVarp:
-			funcType = ast.FuncVarp
-		case lexer.TGetdate:
-			funcType = ast.FuncGetdate
-		case lexer.TChecksum:
-			funcType = ast.FuncChecksum
-		case lexer.TNewId:
-			funcType = ast.FuncNewId
-		}
-		p.logger.Debug("in function parse")
-		function := &ast.ExprFunction{
-			Type:     funcType,
-			Name:     &ast.ExprIdentifier{Value: p.currentToken.Value},
-			BaseNode: ast.NewBaseNodeFromLexerPosition(p.currentToken.Start, p.currentToken.End),
-		}
-		// parse function arguments
-		err := p.expectPeek(lexer.TLeftParen)
-		if err != nil {
-			return nil, err
-		}
-		args := []ast.Expression{}
-		if !p.peekTokenIs(lexer.TRightParen) {
-
-			p.logger.Debug("parsing function args")
-			for {
-				startPosition := p.currentToken.Start
-				err = p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier,
-					lexer.TNumericLiteral,
-					lexer.TStringLiteral,
-					lexer.TLocalVariable,
-					lexer.TQuotedIdentifier,
-				})
-				if err != nil {
-					return nil, err
-				}
-
-				if p.currentToken.Type == lexer.TLocalVariable {
-					args = append(args, &ast.ExprLocalVariable{
-						Value:    p.currentToken.Value,
-						BaseNode: ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End),
-					})
-				} else if p.currentToken.Type == lexer.TQuotedIdentifier {
-					args = append(args, &ast.ExprQuotedIdentifier{
-						Value:    p.currentToken.Value,
-						BaseNode: ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End),
-					})
-				} else if p.currentToken.Type == lexer.TStringLiteral {
-					args = append(args, &ast.ExprStringLiteral{
-						Value:    p.currentToken.Value,
-						BaseNode: ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End),
-					})
-				} else if p.currentToken.Type == lexer.TNumericLiteral {
-					args = append(args, &ast.ExprNumberLiteral{
-						Value:    p.currentToken.Value,
-						BaseNode: ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End),
-					})
-				} else {
-					args = append(args, &ast.ExprIdentifier{
-						Value:    p.currentToken.Value,
-						BaseNode: ast.NewBaseNodeFromLexerPosition(startPosition, p.currentToken.End),
-					})
-				}
-
-				if p.peekTokenIs(lexer.TRightParen) {
-					break
-				}
-				p.nextToken()
-			}
-		}
-
-		err = p.expectPeek(lexer.TRightParen)
-		if err != nil {
-			p.logger.Debug("expected right parenthesis, got ", p.peekToken.Value)
-			return nil, err
-		}
-
-		// check for over clause
-		if !p.peekTokenIs(lexer.TOver) {
-			return &ast.ExprFunctionCall{
-				Name: function,
-				Args: args,
-			}, nil
-		}
-
-		overClause, err := p.parseOverClause()
+		functionCall, err := p.parseFunctionCall(nil)
 		if err != nil {
 			return nil, err
 		}
 
-		p.logger.Debug(overClause.TokenLiteral())
-
-		return &ast.ExprFunctionCall{
-			Name:       function,
-			Args:       args,
-			OverClause: overClause,
-		}, nil
+		return functionCall, nil
 	case lexer.TLeftParen:
 		// start of subquery
 		startPosition := p.currentToken.Start
@@ -447,7 +183,7 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 			p.nextToken()
 			subquery, err := p.parseSelectSubquery()
 			endPosition := p.currentToken.End
-			subquery.BaseNode = ast.NewBaseNodeFromLexerPosition(startPosition, endPosition)
+			subquery.Span = ast.NewSpanFromLexerPosition(startPosition, endPosition)
 			if err != nil {
 				return nil, err
 			}
@@ -725,67 +461,17 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 			Right:    right,
 		}, nil
 	case lexer.TBetween:
-		p.nextToken()
-
-		begin, err := p.parsePrefixExpression()
+		betweenOp, err := p.parseBetweenLogicalOperator(left, false)
 		if err != nil {
 			return nil, err
 		}
-		p.logger.Debugf("between: begin %s", begin.TokenLiteral())
-		if err := p.expectPeek(lexer.TAnd); err != nil {
-			return nil, err
-		}
-
-		p.nextToken()
-		end, err := p.parsePrefixExpression()
-		if err != nil {
-			return nil, err
-		}
-		p.logger.Debugf("between: end %s", end.TokenLiteral())
-
-		// check if we have and operator
-		return &ast.ExprBetweenLogicalOperator{
-			TestExpression: left,
-			Begin:          begin,
-			End:            end,
-		}, nil
+		return betweenOp, nil
 	case lexer.TIn:
-		p.expectPeek(lexer.TLeftParen)
-		if p.peekTokenIs(lexer.TSelect) {
-			p.nextToken()
-			statement, err := p.parseSelectSubquery()
-			if err != nil {
-				return nil, err
-			}
-			if err := p.expectPeek(lexer.TRightParen); err != nil {
-				return nil, err
-			}
-
-			return &ast.ExprInSubqueryLogicalOperator{
-				TestExpression: left,
-				Subquery:       &statement,
-			}, nil
-		} else if p.peekTokenIs(lexer.TIdentifier) ||
-			p.peekTokenIs(lexer.TLocalVariable) ||
-			p.peekTokenIs(lexer.TQuotedIdentifier) ||
-			p.peekTokenIs(lexer.TStringLiteral) ||
-			p.peekTokenIs(lexer.TNumericLiteral) {
-			stmt, err := p.parseExpressionList()
-			if err != nil {
-				return nil, err
-			}
-			p.logger.Info("hello")
-			if err := p.expectPeek(lexer.TRightParen); err != nil {
-				return nil, err
-			}
-
-			return &ast.ExprInLogicalOperator{
-				TestExpression: left,
-				Expressions:    stmt.List,
-			}, nil
+		inLogicalOp, err := p.parseInLogicalOperator(left, false)
+		if err != nil {
+			return nil, err
 		}
-		p.errorToken = ETCurrent
-		return nil, p.currentErrorString("Expected (Subquery or Expression List) after 'IN' keyword")
+		return inLogicalOp, nil
 	case lexer.TLike:
 		precedence := checkPrecedence(p.currentToken.Type)
 		p.nextToken()
@@ -803,69 +489,17 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 		p.nextToken()
 
 		if p.currentTokenIs(lexer.TBetween) {
-			p.nextToken()
-
-			begin, err := p.parsePrefixExpression()
+			betweenOp, err := p.parseBetweenLogicalOperator(left, true)
 			if err != nil {
 				return nil, err
 			}
-			p.logger.Debugf("between: begin %s", begin.TokenLiteral())
-			if err := p.expectPeek(lexer.TAnd); err != nil {
-				return nil, err
-			}
-
-			p.nextToken()
-			end, err := p.parsePrefixExpression()
-			if err != nil {
-				return nil, err
-			}
-			p.logger.Debugf("between: end %s", end.TokenLiteral())
-
-			// check if we have and operator
-			return &ast.ExprBetweenLogicalOperator{
-				TestExpression: left,
-				Not:            true,
-				Begin:          begin,
-				End:            end,
-			}, nil
+			return betweenOp, nil
 		} else if p.currentTokenIs(lexer.TIn) {
-			p.expectPeek(lexer.TLeftParen)
-			if p.peekTokenIs(lexer.TSelect) {
-				p.nextToken()
-				statement, err := p.parseSelectSubquery()
-				if err != nil {
-					return nil, err
-				}
-				if err := p.expectPeek(lexer.TRightParen); err != nil {
-					return nil, err
-				}
-
-				return &ast.ExprInSubqueryLogicalOperator{
-					TestExpression: left,
-					Not:            true,
-					Subquery:       &statement,
-				}, nil
-			} else if p.peekTokenIs(lexer.TIdentifier) ||
-				p.peekTokenIs(lexer.TLocalVariable) ||
-				p.peekTokenIs(lexer.TQuotedIdentifier) ||
-				p.peekTokenIs(lexer.TStringLiteral) ||
-				p.peekTokenIs(lexer.TNumericLiteral) {
-				stmt, err := p.parseExpressionList()
-				if err != nil {
-					return nil, err
-				}
-				if err := p.expectPeek(lexer.TRightParen); err != nil {
-					return nil, err
-				}
-
-				return &ast.ExprInLogicalOperator{
-					TestExpression: left,
-					Not:            true,
-					Expressions:    stmt.List,
-				}, nil
+			inLogicalOp, err := p.parseInLogicalOperator(left, true)
+			if err != nil {
+				return nil, err
 			}
-			p.errorToken = ETCurrent
-			return nil, p.currentErrorString("(Subquery or Expression List) after 'NOT IN' keyword")
+			return inLogicalOp, nil
 		} else if p.currentTokenIs(lexer.TLike) {
 			precedence := checkPrecedence(p.currentToken.Type)
 			p.nextToken()
