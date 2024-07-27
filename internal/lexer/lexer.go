@@ -245,7 +245,6 @@ func (l *Lexer) NextToken() Token {
 				token.Type = keyword
 				token.Value = identifier
 			} else {
-
 				token.Type = TIdentifier
 				token.Value = identifier
 			}
