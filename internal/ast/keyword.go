@@ -18,6 +18,10 @@ func NewKeywordFromToken(token lexer.Token) Keyword {
 	}
 }
 
+func (k Keyword) expressionNode()    {}
+func (k *Keyword) SetSpan(span Span) { k.Span = span }
+func (k Keyword) GetSpan() Span      { return k.Span }
+
 type KeywordType uint8
 
 const (
