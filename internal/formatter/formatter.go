@@ -229,17 +229,21 @@ func (f *Formatter) visitExpression(expression ast.Expression) {
 }
 
 func (f *Formatter) visitSelectQuery(selectStatement *ast.SelectStatement) {
+    f.visitSelectBody(selectStatement.SelectBody)
+}
+
+func (f *Formatter) visitSelectBody(selectBody *ast.SelectBody) {
 	f.printKeyword("select")
-	if selectStatement.SelectBody.Distinct {
+	if selectBody.Distinct {
 		f.printKeyword(" distinct")
 	}
-	f.visitSelectTopArg(selectStatement.SelectBody.Top)
-	f.visitSelectItems(selectStatement.SelectBody.SelectItems)
-	f.visitSelectTableArg(selectStatement.SelectBody.Table)
-	f.visitSelectWhereClause(selectStatement.SelectBody.WhereClause)
-	f.visitSelectGroupByClause(selectStatement.SelectBody.GroupByClause)
-	f.visitSelectHavingClause(selectStatement.SelectBody.HavingClause)
-	f.visitSelectOrderByClause(selectStatement.SelectBody.OrderByClause)
+	f.visitSelectTopArg(selectBody.Top)
+	f.visitSelectItems(selectBody.SelectItems)
+	f.visitSelectTableArg(selectBody.Table)
+	f.visitSelectWhereClause(selectBody.WhereClause)
+	f.visitSelectGroupByClause(selectBody.GroupByClause)
+	f.visitSelectHavingClause(selectBody.HavingClause)
+	f.visitSelectOrderByClause(selectBody.OrderByClause)
 }
 
 func (f *Formatter) visitSelectTopArg(selectTopArg *ast.TopArg) {
@@ -257,13 +261,13 @@ func (f *Formatter) visitSelectTopArg(selectTopArg *ast.TopArg) {
 	}
 }
 
-func (f *Formatter) visitSelectItems(items []ast.Expression) {
-	for i, e := range items {
-		if i == 0 && len(items) > 1 {
+func (f *Formatter) visitSelectItems(selectItems ast.SelectItems) {
+	for i, e := range selectItems.Items {
+		if i == 0 && len(selectItems.Items) > 1 {
 			f.increaseIndent()
 			f.printNewLine()
 			f.decreaseIndent()
-		} else if i == 0 && len(items) == 1 {
+		} else if i == 0 && len(selectItems.Items) == 1 {
 			f.printSpace()
 		}
 		if i > 0 {
@@ -340,27 +344,27 @@ func (f *Formatter) visitTableJoin(tableJoin ast.Join) {
 	}
 }
 
-func (f *Formatter) visitSelectWhereClause(expression ast.Expression) {
-	if expression == nil {
+func (f *Formatter) visitSelectWhereClause(whereClause *ast.WhereClause) {
+	if whereClause == nil {
 		return
 	}
 
 	f.printNewLine()
 	f.printKeyword("where ")
-	f.visitExpression(expression)
+	f.visitExpression(whereClause.Clause)
 }
 
-func (f *Formatter) visitSelectGroupByClause(expressions []ast.Expression) {
-	if expressions == nil {
+func (f *Formatter) visitSelectGroupByClause(groupByClause *ast.GroupByClause) {
+	if groupByClause == nil {
 		return
 	}
-	if len(expressions) == 0 {
+	if len(groupByClause.Items) == 0 {
 		return
 	}
 
 	f.printNewLine()
 	f.printKeyword("group by ")
-	for i, e := range expressions {
+	for i, e := range groupByClause.Items {
 		if i > 0 {
 			f.printSelectColumnComma()
 		}
@@ -368,14 +372,14 @@ func (f *Formatter) visitSelectGroupByClause(expressions []ast.Expression) {
 	}
 }
 
-func (f *Formatter) visitSelectHavingClause(expression ast.Expression) {
-	if expression == nil {
+func (f *Formatter) visitSelectHavingClause(havingClause *ast.HavingClause) {
+	if havingClause == nil {
 		return
 	}
 
 	f.printNewLine()
 	f.printKeyword("having ")
-	f.visitExpression(expression)
+	f.visitExpression(havingClause.Clause)
 }
 
 func (f *Formatter) visitSelectOrderByClause(orderByClause *ast.OrderByClause) {
@@ -512,17 +516,7 @@ func (f *Formatter) visitExpressionSubquery(e *ast.ExprSubquery) {
 	f.increaseIndent()
 	f.printNewLine()
 
-	f.printKeyword("select")
-	if e.Distinct {
-		f.printKeyword(" distinct")
-	}
-	f.visitSelectTopArg(e.Top)
-	f.visitSelectItems(e.SelectItems)
-	f.visitSelectTableArg(e.Table)
-	f.visitSelectWhereClause(e.WhereClause)
-	f.visitSelectGroupByClause(e.GroupByClause)
-	f.visitSelectHavingClause(e.HavingClause)
-	f.visitSelectOrderByClause(e.OrderByClause)
+    f.visitSelectBody(&e.SelectBody)
 
 	f.decreaseIndent()
 	f.printNewLine()
@@ -555,11 +549,11 @@ func (f *Formatter) visitExpressionFunction(e *ast.ExprFunction) {
 func (f *Formatter) visitExpressionFunctionCall(e *ast.ExprFunctionCall) {
 	f.visitExpressionFunction(e.Name)
 	f.formattedQuery += "("
-	for i, e := range e.Args {
+	for i, a := range e.Args {
 		if i > 0 {
 			f.printExpressionListComma()
 		}
-		f.visitExpression(e)
+		f.visitExpression(a)
 	}
 	f.formattedQuery += ")"
 	if e.OverClause != nil {

@@ -6,24 +6,6 @@ import (
 	"strings"
 )
 
-type DataTypeKind uint8
-
-const (
-	DTInt DataTypeKind = iota
-	DTBigInt
-	DTTinyInt
-	DTSmallInt
-	DTBit
-	DTFloat
-	DTReal
-	DTDate
-	DTDatetime
-	DTTime
-	DTDecimal
-	DTNumeric
-	DTVarchar
-)
-
 var DataTypeTokenTypes = []lexer.TokenType{
 	lexer.TInt, lexer.TBigint, lexer.TTinyint,
 	lexer.TSmallint, lexer.TBit, lexer.TFloat,
@@ -33,7 +15,7 @@ var DataTypeTokenTypes = []lexer.TokenType{
 }
 
 type DataType struct {
-	BaseNode
+	Span
 	Kind               DataTypeKind
 	FloatPrecision     *uint32
 	DecimalNumericSize *NumericSize
@@ -41,10 +23,13 @@ type DataType struct {
 }
 
 type NumericSize struct {
-	BaseNode
+	Span
 	Precision uint32
 	Scale     *uint32
 }
+
+func (dt DataType) expressionNode()    {}
+func (ns NumericSize) expressionNode() {}
 
 func (ns NumericSize) TokenLiteral() string {
 	var str strings.Builder
@@ -115,3 +100,27 @@ func (dt DataType) TokenLiteral() string {
 	}
 	return str.String()
 }
+
+func (dt DataType) GetSpan() Span    { return dt.Span }
+func (ns NumericSize) GetSpan() Span { return ns.Span }
+
+func (dt *DataType) SetSpan(span Span)    { dt.Span = span }
+func (ns *NumericSize) SetSpan(span Span) { ns.Span = span }
+
+type DataTypeKind uint8
+
+const (
+	DTInt DataTypeKind = iota
+	DTBigInt
+	DTTinyInt
+	DTSmallInt
+	DTBit
+	DTFloat
+	DTReal
+	DTDate
+	DTDatetime
+	DTTime
+	DTDecimal
+	DTNumeric
+	DTVarchar
+)

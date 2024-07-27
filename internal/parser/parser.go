@@ -197,7 +197,7 @@ func (p *Parser) Parse() ast.Query {
 			continue
 		}
 		if stmt != nil {
-			stmt.SetBaseNode(ast.NewBaseNodeFromLexerPosition(startPosition, endPosition))
+			stmt.SetSpan(ast.NewSpanFromLexerPosition(startPosition, endPosition))
 			query.Statements = append(query.Statements, stmt)
 		}
 

@@ -12,16 +12,18 @@ import (
 func TestParseBasicSelectQuery(t *testing.T) {
 	select_statement := ast.SelectStatement{
 		SelectBody: &ast.SelectBody{
-			SelectItems: []ast.Expression{
-				&ast.ExprStar{},
-				&ast.ExprIdentifier{Value: "hello"},
-				&ast.ExprStringLiteral{Value: "yes"},
-				&ast.ExprQuotedIdentifier{Value: "yessir"},
-				&ast.ExprLocalVariable{Value: "nosir"},
-				&ast.ExprCompoundIdentifier{Identifiers: []ast.Expression{
-					&ast.ExprQuotedIdentifier{Value: "superdb"},
-					&ast.ExprIdentifier{Value: "world"},
-					&ast.ExprStar{}}},
+			SelectItems: ast.SelectItems{
+				Items: []ast.Expression{
+					&ast.ExprStar{},
+					&ast.ExprIdentifier{Value: "hello"},
+					&ast.ExprStringLiteral{Value: "yes"},
+					&ast.ExprQuotedIdentifier{Value: "yessir"},
+					&ast.ExprLocalVariable{Value: "nosir"},
+					&ast.ExprCompoundIdentifier{Identifiers: []ast.Expression{
+						&ast.ExprQuotedIdentifier{Value: "superdb"},
+						&ast.ExprIdentifier{Value: "world"},
+						&ast.ExprStar{}}},
+				},
 			},
 			Table: &ast.TableArg{
 				Table: &ast.TableSource{
@@ -29,12 +31,14 @@ func TestParseBasicSelectQuery(t *testing.T) {
 					Source: &ast.ExprIdentifier{Value: "testtable"},
 				},
 			},
-			WhereClause: &ast.ExprComparisonOperator{
-				Left: &ast.ExprIdentifier{
-					Value: "LastPrice",
-				},
-				Operator: ast.ComparisonOpLess,
-				Right:    &ast.ExprNumberLiteral{Value: "10.0"}},
+			WhereClause: &ast.WhereClause{
+				Clause: &ast.ExprComparisonOperator{
+					Left: &ast.ExprIdentifier{
+						Value: "LastPrice",
+					},
+					Operator: ast.ComparisonOpLess,
+					Right:    &ast.ExprNumberLiteral{Value: "10.0"}},
+			},
 		},
 	}
 	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
@@ -46,7 +50,7 @@ func TestParseBasicSelectQuery(t *testing.T) {
 
 func TestParseBasicSelectQueryWithCte(t *testing.T) {
 	select_statement := ast.SelectStatement{
-		CTE: &[]ast.CommmonTableExpression{
+		CTE: &[]ast.CommonTableExpression{
 			{
 				Name: "testctename",
 				Columns: &ast.ExprExpressionList{
@@ -56,10 +60,12 @@ func TestParseBasicSelectQueryWithCte(t *testing.T) {
 					},
 				},
 				Query: ast.SelectBody{
-					SelectItems: []ast.Expression{
-						&ast.ExprStar{},
-						&ast.ExprIdentifier{Value: "hello"},
-						&ast.ExprStringLiteral{Value: "yes"},
+					SelectItems: ast.SelectItems{
+						Items: []ast.Expression{
+							&ast.ExprStar{},
+							&ast.ExprIdentifier{Value: "hello"},
+							&ast.ExprStringLiteral{Value: "yes"},
+						},
 					},
 					Table: &ast.TableArg{
 						Table: &ast.TableSource{
@@ -72,9 +78,11 @@ func TestParseBasicSelectQueryWithCte(t *testing.T) {
 			{
 				Name: "testctenamedos",
 				Query: ast.SelectBody{
-					SelectItems: []ast.Expression{
-						&ast.ExprIdentifier{Value: "FirstName"},
-						&ast.ExprIdentifier{Value: "LastName"},
+					SelectItems: ast.SelectItems{
+						Items: []ast.Expression{
+							&ast.ExprIdentifier{Value: "FirstName"},
+							&ast.ExprIdentifier{Value: "LastName"},
+						},
 					},
 					Table: &ast.TableArg{
 						Table: &ast.TableSource{
@@ -86,16 +94,18 @@ func TestParseBasicSelectQueryWithCte(t *testing.T) {
 			},
 		},
 		SelectBody: &ast.SelectBody{
-			SelectItems: []ast.Expression{
-				&ast.ExprStar{},
-				&ast.ExprIdentifier{Value: "hello"},
-				&ast.ExprStringLiteral{Value: "yes"},
-				&ast.ExprQuotedIdentifier{Value: "yessir"},
-				&ast.ExprLocalVariable{Value: "nosir"},
-				&ast.ExprCompoundIdentifier{Identifiers: []ast.Expression{
-					&ast.ExprQuotedIdentifier{Value: "superdb"},
-					&ast.ExprIdentifier{Value: "world"},
-					&ast.ExprStar{}}},
+			SelectItems: ast.SelectItems{
+				Items: []ast.Expression{
+					&ast.ExprStar{},
+					&ast.ExprIdentifier{Value: "hello"},
+					&ast.ExprStringLiteral{Value: "yes"},
+					&ast.ExprQuotedIdentifier{Value: "yessir"},
+					&ast.ExprLocalVariable{Value: "nosir"},
+					&ast.ExprCompoundIdentifier{Identifiers: []ast.Expression{
+						&ast.ExprQuotedIdentifier{Value: "superdb"},
+						&ast.ExprIdentifier{Value: "world"},
+						&ast.ExprStar{}}},
+				},
 			},
 			Table: &ast.TableArg{
 				Table: &ast.TableSource{
@@ -103,12 +113,14 @@ func TestParseBasicSelectQueryWithCte(t *testing.T) {
 					Source: &ast.ExprIdentifier{Value: "testtable"},
 				},
 			},
-			WhereClause: &ast.ExprComparisonOperator{
-				Left: &ast.ExprIdentifier{
-					Value: "LastPrice",
-				},
-				Operator: ast.ComparisonOpLess,
-				Right:    &ast.ExprNumberLiteral{Value: "10.0"}},
+			WhereClause: &ast.WhereClause{
+				Clause: &ast.ExprComparisonOperator{
+					Left: &ast.ExprIdentifier{
+						Value: "LastPrice",
+					},
+					Operator: ast.ComparisonOpLess,
+					Right:    &ast.ExprNumberLiteral{Value: "10.0"}},
+			},
 		},
 	}
 	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
@@ -123,16 +135,18 @@ func TestParseBasicSelectQueryWithCast(t *testing.T) {
 	floatPrecision := &float
 	select_statement := ast.SelectStatement{
 		SelectBody: &ast.SelectBody{
-			SelectItems: []ast.Expression{
-				&ast.ExprStar{},
-				&ast.ExprIdentifier{Value: "hello"},
-				&ast.ExprStringLiteral{Value: "yes"},
-				&ast.ExprQuotedIdentifier{Value: "yessir"},
-				&ast.ExprLocalVariable{Value: "nosir"},
-				&ast.ExprCompoundIdentifier{Identifiers: []ast.Expression{
-					&ast.ExprQuotedIdentifier{Value: "superdb"},
-					&ast.ExprIdentifier{Value: "world"},
-					&ast.ExprStar{}}},
+			SelectItems: ast.SelectItems{
+				Items: []ast.Expression{
+					&ast.ExprStar{},
+					&ast.ExprIdentifier{Value: "hello"},
+					&ast.ExprStringLiteral{Value: "yes"},
+					&ast.ExprQuotedIdentifier{Value: "yessir"},
+					&ast.ExprLocalVariable{Value: "nosir"},
+					&ast.ExprCompoundIdentifier{Identifiers: []ast.Expression{
+						&ast.ExprQuotedIdentifier{Value: "superdb"},
+						&ast.ExprIdentifier{Value: "world"},
+						&ast.ExprStar{}}},
+				},
 			},
 			Table: &ast.TableArg{
 				Table: &ast.TableSource{
@@ -140,16 +154,18 @@ func TestParseBasicSelectQueryWithCast(t *testing.T) {
 					Source: &ast.ExprIdentifier{Value: "testtable"},
 				},
 			},
-			WhereClause: &ast.ExprComparisonOperator{
-				Left: &ast.ExprIdentifier{
-					Value: "LastPrice",
-				},
-				Operator: ast.ComparisonOpLess,
-				Right: &ast.ExprCast{
-					Expression: &ast.ExprStringLiteral{Value: "10"},
-					DataType: ast.DataType{
-						Kind:           ast.DTFloat,
-						FloatPrecision: floatPrecision,
+			WhereClause: &ast.WhereClause{
+				Clause: &ast.ExprComparisonOperator{
+					Left: &ast.ExprIdentifier{
+						Value: "LastPrice",
+					},
+					Operator: ast.ComparisonOpLess,
+					Right: &ast.ExprCast{
+						Expression: &ast.ExprStringLiteral{Value: "10"},
+						DataType: ast.DataType{
+							Kind:           ast.DTFloat,
+							FloatPrecision: floatPrecision,
+						},
 					},
 				},
 			},
@@ -166,16 +182,18 @@ func TestParseBasicSelectQueryWithCast(t *testing.T) {
 func TestParseBasicSelectQueryWithJoin(t *testing.T) {
 	select_statement := ast.SelectStatement{
 		SelectBody: &ast.SelectBody{
-			SelectItems: []ast.Expression{
-				&ast.ExprStar{},
-				&ast.ExprIdentifier{Value: "hello"},
-				&ast.ExprStringLiteral{Value: "yes"},
-				&ast.ExprQuotedIdentifier{Value: "yessir"},
-				&ast.ExprLocalVariable{Value: "nosir"},
-				&ast.ExprCompoundIdentifier{Identifiers: []ast.Expression{
-					&ast.ExprQuotedIdentifier{Value: "superdb"},
-					&ast.ExprIdentifier{Value: "world"},
-					&ast.ExprStar{}}},
+			SelectItems: ast.SelectItems{
+				Items: []ast.Expression{
+					&ast.ExprStar{},
+					&ast.ExprIdentifier{Value: "hello"},
+					&ast.ExprStringLiteral{Value: "yes"},
+					&ast.ExprQuotedIdentifier{Value: "yessir"},
+					&ast.ExprLocalVariable{Value: "nosir"},
+					&ast.ExprCompoundIdentifier{Identifiers: []ast.Expression{
+						&ast.ExprQuotedIdentifier{Value: "superdb"},
+						&ast.ExprIdentifier{Value: "world"},
+						&ast.ExprStar{}}},
+				},
 			},
 			Table: &ast.TableArg{
 				Table: &ast.TableSource{
@@ -213,12 +231,14 @@ func TestParseBasicSelectQueryWithJoin(t *testing.T) {
 					},
 				},
 			},
-			WhereClause: &ast.ExprComparisonOperator{
-				Left: &ast.ExprIdentifier{
-					Value: "LastPrice",
-				},
-				Operator: ast.ComparisonOpLess,
-				Right:    &ast.ExprNumberLiteral{Value: "10.0"}},
+			WhereClause: &ast.WhereClause{
+				Clause: &ast.ExprComparisonOperator{
+					Left: &ast.ExprIdentifier{
+						Value: "LastPrice",
+					},
+					Operator: ast.ComparisonOpLess,
+					Right:    &ast.ExprNumberLiteral{Value: "10.0"}},
+			},
 		},
 	}
 	expected := ast.Query{Statements: []ast.Statement{&select_statement}}
@@ -232,32 +252,34 @@ func TestParseBasicSelectQueryWithJoin(t *testing.T) {
 func TestParseBuiltinFunctionCall(t *testing.T) {
 	select_statement := ast.SelectStatement{
 		SelectBody: &ast.SelectBody{
-			SelectItems: []ast.Expression{
-				&ast.ExprIdentifier{Value: "hello"},
-				&ast.ExprFunctionCall{
-					Name: &ast.ExprFunction{
-						Type: ast.FuncSum,
-						Name: &ast.ExprIdentifier{Value: "sum"},
-					},
-					Args: []ast.Expression{
-						&ast.ExprIdentifier{Value: "price"},
-					},
-					OverClause: &ast.FunctionOverClause{
-						PartitionByClause: []ast.Expression{
-							&ast.ExprIdentifier{Value: "InsertDate"},
-							&ast.ExprIdentifier{Value: "Stock"},
+			SelectItems: ast.SelectItems{
+				Items: []ast.Expression{
+					&ast.ExprIdentifier{Value: "hello"},
+					&ast.ExprFunctionCall{
+						Name: &ast.ExprFunction{
+							Type: ast.FuncSum,
+							Name: &ast.ExprIdentifier{Value: "sum"},
 						},
-						OrderByClause: []ast.OrderByArg{
-							{Column: &ast.ExprIdentifier{Value: "InsertTime"}, Type: ast.OBAsc},
+						Args: []ast.Expression{
+							&ast.ExprIdentifier{Value: "price"},
 						},
-						WindowFrameClause: &ast.WindowFrameClause{
-							RowsOrRange: ast.RRTRows,
-							Start: &ast.WindowFrameBound{
-								Type:       ast.WFBTPreceding,
-								Expression: &ast.ExprNumberLiteral{Value: "10"},
+						OverClause: &ast.FunctionOverClause{
+							PartitionByClause: []ast.Expression{
+								&ast.ExprIdentifier{Value: "InsertDate"},
+								&ast.ExprIdentifier{Value: "Stock"},
 							},
-							End: &ast.WindowFrameBound{
-								Type: ast.WFBTCurrentRow,
+							OrderByClause: []ast.OrderByArg{
+								{Column: &ast.ExprIdentifier{Value: "InsertTime"}, Type: ast.OBAsc},
+							},
+							WindowFrameClause: &ast.WindowFrameClause{
+								RowsOrRange: ast.RRTRows,
+								Start: &ast.WindowFrameBound{
+									Type:       ast.WFBTPreceding,
+									Expression: &ast.ExprNumberLiteral{Value: "10"},
+								},
+								End: &ast.WindowFrameBound{
+									Type: ast.WFBTCurrentRow,
+								},
 							},
 						},
 					},
@@ -280,9 +302,11 @@ func TestParseBuiltinFunctionCall(t *testing.T) {
 func TestParseOrderByClause(t *testing.T) {
 	select_statement := ast.SelectStatement{
 		SelectBody: &ast.SelectBody{
-			SelectItems: []ast.Expression{
-				&ast.ExprIdentifier{Value: "Stock"},
-				&ast.ExprIdentifier{Value: "PercentChange"},
+			SelectItems: ast.SelectItems{
+				Items: []ast.Expression{
+					&ast.ExprIdentifier{Value: "Stock"},
+					&ast.ExprIdentifier{Value: "PercentChange"},
+				},
 			},
 			Table: &ast.TableArg{
 				Table: &ast.TableSource{
@@ -320,39 +344,47 @@ func TestParseOrderByClause(t *testing.T) {
 func TestParseSubqueryCall(t *testing.T) {
 	select_statement := ast.SelectStatement{
 		SelectBody: &ast.SelectBody{
-			SelectItems: []ast.Expression{
-				&ast.ExprIdentifier{Value: "hello"},
-				&ast.ExprWithAlias{
-					Expression: &ast.ExprSubquery{
-						Top: &ast.TopArg{
-							Percent:  true,
-							Quantity: &ast.ExprNumberLiteral{Value: "20"},
-						},
-						SelectItems: []ast.Expression{
-							&ast.ExprIdentifier{Value: "yesirr"},
-						},
-						Table: &ast.TableArg{
-							Table: &ast.TableSource{
-								Type:   ast.TSTTable,
-								Source: &ast.ExprIdentifier{Value: "bruh"},
-							},
-						},
-						WhereClause: &ast.ExprComparisonOperator{
-							Left: &ast.ExprIdentifier{
-								Value: "LastPrice",
-							},
-							Operator: ast.ComparisonOpLess,
-							Right:    &ast.ExprNumberLiteral{Value: "10.0"}},
-						OrderByClause: &ast.OrderByClause{
-							Expressions: []ast.OrderByArg{
-								{
-									Column: &ast.ExprIdentifier{Value: "LastPrice"},
-									Type:   ast.OBDesc,
+			SelectItems: ast.SelectItems{
+				Items: []ast.Expression{
+					&ast.ExprIdentifier{Value: "hello"},
+					&ast.ExprWithAlias{
+						Expression: &ast.ExprSubquery{
+							SelectBody: ast.SelectBody{
+								Top: &ast.TopArg{
+									Percent:  true,
+									Quantity: &ast.ExprNumberLiteral{Value: "20"},
+								},
+								SelectItems: ast.SelectItems{
+									Items: []ast.Expression{
+										&ast.ExprIdentifier{Value: "yesirr"},
+									},
+								},
+								Table: &ast.TableArg{
+									Table: &ast.TableSource{
+										Type:   ast.TSTTable,
+										Source: &ast.ExprIdentifier{Value: "bruh"},
+									},
+								},
+								WhereClause: &ast.WhereClause{
+									Clause: &ast.ExprComparisonOperator{
+										Left: &ast.ExprIdentifier{
+											Value: "LastPrice",
+										},
+										Operator: ast.ComparisonOpLess,
+										Right:    &ast.ExprNumberLiteral{Value: "10.0"}},
+								},
+								OrderByClause: &ast.OrderByClause{
+									Expressions: []ast.OrderByArg{
+										{
+											Column: &ast.ExprIdentifier{Value: "LastPrice"},
+											Type:   ast.OBDesc,
+										},
+									},
 								},
 							},
 						},
+						Alias: &ast.ExprIdentifier{Value: "NetScore"},
 					},
-					Alias: &ast.ExprIdentifier{Value: "NetScore"},
 				},
 			},
 			Table: &ast.TableArg{
@@ -374,16 +406,18 @@ func TestParseSubqueryCall(t *testing.T) {
 func TestParseSomeLogicalOperators(t *testing.T) {
 	select_statement := ast.SelectStatement{
 		SelectBody: &ast.SelectBody{
-			SelectItems: []ast.Expression{
-				&ast.ExprIdentifier{Value: "Stock"},
-				&ast.ExprWithAlias{
-					Expression: &ast.ExprUnaryOperator{
-						Operator: ast.UnaryOpMinus,
-						Right:    &ast.ExprIdentifier{Value: "LastPrice"},
+			SelectItems: ast.SelectItems{
+				Items: []ast.Expression{
+					&ast.ExprIdentifier{Value: "Stock"},
+					&ast.ExprWithAlias{
+						Expression: &ast.ExprUnaryOperator{
+							Operator: ast.UnaryOpMinus,
+							Right:    &ast.ExprIdentifier{Value: "LastPrice"},
+						},
+						Alias: &ast.ExprStringLiteral{Value: "NegativeLastPrice"},
 					},
-					Alias: &ast.ExprStringLiteral{Value: "NegativeLastPrice"},
+					&ast.ExprIdentifier{Value: "LastPrice"},
 				},
-				&ast.ExprIdentifier{Value: "LastPrice"},
 			},
 			Table: &ast.TableArg{
 				Table: &ast.TableSource{
@@ -391,29 +425,31 @@ func TestParseSomeLogicalOperators(t *testing.T) {
 					Source: &ast.ExprIdentifier{Value: "MarketData"},
 				},
 			},
-			WhereClause: &ast.ExprOrLogicalOperator{
-				Left: &ast.ExprAndLogicalOperator{
-					Left: &ast.ExprComparisonOperator{
-						Left: &ast.ExprQuotedIdentifier{
-							Value: "LastPrice",
-						},
-						Operator: ast.ComparisonOpLess,
-						Right:    &ast.ExprNumberLiteral{Value: "10.0"}},
-					Right: &ast.ExprInLogicalOperator{
-						TestExpression: &ast.ExprIdentifier{Value: "Stock"},
-						Not:            true,
-						Expressions: []ast.Expression{
-							&ast.ExprStringLiteral{Value: "AAL"},
-							&ast.ExprStringLiteral{Value: "AMZN"},
-							&ast.ExprStringLiteral{Value: "GOOGL"},
-							&ast.ExprStringLiteral{Value: "ZM"},
+			WhereClause: &ast.WhereClause{
+				Clause: &ast.ExprOrLogicalOperator{
+					Left: &ast.ExprAndLogicalOperator{
+						Left: &ast.ExprComparisonOperator{
+							Left: &ast.ExprQuotedIdentifier{
+								Value: "LastPrice",
+							},
+							Operator: ast.ComparisonOpLess,
+							Right:    &ast.ExprNumberLiteral{Value: "10.0"}},
+						Right: &ast.ExprInLogicalOperator{
+							TestExpression: &ast.ExprIdentifier{Value: "Stock"},
+							Not:            true,
+							Expressions: []ast.Expression{
+								&ast.ExprStringLiteral{Value: "AAL"},
+								&ast.ExprStringLiteral{Value: "AMZN"},
+								&ast.ExprStringLiteral{Value: "GOOGL"},
+								&ast.ExprStringLiteral{Value: "ZM"},
+							},
 						},
 					},
-				},
-				Right: &ast.ExprBetweenLogicalOperator{
-					TestExpression: &ast.ExprIdentifier{Value: "PercentChange"},
-					Begin:          &ast.ExprNumberLiteral{Value: "1"},
-					End:            &ast.ExprNumberLiteral{Value: "4"},
+					Right: &ast.ExprBetweenLogicalOperator{
+						TestExpression: &ast.ExprIdentifier{Value: "PercentChange"},
+						Begin:          &ast.ExprNumberLiteral{Value: "1"},
+						End:            &ast.ExprNumberLiteral{Value: "4"},
+					},
 				},
 			},
 		},
@@ -430,27 +466,33 @@ func TestParseSomeLogicalOperators(t *testing.T) {
 func TestParseSelectItemWithAlias(t *testing.T) {
 	select_statement := ast.SelectStatement{
 		SelectBody: &ast.SelectBody{
-			SelectItems: []ast.Expression{
-				&ast.ExprIdentifier{Value: "hello"},
-				&ast.ExprWithAlias{
-					Expression: &ast.ExprIdentifier{Value: "potate"},
-					Alias:      &ast.ExprStringLiteral{Value: "Potate"},
-				},
-				&ast.ExprSubquery{
-					SelectItems: []ast.Expression{
-						&ast.ExprWithAlias{
-							Expression:     &ast.ExprIdentifier{Value: "dt"},
-							AsTokenPresent: true,
-							Alias:          &ast.ExprQuotedIdentifier{Value: "Datetime"},
-						},
+			SelectItems: ast.SelectItems{
+				Items: []ast.Expression{
+					&ast.ExprIdentifier{Value: "hello"},
+					&ast.ExprWithAlias{
+						Expression: &ast.ExprIdentifier{Value: "potate"},
+						Alias:      &ast.ExprStringLiteral{Value: "Potate"},
 					},
-					Table: &ast.TableArg{
-						Table: &ast.TableSource{
-							Type:   ast.TSTTable,
-							Source: &ast.ExprIdentifier{Value: "bruh"},
+					&ast.ExprSubquery{
+						SelectBody: ast.SelectBody{
+							SelectItems: ast.SelectItems{
+								Items: []ast.Expression{
+									&ast.ExprWithAlias{
+										Expression:     &ast.ExprIdentifier{Value: "dt"},
+										AsTokenPresent: true,
+										Alias:          &ast.ExprQuotedIdentifier{Value: "Datetime"},
+									},
+								},
+							},
+							Table: &ast.TableArg{
+								Table: &ast.TableSource{
+									Type:   ast.TSTTable,
+									Source: &ast.ExprIdentifier{Value: "bruh"},
+								},
+							},
 						},
-					},
-				}},
+					}},
+			},
 			Table: &ast.TableArg{
 				Table: &ast.TableSource{
 					Type:   ast.TSTTable,
@@ -476,11 +518,13 @@ func TestDistinctTopArg(t *testing.T) {
 					Value: "44",
 				},
 			},
-			SelectItems: []ast.Expression{
-				&ast.ExprIdentifier{Value: "hello"},
-				&ast.ExprWithAlias{
-					Expression: &ast.ExprIdentifier{Value: "potate"},
-					Alias:      &ast.ExprIdentifier{Value: "Potate"},
+			SelectItems: ast.SelectItems{
+				Items: []ast.Expression{
+					&ast.ExprIdentifier{Value: "hello"},
+					&ast.ExprWithAlias{
+						Expression: &ast.ExprIdentifier{Value: "potate"},
+						Alias:      &ast.ExprIdentifier{Value: "Potate"},
+					},
 				},
 			},
 			Table: &ast.TableArg{
