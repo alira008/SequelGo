@@ -1657,7 +1657,7 @@ func (p *Parser) parseBetweenLogicalOperator(left ast.Expression, notKw *ast.Key
 	if err := p.expectPeek(lexer.TAnd); err != nil {
 		return nil, err
 	}
-    andKeyword := ast.NewKeywordFromToken(p.currentToken)
+	andKeyword := ast.NewKeywordFromToken(p.currentToken)
 
 	p.nextToken()
 	end, err := p.parsePrefixExpression()
@@ -1672,7 +1672,7 @@ func (p *Parser) parseBetweenLogicalOperator(left ast.Expression, notKw *ast.Key
 		TestExpression: left,
 		NotKeyword:     notKw,
 		Begin:          begin,
-        AndKeyword : andKeyword,
+		AndKeyword:     andKeyword,
 		End:            end,
 	}, nil
 }
