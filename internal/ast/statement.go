@@ -20,7 +20,8 @@ type SelectStatement struct {
 
 type SelectBody struct {
 	Span
-	Distinct      bool
+    SelectKeyword Keyword
+	Distinct      *Keyword
 	Top           *TopArg
 	SelectItems   SelectItems
 	Table         *TableArg
@@ -52,10 +53,10 @@ func (ss SelectStatement) TokenLiteral() string {
 }
 func (sb SelectBody) TokenLiteral() string {
 	var str strings.Builder
-	str.WriteString("SELECT ")
+    str.WriteString(fmt.Sprintf("%s ", sb.SelectKeyword.TokenLiteral()))
 
-	if sb.Distinct {
-		str.WriteString("DISTINCT ")
+	if sb.Distinct != nil {
+		str.WriteString(fmt.Sprintf("%s ", sb.Distinct.TokenLiteral()))
 	}
 
 	if sb.Top != nil {
@@ -65,7 +66,6 @@ func (sb SelectBody) TokenLiteral() string {
 	str.WriteString(expressionListToString(sb.SelectItems.Items, ", "))
 
 	if sb.Table != nil {
-		str.WriteString(" FROM ")
 		str.WriteString(sb.Table.TokenLiteral())
 	}
 

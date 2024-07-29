@@ -12,6 +12,7 @@ import (
 func TestParseBasicSelectQuery(t *testing.T) {
 	select_statement := ast.SelectStatement{
 		SelectBody: &ast.SelectBody{
+			SelectKeyword: ast.Keyword{Type: ast.KSelect},
 			SelectItems: ast.SelectItems{
 				Items: []ast.Expression{
 					&ast.ExprStar{},
@@ -26,6 +27,7 @@ func TestParseBasicSelectQuery(t *testing.T) {
 				},
 			},
 			Table: &ast.TableArg{
+				FromKeyword: ast.Keyword{Type: ast.KFrom},
 				Table: &ast.TableSource{
 					Type:   ast.TSTTable,
 					Source: &ast.ExprIdentifier{Value: "testtable"},
@@ -60,6 +62,7 @@ func TestParseBasicSelectQueryWithCte(t *testing.T) {
 					},
 				},
 				Query: ast.SelectBody{
+					SelectKeyword: ast.Keyword{Type: ast.KSelect},
 					SelectItems: ast.SelectItems{
 						Items: []ast.Expression{
 							&ast.ExprStar{},
@@ -68,6 +71,7 @@ func TestParseBasicSelectQueryWithCte(t *testing.T) {
 						},
 					},
 					Table: &ast.TableArg{
+						FromKeyword: ast.Keyword{Type: ast.KFrom},
 						Table: &ast.TableSource{
 							Type:   ast.TSTTable,
 							Source: &ast.ExprIdentifier{Value: "testtable"},
@@ -78,6 +82,7 @@ func TestParseBasicSelectQueryWithCte(t *testing.T) {
 			{
 				Name: "testctenamedos",
 				Query: ast.SelectBody{
+					SelectKeyword: ast.Keyword{Type: ast.KSelect},
 					SelectItems: ast.SelectItems{
 						Items: []ast.Expression{
 							&ast.ExprIdentifier{Value: "FirstName"},
@@ -85,6 +90,7 @@ func TestParseBasicSelectQueryWithCte(t *testing.T) {
 						},
 					},
 					Table: &ast.TableArg{
+						FromKeyword: ast.Keyword{Type: ast.KFrom},
 						Table: &ast.TableSource{
 							Type:   ast.TSTTable,
 							Source: &ast.ExprIdentifier{Value: "Users"},
@@ -94,6 +100,7 @@ func TestParseBasicSelectQueryWithCte(t *testing.T) {
 			},
 		},
 		SelectBody: &ast.SelectBody{
+			SelectKeyword: ast.Keyword{Type: ast.KSelect},
 			SelectItems: ast.SelectItems{
 				Items: []ast.Expression{
 					&ast.ExprStar{},
@@ -108,6 +115,7 @@ func TestParseBasicSelectQueryWithCte(t *testing.T) {
 				},
 			},
 			Table: &ast.TableArg{
+				FromKeyword: ast.Keyword{Type: ast.KFrom},
 				Table: &ast.TableSource{
 					Type:   ast.TSTTable,
 					Source: &ast.ExprIdentifier{Value: "testtable"},
@@ -135,6 +143,7 @@ func TestParseBasicSelectQueryWithCast(t *testing.T) {
 	floatPrecision := &float
 	select_statement := ast.SelectStatement{
 		SelectBody: &ast.SelectBody{
+			SelectKeyword: ast.Keyword{Type: ast.KSelect},
 			SelectItems: ast.SelectItems{
 				Items: []ast.Expression{
 					&ast.ExprStar{},
@@ -149,6 +158,7 @@ func TestParseBasicSelectQueryWithCast(t *testing.T) {
 				},
 			},
 			Table: &ast.TableArg{
+				FromKeyword: ast.Keyword{Type: ast.KFrom},
 				Table: &ast.TableSource{
 					Type:   ast.TSTTable,
 					Source: &ast.ExprIdentifier{Value: "testtable"},
@@ -182,6 +192,7 @@ func TestParseBasicSelectQueryWithCast(t *testing.T) {
 func TestParseBasicSelectQueryWithJoin(t *testing.T) {
 	select_statement := ast.SelectStatement{
 		SelectBody: &ast.SelectBody{
+			SelectKeyword: ast.Keyword{Type: ast.KSelect},
 			SelectItems: ast.SelectItems{
 				Items: []ast.Expression{
 					&ast.ExprStar{},
@@ -196,6 +207,7 @@ func TestParseBasicSelectQueryWithJoin(t *testing.T) {
 				},
 			},
 			Table: &ast.TableArg{
+				FromKeyword: ast.Keyword{Type: ast.KFrom},
 				Table: &ast.TableSource{
 					Type: ast.TSTTable,
 					Source: &ast.ExprWithAlias{
@@ -252,6 +264,7 @@ func TestParseBasicSelectQueryWithJoin(t *testing.T) {
 func TestParseBuiltinFunctionCall(t *testing.T) {
 	select_statement := ast.SelectStatement{
 		SelectBody: &ast.SelectBody{
+			SelectKeyword: ast.Keyword{Type: ast.KSelect},
 			SelectItems: ast.SelectItems{
 				Items: []ast.Expression{
 					&ast.ExprIdentifier{Value: "hello"},
@@ -286,6 +299,7 @@ func TestParseBuiltinFunctionCall(t *testing.T) {
 				},
 			},
 			Table: &ast.TableArg{
+				FromKeyword: ast.Keyword{Type: ast.KFrom},
 				Table: &ast.TableSource{
 					Type:   ast.TSTTable,
 					Source: &ast.ExprIdentifier{Value: "testtable"},
@@ -302,6 +316,7 @@ func TestParseBuiltinFunctionCall(t *testing.T) {
 func TestParseOrderByClause(t *testing.T) {
 	select_statement := ast.SelectStatement{
 		SelectBody: &ast.SelectBody{
+			SelectKeyword: ast.Keyword{Type: ast.KSelect},
 			SelectItems: ast.SelectItems{
 				Items: []ast.Expression{
 					&ast.ExprIdentifier{Value: "Stock"},
@@ -309,6 +324,7 @@ func TestParseOrderByClause(t *testing.T) {
 				},
 			},
 			Table: &ast.TableArg{
+				FromKeyword: ast.Keyword{Type: ast.KFrom},
 				Table: &ast.TableSource{
 					Type:   ast.TSTTable,
 					Source: &ast.ExprIdentifier{Value: "MarketData"},
@@ -344,15 +360,18 @@ func TestParseOrderByClause(t *testing.T) {
 func TestParseSubqueryCall(t *testing.T) {
 	select_statement := ast.SelectStatement{
 		SelectBody: &ast.SelectBody{
+			SelectKeyword: ast.Keyword{Type: ast.KSelect},
 			SelectItems: ast.SelectItems{
 				Items: []ast.Expression{
 					&ast.ExprIdentifier{Value: "hello"},
 					&ast.ExprWithAlias{
 						Expression: &ast.ExprSubquery{
 							SelectBody: ast.SelectBody{
+								SelectKeyword: ast.Keyword{Type: ast.KSelect},
 								Top: &ast.TopArg{
-									Percent:  true,
-									Quantity: &ast.ExprNumberLiteral{Value: "20"},
+									TopKeyword:     ast.Keyword{Type: ast.KTop},
+									PercentKeyword: &ast.Keyword{Type: ast.KPercent},
+									Quantity:       &ast.ExprNumberLiteral{Value: "20"},
 								},
 								SelectItems: ast.SelectItems{
 									Items: []ast.Expression{
@@ -360,6 +379,7 @@ func TestParseSubqueryCall(t *testing.T) {
 									},
 								},
 								Table: &ast.TableArg{
+									FromKeyword: ast.Keyword{Type: ast.KFrom},
 									Table: &ast.TableSource{
 										Type:   ast.TSTTable,
 										Source: &ast.ExprIdentifier{Value: "bruh"},
@@ -388,6 +408,7 @@ func TestParseSubqueryCall(t *testing.T) {
 				},
 			},
 			Table: &ast.TableArg{
+				FromKeyword: ast.Keyword{Type: ast.KFrom},
 				Table: &ast.TableSource{
 					Type:   ast.TSTTable,
 					Source: &ast.ExprIdentifier{Value: "testtable"},
@@ -406,6 +427,7 @@ func TestParseSubqueryCall(t *testing.T) {
 func TestParseSomeLogicalOperators(t *testing.T) {
 	select_statement := ast.SelectStatement{
 		SelectBody: &ast.SelectBody{
+			SelectKeyword: ast.Keyword{Type: ast.KSelect},
 			SelectItems: ast.SelectItems{
 				Items: []ast.Expression{
 					&ast.ExprIdentifier{Value: "Stock"},
@@ -420,6 +442,7 @@ func TestParseSomeLogicalOperators(t *testing.T) {
 				},
 			},
 			Table: &ast.TableArg{
+				FromKeyword: ast.Keyword{Type: ast.KFrom},
 				Table: &ast.TableSource{
 					Type:   ast.TSTTable,
 					Source: &ast.ExprIdentifier{Value: "MarketData"},
@@ -466,6 +489,7 @@ func TestParseSomeLogicalOperators(t *testing.T) {
 func TestParseSelectItemWithAlias(t *testing.T) {
 	select_statement := ast.SelectStatement{
 		SelectBody: &ast.SelectBody{
+			SelectKeyword: ast.Keyword{Type: ast.KSelect},
 			SelectItems: ast.SelectItems{
 				Items: []ast.Expression{
 					&ast.ExprIdentifier{Value: "hello"},
@@ -475,6 +499,7 @@ func TestParseSelectItemWithAlias(t *testing.T) {
 					},
 					&ast.ExprSubquery{
 						SelectBody: ast.SelectBody{
+							SelectKeyword: ast.Keyword{Type: ast.KSelect},
 							SelectItems: ast.SelectItems{
 								Items: []ast.Expression{
 									&ast.ExprWithAlias{
@@ -485,6 +510,7 @@ func TestParseSelectItemWithAlias(t *testing.T) {
 								},
 							},
 							Table: &ast.TableArg{
+								FromKeyword: ast.Keyword{Type: ast.KFrom},
 								Table: &ast.TableSource{
 									Type:   ast.TSTTable,
 									Source: &ast.ExprIdentifier{Value: "bruh"},
@@ -494,6 +520,7 @@ func TestParseSelectItemWithAlias(t *testing.T) {
 					}},
 			},
 			Table: &ast.TableArg{
+				FromKeyword: ast.Keyword{Type: ast.KFrom},
 				Table: &ast.TableSource{
 					Type:   ast.TSTTable,
 					Source: &ast.ExprIdentifier{Value: "testtable"},
@@ -511,9 +538,11 @@ func TestParseSelectItemWithAlias(t *testing.T) {
 func TestDistinctTopArg(t *testing.T) {
 	select_statement := ast.SelectStatement{
 		SelectBody: &ast.SelectBody{
-			Distinct: true,
+			SelectKeyword: ast.Keyword{Type: ast.KSelect},
+			Distinct:      &ast.Keyword{Type: ast.KDistinct},
 			Top: &ast.TopArg{
-				Percent: true,
+				TopKeyword:     ast.Keyword{Type: ast.KTop},
+				PercentKeyword: &ast.Keyword{Type: ast.KPercent},
 				Quantity: &ast.ExprNumberLiteral{
 					Value: "44",
 				},
@@ -528,6 +557,7 @@ func TestDistinctTopArg(t *testing.T) {
 				},
 			},
 			Table: &ast.TableArg{
+				FromKeyword: ast.Keyword{Type: ast.KFrom},
 				Table: &ast.TableSource{
 					Type:   ast.TSTTable,
 					Source: &ast.ExprIdentifier{Value: "testtable"},

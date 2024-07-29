@@ -225,17 +225,24 @@ func (f *Formatter) visitExpression(expression ast.Expression) {
 	case *ast.ExprAnyLogicalOperator:
 		f.visitAnyLogicalOperatorExpression(e)
 		break
+	case *ast.Keyword:
+		f.visitKeyword(e)
+		break
 	}
 }
 
+func (f *Formatter) visitKeyword(keyword *ast.Keyword) {
+	f.printKeyword(keyword.TokenLiteral())
+}
+
 func (f *Formatter) visitSelectQuery(selectStatement *ast.SelectStatement) {
-    f.visitSelectBody(selectStatement.SelectBody)
+	f.visitSelectBody(selectStatement.SelectBody)
 }
 
 func (f *Formatter) visitSelectBody(selectBody *ast.SelectBody) {
-	f.printKeyword("select")
-	if selectBody.Distinct {
-		f.printKeyword(" distinct")
+	f.visitKeyword(&selectBody.SelectKeyword)
+	if selectBody.Distinct != nil {
+		f.printKeyword(fmt.Sprintf(" %s", selectBody.Distinct.TokenLiteral()))
 	}
 	f.visitSelectTopArg(selectBody.Top)
 	f.visitSelectItems(selectBody.SelectItems)
@@ -251,13 +258,16 @@ func (f *Formatter) visitSelectTopArg(selectTopArg *ast.TopArg) {
 		return
 	}
 
-	f.printKeyword(" top ")
+	f.printKeyword(fmt.Sprintf(" %s ", selectTopArg.TopKeyword.TokenLiteral()))
 	f.visitExpression(selectTopArg.Quantity)
-	if selectTopArg.Percent {
-		f.printKeyword(" percent")
+	if selectTopArg.PercentKeyword != nil {
+		f.printKeyword(fmt.Sprintf(" %s", selectTopArg.PercentKeyword.TokenLiteral()))
 	}
-	if selectTopArg.WithTies {
-		f.printKeyword(" with ties")
+	if selectTopArg.WithKeyword != nil {
+		f.printKeyword(fmt.Sprintf(" %s", selectTopArg.WithKeyword.TokenLiteral()))
+	}
+	if selectTopArg.TiesKeyword != nil {
+		f.printKeyword(fmt.Sprintf(" %s", selectTopArg.TiesKeyword.TokenLiteral()))
 	}
 }
 
@@ -283,7 +293,8 @@ func (f *Formatter) visitSelectTableArg(selectTableArg *ast.TableArg) {
 	}
 
 	f.printNewLine()
-	f.printKeyword("from ")
+	f.printKeyword(selectTableArg.FromKeyword.TokenLiteral())
+    f.printSpace()
 	f.visitTableSource(selectTableArg.Table)
 	if len(selectTableArg.Joins) > 0 {
 		f.printNewLine()
@@ -313,28 +324,12 @@ func (f *Formatter) visitTableSource(tableSource *ast.TableSource) {
 }
 
 func (f *Formatter) visitTableJoin(tableJoin ast.Join) {
-	switch tableJoin.Type {
-	case ast.JTInner:
-		f.printKeyword("inner join ")
-		break
-	case ast.JTLeft:
-		f.printKeyword("left join ")
-		break
-	case ast.JTLeftOuter:
-		f.printKeyword("left outer join ")
-		break
-	case ast.JTRight:
-		f.printKeyword("right join ")
-		break
-	case ast.JTRightOuter:
-		f.printKeyword("right outer join ")
-		break
-	case ast.JTFull:
-		f.printKeyword("full join ")
-		break
-	case ast.JTFullOuter:
-		f.printKeyword("full outer join ")
-		break
+	f.printKeyword(fmt.Sprintf(" %s", tableJoin.JoinKeyword1.TokenLiteral()))
+	if tableJoin.JoinKeyword2 != nil {
+		f.printKeyword(fmt.Sprintf(" %s ", tableJoin.JoinKeyword2.TokenLiteral()))
+	}
+	if tableJoin.JoinKeyword3 != nil {
+		f.printKeyword(fmt.Sprintf(" %s ", tableJoin.JoinKeyword3.TokenLiteral()))
 	}
 
 	f.visitTableSource(tableJoin.Table)
@@ -516,7 +511,7 @@ func (f *Formatter) visitExpressionSubquery(e *ast.ExprSubquery) {
 	f.increaseIndent()
 	f.printNewLine()
 
-    f.visitSelectBody(&e.SelectBody)
+	f.visitSelectBody(&e.SelectBody)
 
 	f.decreaseIndent()
 	f.printNewLine()

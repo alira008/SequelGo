@@ -1,6 +1,9 @@
 package ast
 
-import "SequelGo/internal/lexer"
+import (
+	"SequelGo/internal/lexer"
+	"strings"
+)
 
 type Keyword struct {
 	Span
@@ -8,7 +11,7 @@ type Keyword struct {
 }
 
 func NewKeywordFromToken(token lexer.Token) Keyword {
-	keywordType, ok := Keywords[token.Value]
+	keywordType, ok := Keywords[strings.ToLower(token.Value)]
 	if !ok {
 		keywordType = KAll
 	}
@@ -21,6 +24,7 @@ func NewKeywordFromToken(token lexer.Token) Keyword {
 func (k Keyword) expressionNode()    {}
 func (k *Keyword) SetSpan(span Span) { k.Span = span }
 func (k Keyword) GetSpan() Span      { return k.Span }
+func (k Keyword) TokenLiteral() string      { return k.Type.String() }
 
 type KeywordType uint8
 
@@ -320,4 +324,302 @@ var Keywords = map[string]KeywordType{
 	"window":        KWindow,
 	"with":          KWith,
 	"year":          KYear,
+}
+
+func (k KeywordType) String() string {
+	switch k {
+	case KAll:
+		return "All"
+	case KAlter:
+		return "Alter"
+	case KAnd:
+		return "And"
+	case KAny:
+		return "Any"
+	case KAs:
+		return "As"
+	case KAsc:
+		return "Asc"
+	case KAutoincrement:
+		return "Autoincrement"
+	case KBegin:
+		return "Begin"
+	case KBetween:
+		return "Between"
+	case KBy:
+		return "By"
+	case KCascade:
+		return "Cascade"
+	case KCase:
+		return "Case"
+	case KChar:
+		return "Char"
+	case KColumn:
+		return "Column"
+	case KColumns:
+		return "Columns"
+	case KCommit:
+		return "Commit"
+	case KCommited:
+		return "Commited"
+	case KConstraint:
+		return "Constraint"
+	case KCreate:
+		return "Create"
+	case KCurrent:
+		return "Current"
+	case KDay:
+		return "Day"
+	case KDayofweek:
+		return "Dayofweek"
+	case KDayofyear:
+		return "Dayofyear"
+	case KDeclare:
+		return "Declare"
+	case KDegrees:
+		return "Degrees"
+	case KDefault:
+		return "Default"
+	case KDelete:
+		return "Delete"
+	case KDesc:
+		return "Desc"
+	case KDescribe:
+		return "Describe"
+	case KDistinct:
+		return "Distinct"
+	case KDo:
+		return "Do"
+	case KDrop:
+		return "Drop"
+	case KElse:
+		return "Else"
+	case KEnd:
+		return "End"
+	case KEngine:
+		return "Engine"
+	case KExec:
+		return "Exec"
+	case KExecute:
+		return "Execute"
+	case KExists:
+		return "Exists"
+	case KFalse:
+		return "False"
+	case KFetch:
+		return "Fetch"
+	case KFirst:
+		return "First"
+	case KFloat:
+		return "Float"
+	case KFloor:
+		return "Floor"
+	case KFollowing:
+		return "Following"
+	case KForeign:
+		return "Foreign"
+	case KFrom:
+		return "From"
+	case KFull:
+		return "Full"
+	case KFunction:
+		return "Function"
+	case KGroup:
+		return "Group"
+	case KHaving:
+		return "Having"
+	case KHour:
+		return "Hour"
+	case KHours:
+		return "Hours"
+	case KIdentity:
+		return "Identity"
+	case KIf:
+		return "If"
+	case KIn:
+		return "In"
+	case KIncrement:
+		return "Increment"
+	case KIndex:
+		return "Index"
+	case KInner:
+		return "Inner"
+	case KInsert:
+		return "Insert"
+	case KInteger:
+		return "Integer"
+	case KIntersect:
+		return "Intersect"
+	case KInt:
+		return "Int"
+	case KInto:
+		return "Into"
+	case KIs:
+		return "Is"
+	case KJoin:
+		return "Join"
+	case KKey:
+		return "Key"
+	case KLast:
+		return "Last"
+	case KLead:
+		return "Lead"
+	case KLeft:
+		return "Left"
+	case KLike:
+		return "Like"
+	case KLimit:
+		return "Limit"
+	case KMicrosecond:
+		return "Microsecond"
+	case KMicroseconds:
+		return "Microseconds"
+	case KMillisecond:
+		return "Millisecond"
+	case KMilliseconds:
+		return "Milliseconds"
+	case KMin:
+		return "Min"
+	case KMinute:
+		return "Minute"
+	case KMonth:
+		return "Month"
+	case KNanosecond:
+		return "Nanosecond"
+	case KNanoseconds:
+		return "Nanoseconds"
+	case KNchar:
+		return "Nchar"
+	case KNext:
+		return "Next"
+	case KNot:
+		return "Not"
+	case KOffset:
+		return "Offset"
+	case KOn:
+		return "On"
+	case KOnly:
+		return "Only"
+	case KOr:
+		return "Or"
+	case KOrder:
+		return "Order"
+	case KOuter:
+		return "Outer"
+	case KOver:
+		return "Over"
+	case KPartition:
+		return "Partition"
+	case KPassword:
+		return "Password"
+	case KPercent:
+		return "Percent"
+	case KPi:
+		return "Pi"
+	case KPower:
+		return "Power"
+	case KPreceding:
+		return "Preceding"
+	case KProcedure:
+		return "Procedure"
+	case KRadians:
+		return "Radians"
+	case KRands:
+		return "Rands"
+	case KReturn:
+		return "Return"
+	case KReturns:
+		return "Returns"
+	case KRevoke:
+		return "Revoke"
+	case KRight:
+		return "Right"
+	case KRole:
+		return "Role"
+	case KRollback:
+		return "Rollback"
+	case KRound:
+		return "Round"
+	case KRow:
+		return "Row"
+	case KRowId:
+		return "Rowid"
+	case KRows:
+		return "Rows"
+	case KRowNumber:
+		return "RowNumber"
+	case KSecond:
+		return "Second"
+	case KSelect:
+		return "Select"
+	case KSet:
+		return "Set"
+	case KSign:
+		return "Sign"
+	case KSnapshot:
+		return "Snapshot"
+	case KSome:
+		return "Some"
+	case KStage:
+		return "Stage"
+	case KStart:
+		return "Start"
+	case KStatistics:
+		return "Statistics"
+	case KTable:
+		return "Table"
+	case KTemp:
+		return "Temp"
+	case KThen:
+		return "Then"
+	case KTies:
+		return "Ties"
+	case KTop:
+		return "Top"
+	case KTransaction:
+		return "Transaction"
+	case KTrigger:
+		return "Trigger"
+	case KTrue:
+		return "True"
+	case KTruncate:
+		return "Truncate"
+	case KUnbounded:
+		return "Unbounded"
+	case KUncommitted:
+		return "Uncommitted"
+	case KUnion:
+		return "Union"
+	case KUnique:
+		return "Unique"
+	case KUnlock:
+		return "Unlock"
+	case KUpdate:
+		return "Update"
+	case KUpper:
+		return "Upper"
+	case KUse:
+		return "Use"
+	case KUser:
+		return "User"
+	case KUuid:
+		return "Uuid"
+	case KValue:
+		return "Value"
+	case KValues:
+		return "Values"
+	case KWeek:
+		return "Week"
+	case KWhen:
+		return "When"
+	case KWhere:
+		return "Where"
+	case KWindow:
+		return "Window"
+	case KWith:
+		return "With"
+	case KYear:
+		return "Year"
+	}
+	return "Unimplemented"
 }

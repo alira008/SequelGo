@@ -93,15 +93,18 @@ type ExprSubquery struct {
 
 type TopArg struct {
 	Span
-	WithTies bool
-	Percent  bool
-	Quantity Expression
+	TopKeyword     Keyword
+	WithKeyword    *Keyword
+	TiesKeyword    *Keyword
+	PercentKeyword *Keyword
+	Quantity       Expression
 }
 
 type TableArg struct {
 	Span
-	Table *TableSource
-	Joins []Join
+	FromKeyword Keyword
+	Table       *TableSource
+	Joins       []Join
 }
 
 type TableSource struct {
@@ -112,9 +115,12 @@ type TableSource struct {
 
 type Join struct {
 	Span
-	Type      JoinType
-	Table     *TableSource
-	Condition Expression
+	JoinKeyword1 Keyword
+	JoinKeyword2 *Keyword
+	JoinKeyword3 *Keyword
+	Type         JoinType
+	Table        *TableSource
+	Condition    Expression
 }
 
 type OrderByClause struct {
@@ -284,6 +290,8 @@ func (gb GroupByClause) TokenLiteral() string {
 func (ta TableArg) TokenLiteral() string {
 	var str strings.Builder
 
+	str.WriteString(fmt.Sprintf(" %s ", ta.FromKeyword.TokenLiteral()))
+
 	str.WriteString(ta.Table.TokenLiteral())
 
 	if len(ta.Joins) == 0 {
@@ -309,28 +317,12 @@ func (ts TableSource) TokenLiteral() string {
 func (j Join) TokenLiteral() string {
 	var str strings.Builder
 
-	switch j.Type {
-	case JTInner:
-		str.WriteString(" INNER JOIN ")
-		break
-	case JTLeft:
-		str.WriteString(" LEFT JOIN ")
-		break
-	case JTLeftOuter:
-		str.WriteString(" LEFT OUTER JOIN ")
-		break
-	case JTRight:
-		str.WriteString(" RIGHT JOIN ")
-		break
-	case JTRightOuter:
-		str.WriteString(" RIGHT OUTER JOIN ")
-		break
-	case JTFull:
-		str.WriteString(" FULL JOIN ")
-		break
-	case JTFullOuter:
-		str.WriteString(" RIGHT OUTER JOIN ")
-		break
+	str.WriteString(fmt.Sprintf(" %s", j.JoinKeyword1.TokenLiteral()))
+	if j.JoinKeyword2 != nil {
+		str.WriteString(fmt.Sprintf(" %s ", j.JoinKeyword2.TokenLiteral()))
+	}
+	if j.JoinKeyword3 != nil {
+		str.WriteString(fmt.Sprintf(" %s ", j.JoinKeyword3.TokenLiteral()))
 	}
 
 	str.WriteString(j.Table.TokenLiteral())
@@ -344,14 +336,18 @@ func (j Join) TokenLiteral() string {
 }
 func (ta TopArg) TokenLiteral() string {
 	var str strings.Builder
-	str.WriteString(fmt.Sprintf("TOP %s", ta.Quantity.TokenLiteral()))
+	str.WriteString(fmt.Sprintf("%s %s", ta.TopKeyword.TokenLiteral(), ta.Quantity.TokenLiteral()))
 
-	if ta.Percent {
-		str.WriteString(" PERCENT")
+	if ta.PercentKeyword != nil {
+		str.WriteString(fmt.Sprintf(" %s", ta.PercentKeyword.TokenLiteral()))
 	}
 
-	if ta.WithTies {
-		str.WriteString(" WITH TIES")
+	if ta.WithKeyword != nil {
+		str.WriteString(fmt.Sprintf(" %s", ta.WithKeyword.TokenLiteral()))
+	}
+
+	if ta.TiesKeyword != nil {
+		str.WriteString(fmt.Sprintf(" %s", ta.TiesKeyword.TokenLiteral()))
 	}
 
 	return str.String()

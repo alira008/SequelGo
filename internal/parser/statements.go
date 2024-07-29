@@ -130,6 +130,9 @@ func (p *Parser) parseSelectStatement() (*ast.SelectStatement, error) {
 
 func (p *Parser) parseTopArg() (*ast.TopArg, error) {
 	p.nextToken()
+	topArg := ast.TopArg{}
+	kw := ast.NewKeywordFromToken(p.currentToken)
+	topArg.TopKeyword = kw
 	startPosition := p.currentToken.Start
 	p.logger.Debug(p.currentToken)
 	p.logger.Debug(p.peekToken)
@@ -141,21 +144,25 @@ func (p *Parser) parseTopArg() (*ast.TopArg, error) {
 		Value: p.currentToken.Value,
 		Span:  ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
 	}
+	topArg.Quantity = expr
 
-	topArg := ast.TopArg{Quantity: expr}
 	if p.peekTokenIs(lexer.TPercent) {
-		topArg.Percent = true
 		p.nextToken()
+		kw := ast.NewKeywordFromToken(p.currentToken)
+		topArg.PercentKeyword = &kw
 	}
 
 	if p.peekTokenIs(lexer.TWith) {
 		p.nextToken()
+		kw := ast.NewKeywordFromToken(p.currentToken)
+		topArg.WithKeyword = &kw
 
 		err := p.expectPeek(lexer.TTies)
 		if err != nil {
 			return nil, err
 		}
-		topArg.WithTies = true
+		kw = ast.NewKeywordFromToken(p.currentToken)
+		topArg.TiesKeyword = &kw
 	}
 
 	topArg.Span = ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End)
@@ -165,9 +172,11 @@ func (p *Parser) parseTopArg() (*ast.TopArg, error) {
 func (p *Parser) parseSelectBody() (ast.SelectBody, error) {
 	stmt := ast.SelectBody{}
 	startPositionSelectBody := p.currentToken.Start
+	stmt.SelectKeyword = ast.NewKeywordFromToken(p.currentToken)
 	if p.peekTokenIs(lexer.TDistinct) {
-		stmt.Distinct = true
 		p.nextToken()
+		kw := ast.NewKeywordFromToken(p.currentToken)
+		stmt.Distinct = &kw
 	}
 
 	// check for optional all keyword
@@ -285,7 +294,7 @@ func (p *Parser) parseSelectItems() (*ast.SelectItems, error) {
 			if len(v.SelectItems.Items) > 1 {
 				return nil, p.currentErrorString("Subquery must contain only one column")
 			}
-			if v.GroupByClause != nil && len(v.GroupByClause.Items) > 1 && v.Distinct {
+			if v.GroupByClause != nil && len(v.GroupByClause.Items) > 1 && v.Distinct != nil {
 				return nil, p.currentErrorString("The 'DISTINCT' keyword can't be used with subqueries that include 'GROUP BY'")
 			}
 			if v.OrderByClause != nil && len(v.OrderByClause.Expressions) > 1 && v.Top == nil {
@@ -346,8 +355,10 @@ func (p *Parser) parseTableArg() (*ast.TableArg, error) {
 		p.logger.Debug("from err")
 		return nil, err
 	}
+	fromKeyword := ast.NewKeywordFromToken(p.currentToken)
 	startPosition := p.currentToken.Start
 	p.logger.Debug("parsing table arg")
+	p.logger.Debug(p.currentToken)
 
 	tableSource, err := p.parseTableSource()
 	if err != nil {
@@ -359,8 +370,9 @@ func (p *Parser) parseTableArg() (*ast.TableArg, error) {
 		p.peekTokenIs(lexer.TRight) ||
 		p.peekTokenIs(lexer.TFull) {
 		return &ast.TableArg{
-			Table: tableSource,
-			Span:  ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+			FromKeyword: fromKeyword,
+			Table:       tableSource,
+			Span:        ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
 		}, nil
 	}
 
@@ -370,9 +382,10 @@ func (p *Parser) parseTableArg() (*ast.TableArg, error) {
 	}
 
 	return &ast.TableArg{
-		Table: tableSource,
-		Joins: joins,
-		Span:  ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+		FromKeyword: fromKeyword,
+		Table:       tableSource,
+		Joins:       joins,
+		Span:        ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
 	}, nil
 }
 
