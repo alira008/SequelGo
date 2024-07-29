@@ -17,10 +17,16 @@ type Formatter struct {
 	formattedQuery string
 	currentLine    uint64
 	comments       []ast.Comment
+	NodeToComments map[ast.Node][]ast.Comment
 }
 
 func NewFormatter(settings Settings, logger *zap.SugaredLogger) Formatter {
-	return Formatter{settings: settings, logger: logger, currentLine: 1}
+	return Formatter{
+		settings:       settings,
+		logger:         logger,
+		currentLine:    1,
+		NodeToComments: make(map[ast.Node][]ast.Comment),
+	}
 }
 
 func (f *Formatter) Format(input string) (string, error) {
@@ -37,10 +43,65 @@ func (f *Formatter) Format(input string) (string, error) {
 			f.printNewLine()
 			f.printNewLine()
 		}
+		f.associateCommentsWithNodes(s)
 		f.walkQuery(s)
 	}
 
 	return f.formattedQuery, nil
+}
+
+func nodeList(n ast.Node) []ast.Node {
+	var list []ast.Node
+	ast.Inspect(n, func(n ast.Node) bool {
+		switch n.(type) {
+		case nil:
+			return false
+		}
+		list = append(list, n)
+		return true
+	})
+
+	return list
+}
+
+// AssociateCommentsWithNodes associates comments with the nearest nodes in the AST.
+func (f *Formatter) associateCommentsWithNodes(node ast.Node) {
+	// Collect nodes and their positions.
+	nodes := nodeList(node)
+
+	// Associate each comment with the nearest node.
+	for _, comment := range f.comments {
+		closestNode := f.findClosestNode(comment.GetSpan().StartPosition, nodes)
+		if closestNode != nil {
+			f.NodeToComments[closestNode] = append(f.NodeToComments[closestNode], comment)
+		}
+	}
+}
+func (f *Formatter) findClosestNode(commentPos ast.Position, nodes []ast.Node) ast.Node {
+	var closestNode ast.Node
+	minDistance := int64(^uint(0) >> 1) // Initialize to max int value
+	for _, node := range nodes {
+		distance := f.positionDistance(commentPos, node.GetSpan().StartPosition)
+		if distance < minDistance {
+			minDistance = distance
+			closestNode = node
+		}
+	}
+	return closestNode
+}
+
+func (f *Formatter) positionDistance(pos1, pos2 ast.Position) int64 {
+	// Simple distance measure considering line difference first, then column difference
+	lineDiff := abs(int64(pos1.Line) - int64(pos2.Line))
+	columnDiff := abs(int64(pos1.Col) - int64(pos2.Col))
+	return lineDiff*1000 + columnDiff // Assuming line difference is more significant
+}
+
+func abs(x int64) int64 {
+	if x < 0 {
+		return -x
+	}
+	return x
 }
 
 func (f *Formatter) increaseIndent() {
@@ -142,7 +203,34 @@ func (f *Formatter) walkQuery(statement ast.Statement) {
 	}
 }
 
+func (f *Formatter) printCommentsBeforeNode(node ast.Node) {
+	if comments, ok := f.NodeToComments[node]; ok {
+		for _, comment := range comments {
+			if comment.GetSpan().StartPosition.Line < node.GetSpan().StartPosition.Line {
+				f.formattedQuery += fmt.Sprintf("\n%s", comment.TokenLiteral())
+			}
+		}
+	}
+}
+
+func (f *Formatter) printCommentsAfterNode(node ast.Node) {
+	// Add comments before this node.
+	if comments, ok := f.NodeToComments[node]; ok {
+		for _, comment := range comments {
+			if comment.GetSpan().StartPosition.Line == node.GetSpan().StartPosition.Line &&
+				comment.GetSpan().StartPosition.Col > node.GetSpan().StartPosition.Col {
+				f.formattedQuery += fmt.Sprintf(" %s\n", comment.TokenLiteral())
+			}
+			if comment.GetSpan().StartPosition.Line > node.GetSpan().StartPosition.Line {
+
+				f.formattedQuery += fmt.Sprintf("\n%s", comment.TokenLiteral())
+			}
+		}
+	}
+}
+
 func (f *Formatter) visitExpression(expression ast.Expression) {
+    f.printCommentsBeforeNode(expression)
 	switch e := expression.(type) {
 	case *ast.ExprStringLiteral:
 		f.visitStringLiteralExpression(e)
@@ -229,6 +317,7 @@ func (f *Formatter) visitExpression(expression ast.Expression) {
 		f.visitKeyword(e)
 		break
 	}
+    f.printCommentsAfterNode(expression)
 }
 
 func (f *Formatter) visitKeyword(keyword *ast.Keyword) {

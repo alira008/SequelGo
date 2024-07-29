@@ -1,5 +1,7 @@
 package ast
 
+import "fmt"
+
 type Visitor interface {
 	Visit(node Node) (v Visitor)
 }
@@ -25,13 +27,23 @@ func Walk(v Visitor, node Node) {
 		Walk(v, n.SelectBody)
 		break
 	case *SelectBody:
-		Walk(v, n.Top)
+		if n.Top != nil {
+			Walk(v, n.Top)
+		}
 		Walk(v, &n.SelectItems)
 		Walk(v, n.Table)
-		Walk(v, n.WhereClause)
-		Walk(v, n.HavingClause)
-		Walk(v, n.GroupByClause)
-		Walk(v, n.OrderByClause)
+		if n.WhereClause != nil {
+			Walk(v, n.WhereClause)
+		}
+		if n.HavingClause != nil {
+			Walk(v, n.HavingClause)
+		}
+		if n.GroupByClause != nil {
+			Walk(v, n.GroupByClause)
+		}
+		if n.OrderByClause != nil {
+			Walk(v, n.OrderByClause)
+		}
 		break
 	case *ExprStringLiteral:
 		break
@@ -87,7 +99,10 @@ func Walk(v Visitor, node Node) {
 		for _, e := range n.Expressions {
 			Walk(v, &e)
 		}
-		Walk(v, n.OffsetFetch)
+
+		if n.OffsetFetch != nil {
+			Walk(v, n.OffsetFetch)
+		}
 		break
 	case *OffsetArg:
 		Walk(v, n.Value)
@@ -97,7 +112,9 @@ func Walk(v Visitor, node Node) {
 		break
 	case *OffsetFetchClause:
 		Walk(v, &n.Offset)
-		Walk(v, n.Fetch)
+		if n.Fetch != nil {
+			Walk(v, n.Fetch)
+		}
 		break
 	case *ExprSubquery:
 		Walk(v, &n.SelectBody)
@@ -113,19 +130,25 @@ func Walk(v Visitor, node Node) {
 		break
 	case *WindowFrameClause:
 		Walk(v, n.Start)
-		Walk(v, n.End)
+		if n.End != nil {
+			Walk(v, n.End)
+		}
 		break
 	case *FunctionOverClause:
 		walkList(v, n.PartitionByClause)
 		for _, o := range n.OrderByClause {
 			Walk(v, &o)
 		}
-		Walk(v, n.WindowFrameClause)
+		if n.WindowFrameClause != nil {
+			Walk(v, n.WindowFrameClause)
+		}
 		break
 	case *ExprFunctionCall:
 		Walk(v, n.Name)
 		walkList(v, n.Args)
+		if n.OverClause != nil {
 		Walk(v, n.OverClause)
+        }
 		break
 	case *ExprCast:
 		Walk(v, n.Expression)
@@ -193,20 +216,24 @@ func Walk(v Visitor, node Node) {
 		Walk(v, n.ScalarExpression)
 		Walk(v, n.Subquery)
 		break
+	default:
+		panic(fmt.Sprintf("ast.Walk: unexpected node type %T", n))
 	}
+
+	v.Visit(nil)
 }
 
 type inspector func(Node) bool
 
 func (f inspector) Visit(node Node) Visitor {
-    if f(node) {
-        return f
-    }
+	if f(node) {
+		return f
+	}
 
-    return nil
+	return nil
 }
 
 // traverse tree depth first
-func Inspect(node Node, f func(Node) bool){
-    Walk(inspector(f), node)
+func Inspect(node Node, f func(Node) bool) {
+	Walk(inspector(f), node)
 }

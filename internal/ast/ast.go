@@ -82,5 +82,5 @@ func (q *Query) TokenLiteral() string {
 	return str.String()
 }
 func (c *Comment) TokenLiteral() string {
-	return fmt.Sprintf("--%s", c.Value)
+	return fmt.Sprintf("-- %s", c.Value)
 }
