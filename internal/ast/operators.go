@@ -27,12 +27,14 @@ type ExprArithmeticOperator struct {
 
 type ExprAndLogicalOperator struct {
 	Span
-	Left  Expression
-	Right Expression
+	AndKeyword Keyword
+	Left       Expression
+	Right      Expression
 }
 
 type ExprAllLogicalOperator struct {
 	Span
+	AllKeyword         Keyword
 	ScalarExpression   Expression
 	ComparisonOperator ComparisonOperatorType
 	Subquery           *ExprSubquery
@@ -40,51 +42,60 @@ type ExprAllLogicalOperator struct {
 
 type ExprBetweenLogicalOperator struct {
 	Span
+	BetweenKeyword Keyword
 	TestExpression Expression
-	Not            bool
+	NotKeyword     *Keyword
 	Begin          Expression
+	AndKeyword     Keyword
 	End            Expression
 }
 
 type ExprExistsLogicalOperator struct {
 	Span
-	Subquery *ExprSubquery
+	ExistsKeyword Keyword
+	Subquery      *ExprSubquery
 }
 
 type ExprInSubqueryLogicalOperator struct {
 	Span
+	InKeyword      Keyword
 	TestExpression Expression
-	Not            bool
+	NotKeyword     *Keyword
 	Subquery       *ExprSubquery
 }
 
 type ExprInLogicalOperator struct {
 	Span
+	InKeyword      Keyword
 	TestExpression Expression
-	Not            bool
+	NotKeyword     *Keyword
 	Expressions    []Expression
 }
 
 type ExprLikeLogicalOperator struct {
 	Span
+	LikeKeyword     Keyword
 	MatchExpression Expression
-	Not             bool
+	NotKeyword      *Keyword
 	Pattern         Expression
 }
 
 type ExprNotLogicalOperator struct {
 	Span
+	NotKeyword Keyword
 	Expression Expression
 }
 
 type ExprOrLogicalOperator struct {
 	Span
-	Left  Expression
-	Right Expression
+	OrKeyword Keyword
+	Left      Expression
+	Right     Expression
 }
 
 type ExprSomeLogicalOperator struct {
 	Span
+	SomeKeyword        Keyword
 	ScalarExpression   Expression
 	ComparisonOperator ComparisonOperatorType
 	Subquery           *ExprSubquery
@@ -92,6 +103,7 @@ type ExprSomeLogicalOperator struct {
 
 type ExprAnyLogicalOperator struct {
 	Span
+	AnyKeyword         Keyword
 	ScalarExpression   Expression
 	ComparisonOperator ComparisonOperatorType
 	Subquery           *ExprSubquery
@@ -153,7 +165,7 @@ func (e ExprArithmeticOperator) TokenLiteral() string {
 func (e ExprAndLogicalOperator) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString(e.Left.TokenLiteral())
-	str.WriteString(" AND ")
+    str.WriteString(fmt.Sprintf(" %s ", e.AndKeyword.TokenLiteral()))
 	str.WriteString(e.Right.TokenLiteral())
 	return str.String()
 }
@@ -161,25 +173,25 @@ func (e ExprAllLogicalOperator) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString(e.ScalarExpression.TokenLiteral())
 	str.WriteString(fmt.Sprintf(" %s ", e.ComparisonOperator.TokenLiteral()))
-	str.WriteString(" AND ")
+    str.WriteString(fmt.Sprintf(" %s ", e.AllKeyword.TokenLiteral()))
 	str.WriteString(e.Subquery.TokenLiteral())
 	return str.String()
 }
 func (e ExprBetweenLogicalOperator) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString(e.TestExpression.TokenLiteral())
-	if e.Not {
-		str.WriteString(" NOT")
+	if e.NotKeyword != nil {
+		str.WriteString(fmt.Sprintf(" %s", e.NotKeyword.TokenLiteral()))
 	}
-	str.WriteString(" BETWEEN ")
+    str.WriteString(fmt.Sprintf(" %s ", e.BetweenKeyword.TokenLiteral()))
 	str.WriteString(e.Begin.TokenLiteral())
-	str.WriteString(" AND ")
+    str.WriteString(fmt.Sprintf(" %s ", e.AndKeyword.TokenLiteral()))
 	str.WriteString(e.End.TokenLiteral())
 	return str.String()
 }
 func (e ExprExistsLogicalOperator) TokenLiteral() string {
 	var str strings.Builder
-	str.WriteString("EXISTS (")
+    str.WriteString(fmt.Sprintf("%s (", e.ExistsKeyword.TokenLiteral()))
 	str.WriteString(e.Subquery.TokenLiteral())
 	str.WriteString(")")
 	return str.String()
@@ -187,10 +199,10 @@ func (e ExprExistsLogicalOperator) TokenLiteral() string {
 func (e ExprInSubqueryLogicalOperator) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString(e.TestExpression.TokenLiteral())
-	if e.Not {
-		str.WriteString(" NOT")
+	if e.NotKeyword != nil {
+		str.WriteString(fmt.Sprintf(" %s", e.NotKeyword.TokenLiteral()))
 	}
-	str.WriteString(" IN (")
+    str.WriteString(fmt.Sprintf(" %s (", e.InKeyword.TokenLiteral()))
 	str.WriteString(e.Subquery.TokenLiteral())
 	str.WriteString(")")
 	return str.String()
@@ -198,10 +210,10 @@ func (e ExprInSubqueryLogicalOperator) TokenLiteral() string {
 func (e ExprInLogicalOperator) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString(e.TestExpression.TokenLiteral())
-	if e.Not {
-		str.WriteString(" NOT")
+	if e.NotKeyword != nil {
+		str.WriteString(fmt.Sprintf(" %s", e.NotKeyword.TokenLiteral()))
 	}
-	str.WriteString(" IN (")
+    str.WriteString(fmt.Sprintf(" %s (", e.InKeyword.TokenLiteral()))
 
 	var strs []string
 	for _, expr := range e.Expressions {
@@ -216,23 +228,23 @@ func (e ExprInLogicalOperator) TokenLiteral() string {
 func (e ExprLikeLogicalOperator) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString(e.MatchExpression.TokenLiteral())
-	if e.Not {
-		str.WriteString(" NOT")
+	if e.NotKeyword != nil {
+		str.WriteString(fmt.Sprintf(" %s", e.NotKeyword.TokenLiteral()))
 	}
-	str.WriteString(" LIKE ")
+    str.WriteString(fmt.Sprintf(" %s ", e.LikeKeyword.TokenLiteral()))
 	str.WriteString(e.Pattern.TokenLiteral())
 	return str.String()
 }
 func (e ExprNotLogicalOperator) TokenLiteral() string {
 	var str strings.Builder
-	str.WriteString("NOT ")
+    str.WriteString(fmt.Sprintf("%s ", e.NotKeyword.TokenLiteral()))
 	str.WriteString(e.Expression.TokenLiteral())
 	return str.String()
 }
 func (e ExprOrLogicalOperator) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString(e.Left.TokenLiteral())
-	str.WriteString(" OR ")
+    str.WriteString(fmt.Sprintf(" %s ", e.OrKeyword.TokenLiteral()))
 	str.WriteString(e.Right.TokenLiteral())
 	return str.String()
 }
@@ -240,7 +252,7 @@ func (e ExprSomeLogicalOperator) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString(e.ScalarExpression.TokenLiteral())
 	str.WriteString(fmt.Sprintf(" %s ", e.ComparisonOperator.TokenLiteral()))
-	str.WriteString(" SOME ")
+    str.WriteString(fmt.Sprintf(" %s ", e.SomeKeyword.TokenLiteral()))
 	str.WriteString(e.Subquery.TokenLiteral())
 	return str.String()
 }
@@ -248,7 +260,7 @@ func (e ExprAnyLogicalOperator) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString(e.ScalarExpression.TokenLiteral())
 	str.WriteString(fmt.Sprintf(" %s ", e.ComparisonOperator.TokenLiteral()))
-	str.WriteString(" ANY ")
+    str.WriteString(fmt.Sprintf(" %s ", e.AnyKeyword.TokenLiteral()))
 	str.WriteString(e.Subquery.TokenLiteral())
 	return str.String()
 }

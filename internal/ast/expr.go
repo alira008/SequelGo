@@ -57,9 +57,9 @@ type ExprStar struct {
 
 type ExprWithAlias struct {
 	Span
-	Expression     Expression
-	AsTokenPresent bool
-	Alias          Expression
+	Expression Expression
+	AsKeyword  *Keyword
+	Alias      Expression
 }
 
 type ExprCompoundIdentifier struct {
@@ -74,17 +74,21 @@ type SelectItems struct {
 
 type WhereClause struct {
 	Span
-	Clause Expression
+	WhereKeyword Keyword
+	Clause       Expression
 }
 
 type HavingClause struct {
 	Span
-	Clause Expression
+	HavingKeyword Keyword
+	Clause        Expression
 }
 
 type GroupByClause struct {
 	Span
-	Items []Expression
+	GroupKeyword Keyword
+	ByKeyword    Keyword
+	Items        []Expression
 }
 
 type ExprSubquery struct {
@@ -115,18 +119,21 @@ type TableSource struct {
 
 type Join struct {
 	Span
-	JoinKeyword1 Keyword
-	JoinKeyword2 *Keyword
-	JoinKeyword3 *Keyword
-	Type         JoinType
-	Table        *TableSource
-	Condition    Expression
+	JoinTypeKeyword1 Keyword
+	JoinTypeKeyword2 *Keyword
+	JoinKeyword      Keyword
+	Type             JoinType
+	Table            *TableSource
+	OnKeyword        *Keyword
+	Condition        Expression
 }
 
 type OrderByClause struct {
 	Span
-	Expressions []OrderByArg
-	OffsetFetch *OffsetFetchClause
+	OrderKeyword Keyword
+	ByKeyword    Keyword
+	Expressions  []OrderByArg
+	OffsetFetch  *OffsetFetchClause
 }
 
 type OffsetFetchClause struct {
@@ -137,21 +144,28 @@ type OffsetFetchClause struct {
 
 type OrderByArg struct {
 	Span
-	Column Expression
-	Type   OrderByType
+	Column       Expression
+	OrderKeyword *Keyword
+	Type         OrderByType
 }
 
 type OffsetArg struct {
 	Span
-	Value     Expression
-	RowOrRows RowOrRows
+	OffsetKeyword    Keyword
+	RowOrRowsKeyword Keyword
+	Value            Expression
+	RowOrRows        RowOrRows
 }
 
 type FetchArg struct {
 	Span
-	Value       Expression
-	NextOrFirst NextOrFirst
-	RowOrRows   RowOrRows
+	FetchKeyword       Keyword
+	Value              Expression
+	NextOrFirst        NextOrFirst
+	RowOrRows          RowOrRows
+	NextOrFirstKeyword Keyword
+	RowOrRowsKeyword   Keyword
+	OnlyKeyword        Keyword
 }
 
 type ExprExpressionList struct {
@@ -161,22 +175,32 @@ type ExprExpressionList struct {
 
 type FunctionOverClause struct {
 	Span
+	OverKeyword       Keyword
+	PartitionKeyword  *Keyword
+	PByKeyword        *Keyword
 	PartitionByClause []Expression
+	OrderKeyword      *Keyword
+	OByKeyword        *Keyword
 	OrderByClause     []OrderByArg
 	WindowFrameClause *WindowFrameClause
 }
 
 type WindowFrameClause struct {
 	Span
-	RowsOrRange RowsOrRangeType
-	Start       *WindowFrameBound
-	End         *WindowFrameBound
+	RowsOrRangeKeyword Keyword
+	RowsOrRange        RowsOrRangeType
+	BetweenKeyword     *Keyword
+	Start              *WindowFrameBound
+	AndKeyword         *Keyword
+	End                *WindowFrameBound
 }
 
 type WindowFrameBound struct {
 	Span
-	Type       WindowFrameBoundType
-	Expression Expression
+	BoundKeyword1 Keyword
+	BoundKeyword2 *Keyword
+	Type          WindowFrameBoundType
+	Expression    Expression
 }
 
 type ExprFunction struct {
@@ -194,15 +218,18 @@ type ExprFunctionCall struct {
 
 type ExprCast struct {
 	Span
+    CastKeyword Keyword
 	Expression Expression
+    AsKeyword Keyword
 	DataType   DataType
 }
 
 type CommonTableExpression struct {
 	Span
-	Name    string
-	Columns *ExprExpressionList
-	Query   SelectBody
+	Name      string
+	Columns   *ExprExpressionList
+	AsKeyword Keyword
+	Query     SelectBody
 }
 
 func (e ExprStringLiteral) expressionNode()       {}
@@ -257,8 +284,8 @@ func (e ExprStar) TokenLiteral() string {
 func (e ExprWithAlias) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString(e.Expression.TokenLiteral())
-	if e.AsTokenPresent {
-		str.WriteString(" AS ")
+	if e.AsKeyword != nil {
+		str.WriteString(fmt.Sprintf(" %s ", e.AsKeyword.TokenLiteral()))
 	} else {
 		str.WriteString(" ")
 	}
@@ -279,13 +306,26 @@ func (si SelectItems) TokenLiteral() string {
 	return expressionListToString(si.Items, ", ")
 }
 func (w WhereClause) TokenLiteral() string {
-	return w.Clause.TokenLiteral()
+	var str strings.Builder
+	str.WriteString(fmt.Sprintf(" %s ", w.WhereKeyword.TokenLiteral()))
+	str.WriteString(w.Clause.TokenLiteral())
+
+	return str.String()
 }
 func (h HavingClause) TokenLiteral() string {
-	return h.Clause.TokenLiteral()
+	var str strings.Builder
+	str.WriteString(fmt.Sprintf(" %s ", h.HavingKeyword.TokenLiteral()))
+	str.WriteString(h.Clause.TokenLiteral())
+
+	return str.String()
 }
 func (gb GroupByClause) TokenLiteral() string {
-	return expressionListToString(gb.Items, ", ")
+	var str strings.Builder
+	str.WriteString(fmt.Sprintf(" %s %s ", gb.GroupKeyword.TokenLiteral(),
+		gb.ByKeyword.TokenLiteral()))
+	str.WriteString(expressionListToString(gb.Items, ", "))
+
+	return str.String()
 }
 func (ta TableArg) TokenLiteral() string {
 	var str strings.Builder
@@ -317,18 +357,18 @@ func (ts TableSource) TokenLiteral() string {
 func (j Join) TokenLiteral() string {
 	var str strings.Builder
 
-	str.WriteString(fmt.Sprintf(" %s", j.JoinKeyword1.TokenLiteral()))
-	if j.JoinKeyword2 != nil {
-		str.WriteString(fmt.Sprintf(" %s ", j.JoinKeyword2.TokenLiteral()))
-	}
-	if j.JoinKeyword3 != nil {
-		str.WriteString(fmt.Sprintf(" %s ", j.JoinKeyword3.TokenLiteral()))
+	str.WriteString(fmt.Sprintf(" %s", j.JoinTypeKeyword1.TokenLiteral()))
+	if j.JoinTypeKeyword2 != nil {
+		str.WriteString(fmt.Sprintf(" %s ", j.JoinTypeKeyword2.TokenLiteral()))
 	}
 
 	str.WriteString(j.Table.TokenLiteral())
 
 	if j.Condition != nil {
-		str.WriteString(" ON ")
+		if j.OnKeyword != nil {
+			str.WriteString(fmt.Sprintf(" %s ", j.OnKeyword.TokenLiteral()))
+		}
+		// str.WriteString(" ON ")
 		str.WriteString(j.Condition.TokenLiteral())
 	}
 
@@ -364,7 +404,8 @@ func (o OrderByClause) TokenLiteral() string {
 		orderByArgs = append(orderByArgs, o.TokenLiteral())
 	}
 
-	str.WriteString(" ORDER BY ")
+	str.WriteString(fmt.Sprintf(" %s %s ", o.OrderKeyword.TokenLiteral(),
+		o.ByKeyword.TokenLiteral()))
 	str.WriteString(strings.Join(orderByArgs, ", "))
 
 	if o.OffsetFetch == nil {
@@ -390,57 +431,29 @@ func (o OffsetFetchClause) TokenLiteral() string {
 func (o OrderByArg) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString(o.Column.TokenLiteral())
-	switch o.Type {
-	case OBNone:
-		break
-	case OBAsc:
-		str.WriteString(" ASC")
-		break
-	case OBDesc:
-		str.WriteString(" DESC")
-		break
+	if o.OrderKeyword != nil {
+		str.WriteString(fmt.Sprintf(" %s", o.OrderKeyword.TokenLiteral()))
 	}
 
 	return str.String()
 }
 func (o OffsetArg) TokenLiteral() string {
 	var str strings.Builder
-	str.WriteString(" OFFSET ")
+	str.WriteString(fmt.Sprintf(" %s ", o.OffsetKeyword.TokenLiteral()))
 	str.WriteString(o.Value.TokenLiteral())
-	switch o.RowOrRows {
-	case RRRow:
-		str.WriteString(" ROW")
-		break
-	case RRRows:
-		str.WriteString(" ROWS")
-		break
-	}
+	str.WriteString(fmt.Sprintf(" %s", o.RowOrRowsKeyword.TokenLiteral()))
+
 	return str.String()
 }
 func (f FetchArg) TokenLiteral() string {
 	var str strings.Builder
-	str.WriteString(" FETCH ")
-	switch f.NextOrFirst {
-	case NFNext:
-		str.WriteString(" NEXT ")
-		break
-	case NFFirst:
-		str.WriteString(" FIRST ")
-		break
-	}
+	str.WriteString(fmt.Sprintf(" %s ", f.FetchKeyword.TokenLiteral()))
+	str.WriteString(fmt.Sprintf("%s ", f.NextOrFirstKeyword.TokenLiteral()))
 
 	str.WriteString(f.Value.TokenLiteral())
+	str.WriteString(fmt.Sprintf(" %s %s", f.RowOrRowsKeyword.TokenLiteral(),
+		f.OnlyKeyword.TokenLiteral()))
 
-	switch f.RowOrRows {
-	case RRRow:
-		str.WriteString(" ROW")
-		break
-	case RRRows:
-		str.WriteString(" ROWS")
-		break
-	}
-
-	str.WriteString(" ONLY")
 	return str.String()
 }
 func (e ExprSubquery) TokenLiteral() string {
@@ -556,48 +569,57 @@ func (e ExprFunction) TokenLiteral() string {
 func (w WindowFrameBound) TokenLiteral() string {
 	var str strings.Builder
 
-	switch w.Type {
-	case WFBTFollowing:
+	if w.Expression != nil {
 		str.WriteString(w.Expression.TokenLiteral())
-		str.WriteString(" FOLLOWING")
-		break
-	case WFBTCurrentRow:
-		str.WriteString("CURRENT ROW")
-		break
-	case WFBTPreceding:
-		str.WriteString(w.Expression.TokenLiteral())
-		str.WriteString(" PRECEDING")
-		break
-	case WFBTUnboundedPreceding:
-		str.WriteString("UNBOUNDED PRECEDING")
-		break
-	case WFBTUnboundedFollowing:
-		str.WriteString("UNBOUNDED FOLLOWING")
-		break
+		str.WriteString(" ")
 	}
+	str.WriteString(fmt.Sprintf("%s", w.BoundKeyword1.TokenLiteral()))
+	if w.BoundKeyword2 != nil {
+		str.WriteString(fmt.Sprintf(" %s", w.BoundKeyword2.TokenLiteral()))
+	}
+	// switch w.Type {
+	// case WFBTFollowing:
+	// 	str.WriteString(w.Expression.TokenLiteral())
+	// 	str.WriteString(" FOLLOWING")
+	// 	break
+	// case WFBTCurrentRow:
+	// 	str.WriteString("CURRENT ROW")
+	// 	break
+	// case WFBTPreceding:
+	// 	str.WriteString(w.Expression.TokenLiteral())
+	// 	str.WriteString(" PRECEDING")
+	// 	break
+	// case WFBTUnboundedPreceding:
+	// 	str.WriteString("UNBOUNDED PRECEDING")
+	// 	break
+	// case WFBTUnboundedFollowing:
+	// 	str.WriteString("UNBOUNDED FOLLOWING")
+	// 	break
+	// }
 
 	return str.String()
 }
 func (w WindowFrameClause) TokenLiteral() string {
 	var str strings.Builder
 
-	switch w.RowsOrRange {
-	case RRTRows:
-		str.WriteString(" ROWS ")
-		break
-	case RRTRange:
-		str.WriteString(" RANGE ")
-		break
-	}
+	str.WriteString(fmt.Sprintf(" %s ", w.RowsOrRangeKeyword.TokenLiteral()))
+	// switch w.RowsOrRange {
+	// case RRTRows:
+	// 	str.WriteString(" ROWS ")
+	// 	break
+	// case RRTRange:
+	// 	str.WriteString(" RANGE ")
+	// 	break
+	// }
 
 	if w.End != nil {
-		str.WriteString("BETWEEN ")
+		str.WriteString(fmt.Sprintf("%s ", w.BetweenKeyword.TokenLiteral()))
 	}
 
 	str.WriteString(w.Start.TokenLiteral())
 
 	if w.End != nil {
-		str.WriteString(" AND ")
+		str.WriteString(fmt.Sprintf(" %s ", w.AndKeyword.TokenLiteral()))
 		str.WriteString(w.End.TokenLiteral())
 	}
 
@@ -606,10 +628,11 @@ func (w WindowFrameClause) TokenLiteral() string {
 func (e FunctionOverClause) TokenLiteral() string {
 	var str strings.Builder
 
-	str.WriteString("(")
+	str.WriteString(fmt.Sprintf(" %s (", e.OverKeyword.TokenLiteral()))
 
 	if len(e.PartitionByClause) > 0 {
-		str.WriteString("PARTITION BY ")
+		str.WriteString(fmt.Sprintf("%s %s ", e.PartitionKeyword.TokenLiteral(),
+			e.PByKeyword.TokenLiteral()))
 		var expressions []string
 		for _, p := range e.PartitionByClause {
 			expressions = append(expressions, p.TokenLiteral())
@@ -618,7 +641,8 @@ func (e FunctionOverClause) TokenLiteral() string {
 	}
 
 	if len(e.OrderByClause) > 0 {
-		str.WriteString(" ORDER BY ")
+		str.WriteString(fmt.Sprintf(" %s %s ", e.OrderKeyword.TokenLiteral(),
+			e.OByKeyword.TokenLiteral()))
 		var args []string
 		for _, o := range e.OrderByClause {
 			args = append(args, o.TokenLiteral())
@@ -655,9 +679,9 @@ func (e ExprFunctionCall) TokenLiteral() string {
 func (e ExprCast) TokenLiteral() string {
 	var str strings.Builder
 
-	str.WriteString("CAST(")
+	str.WriteString(fmt.Sprintf("%s(", e.CastKeyword.TokenLiteral()))
 	str.WriteString(e.Expression.TokenLiteral())
-	str.WriteString(" AS ")
+	str.WriteString(fmt.Sprintf(" %s ", e.AsKeyword.TokenLiteral()))
 	str.WriteString(e.DataType.TokenLiteral())
 	str.WriteString(")")
 
@@ -665,10 +689,13 @@ func (e ExprCast) TokenLiteral() string {
 }
 func (cte *CommonTableExpression) TokenLiteral() string {
 	var str strings.Builder
-	str.WriteString(fmt.Sprintf("WITH AS %s", cte.Name))
+	str.WriteString(fmt.Sprintf("%s", cte.Name))
 	if cte.Columns != nil {
+		str.WriteString(" (")
 		str.WriteString(cte.Columns.TokenLiteral())
+		str.WriteString(")")
 	}
+	str.WriteString(fmt.Sprintf(" %s", cte.AsKeyword.TokenLiteral()))
 	str.WriteString(" ( ")
 	str.WriteString(cte.Query.TokenLiteral())
 	str.WriteString(" )")

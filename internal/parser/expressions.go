@@ -101,11 +101,12 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 		if (p.peekTokenIs(lexer.TAs) || p.peekTokenIs(lexer.TIdentifier) ||
 			p.peekTokenIs(lexer.TStringLiteral) || p.peekTokenIs(lexer.TQuotedIdentifier)) &&
 			!p.peekToken2IsAny(ast.DataTypeTokenTypes) {
-			expr := &ast.ExprWithAlias{AsTokenPresent: false, Expression: newExpr}
+			expr := &ast.ExprWithAlias{Expression: newExpr}
 
 			if p.peekToken.Type == lexer.TAs {
-				expr.AsTokenPresent = true
 				p.nextToken()
+				kw := ast.NewKeywordFromToken(p.currentToken)
+				expr.AsKeyword = &kw
 			}
 
 			// needed in case we just parsed AS keyword
@@ -196,14 +197,14 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 				!p.peekToken2IsAny(ast.DataTypeTokenTypes) {
 				p.logger.Debug("parsing subquery alias")
 				exprWithAlias := &ast.ExprWithAlias{
-					AsTokenPresent: false,
-					Expression:     &subquery,
+					Expression: &subquery,
 				}
 
 				p.logger.Debug("parsing subquery alias")
 				if p.peekToken.Type == lexer.TAs {
-					exprWithAlias.AsTokenPresent = true
 					p.nextToken()
+					kw := ast.NewKeywordFromToken(p.currentToken)
+					exprWithAlias.AsKeyword = &kw
 				}
 
 				// needed in case we just parsed AS keyword
@@ -267,6 +268,7 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 		}
 		break
 	case lexer.TExists:
+        existsKw := ast.NewKeywordFromToken(p.currentToken)
 		p.nextToken()
 
 		expr, err := p.parseExpression(PrecedenceLowest)
@@ -277,6 +279,7 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 		switch v := expr.(type) {
 		case *ast.ExprSubquery:
 			newExpr = &ast.ExprExistsLogicalOperator{
+                ExistsKeyword: existsKw,
 				Subquery: v,
 			}
 			break
@@ -286,6 +289,7 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 		}
 		break
 	case lexer.TNot:
+        notKw := ast.NewKeywordFromToken(p.currentToken)
 		p.nextToken()
 
 		expr, err := p.parseExpression(PrecedenceLowest)
@@ -297,6 +301,7 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 		// check if it is a subquery
 		newExpr = &ast.ExprNotLogicalOperator{
 			Expression: expr,
+            NotKeyword: notKw,
 		}
 		break
 	case lexer.TCast:
@@ -319,6 +324,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 	p.logger.Debug("parsing infix expression, ", p.currentToken.String())
 	switch p.currentToken.Type {
 	case lexer.TAnd:
+        andKw := ast.NewKeywordFromToken(p.currentToken)
 		precedence := checkPrecedence(p.currentToken.Type)
 		p.nextToken()
 
@@ -328,9 +334,11 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 		}
 		return &ast.ExprAndLogicalOperator{
 			Left:  left,
+            AndKeyword: andKw,
 			Right: right,
 		}, nil
 	case lexer.TOr:
+        orKw := ast.NewKeywordFromToken(p.currentToken)
 		precedence := checkPrecedence(p.currentToken.Type)
 		p.nextToken()
 
@@ -340,6 +348,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 		}
 		return &ast.ExprOrLogicalOperator{
 			Left:  left,
+            OrKeyword: orKw,
 			Right: right,
 		}, nil
 	case lexer.TPlus,
@@ -401,6 +410,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 		p.nextToken()
 
 		if p.currentTokenIs(lexer.TAll) {
+			allKw := ast.NewKeywordFromToken(p.currentToken)
 			p.nextToken()
 			right, err := p.parseExpression(precedence)
 			if err != nil {
@@ -409,6 +419,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 			switch v := right.(type) {
 			case *ast.ExprSubquery:
 				return &ast.ExprAllLogicalOperator{
+					AllKeyword:         allKw,
 					ScalarExpression:   left,
 					ComparisonOperator: operator,
 					Subquery:           v,
@@ -417,6 +428,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 			p.errorToken = ETCurrent
 			return nil, fmt.Errorf("sub query was not provided for All Expression")
 		} else if p.currentTokenIs(lexer.TSome) {
+			someKw := ast.NewKeywordFromToken(p.currentToken)
 			p.nextToken()
 			right, err := p.parseExpression(precedence)
 			if err != nil {
@@ -425,6 +437,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 			switch v := right.(type) {
 			case *ast.ExprSubquery:
 				return &ast.ExprSomeLogicalOperator{
+					SomeKeyword:        someKw,
 					ScalarExpression:   left,
 					ComparisonOperator: operator,
 					Subquery:           v,
@@ -433,6 +446,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 			p.errorToken = ETCurrent
 			return nil, p.currentErrorString("(Subquery) was not provided for Some Expression")
 		} else if p.currentTokenIs(lexer.TAny) {
+			anyKw := ast.NewKeywordFromToken(p.currentToken)
 			p.nextToken()
 			right, err := p.parseExpression(precedence)
 			if err != nil {
@@ -441,6 +455,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 			switch v := right.(type) {
 			case *ast.ExprSubquery:
 				return &ast.ExprAnyLogicalOperator{
+					AnyKeyword:         anyKw,
 					ScalarExpression:   left,
 					ComparisonOperator: operator,
 					Subquery:           v,
@@ -461,18 +476,19 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 			Right:    right,
 		}, nil
 	case lexer.TBetween:
-		betweenOp, err := p.parseBetweenLogicalOperator(left, false)
+		betweenOp, err := p.parseBetweenLogicalOperator(left, nil)
 		if err != nil {
 			return nil, err
 		}
 		return betweenOp, nil
 	case lexer.TIn:
-		inLogicalOp, err := p.parseInLogicalOperator(left, false)
+		inLogicalOp, err := p.parseInLogicalOperator(left, nil)
 		if err != nil {
 			return nil, err
 		}
 		return inLogicalOp, nil
 	case lexer.TLike:
+		likeKw := ast.NewKeywordFromToken(p.currentToken)
 		precedence := checkPrecedence(p.currentToken.Type)
 		p.nextToken()
 
@@ -482,25 +498,28 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 		}
 
 		return &ast.ExprLikeLogicalOperator{
+			LikeKeyword:     likeKw,
 			MatchExpression: left,
 			Pattern:         right,
 		}, nil
 	case lexer.TNot:
+		notKw := ast.NewKeywordFromToken(p.currentToken)
 		p.nextToken()
 
 		if p.currentTokenIs(lexer.TBetween) {
-			betweenOp, err := p.parseBetweenLogicalOperator(left, true)
+			betweenOp, err := p.parseBetweenLogicalOperator(left, &notKw)
 			if err != nil {
 				return nil, err
 			}
 			return betweenOp, nil
 		} else if p.currentTokenIs(lexer.TIn) {
-			inLogicalOp, err := p.parseInLogicalOperator(left, true)
+			inLogicalOp, err := p.parseInLogicalOperator(left, &notKw)
 			if err != nil {
 				return nil, err
 			}
 			return inLogicalOp, nil
 		} else if p.currentTokenIs(lexer.TLike) {
+			likeKw := ast.NewKeywordFromToken(p.currentToken)
 			precedence := checkPrecedence(p.currentToken.Type)
 			p.nextToken()
 
@@ -510,8 +529,9 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 			}
 
 			return &ast.ExprLikeLogicalOperator{
+				LikeKeyword:     likeKw,
 				MatchExpression: left,
-				Not:             true,
+				NotKeyword:      &notKw,
 				Pattern:         right,
 			}, nil
 		} else {

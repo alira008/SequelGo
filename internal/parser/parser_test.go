@@ -34,6 +34,7 @@ func TestParseBasicSelectQuery(t *testing.T) {
 				},
 			},
 			WhereClause: &ast.WhereClause{
+				WhereKeyword: ast.Keyword{Type: ast.KWhere},
 				Clause: &ast.ExprComparisonOperator{
 					Left: &ast.ExprIdentifier{
 						Value: "LastPrice",
@@ -52,6 +53,7 @@ func TestParseBasicSelectQuery(t *testing.T) {
 
 func TestParseBasicSelectQueryWithCte(t *testing.T) {
 	select_statement := ast.SelectStatement{
+		WithKeyword: &ast.Keyword{Type: ast.KWith},
 		CTE: &[]ast.CommonTableExpression{
 			{
 				Name: "testctename",
@@ -61,6 +63,7 @@ func TestParseBasicSelectQueryWithCte(t *testing.T) {
 						&ast.ExprIdentifier{Value: "PercentChange"},
 					},
 				},
+				AsKeyword: ast.Keyword{Type: ast.KAs},
 				Query: ast.SelectBody{
 					SelectKeyword: ast.Keyword{Type: ast.KSelect},
 					SelectItems: ast.SelectItems{
@@ -80,7 +83,8 @@ func TestParseBasicSelectQueryWithCte(t *testing.T) {
 				},
 			},
 			{
-				Name: "testctenamedos",
+				Name:      "testctenamedos",
+				AsKeyword: ast.Keyword{Type: ast.KAs},
 				Query: ast.SelectBody{
 					SelectKeyword: ast.Keyword{Type: ast.KSelect},
 					SelectItems: ast.SelectItems{
@@ -122,6 +126,7 @@ func TestParseBasicSelectQueryWithCte(t *testing.T) {
 				},
 			},
 			WhereClause: &ast.WhereClause{
+				WhereKeyword: ast.Keyword{Type: ast.KWhere},
 				Clause: &ast.ExprComparisonOperator{
 					Left: &ast.ExprIdentifier{
 						Value: "LastPrice",
@@ -165,13 +170,16 @@ func TestParseBasicSelectQueryWithCast(t *testing.T) {
 				},
 			},
 			WhereClause: &ast.WhereClause{
+				WhereKeyword: ast.Keyword{Type: ast.KWhere},
 				Clause: &ast.ExprComparisonOperator{
 					Left: &ast.ExprIdentifier{
 						Value: "LastPrice",
 					},
 					Operator: ast.ComparisonOpLess,
 					Right: &ast.ExprCast{
+                        CastKeyword: ast.Keyword{Type: ast.KCast},
 						Expression: &ast.ExprStringLiteral{Value: "10"},
+                        AsKeyword: ast.Keyword{Type: ast.KAs},
 						DataType: ast.DataType{
 							Kind:           ast.DTFloat,
 							FloatPrecision: floatPrecision,
@@ -217,7 +225,8 @@ func TestParseBasicSelectQueryWithJoin(t *testing.T) {
 				},
 				Joins: []ast.Join{
 					{
-						Type: ast.JTInner,
+						JoinTypeKeyword1: ast.Keyword{Type: ast.KInner},
+						Type:             ast.JTInner,
 						Table: &ast.TableSource{
 							Type: ast.TSTTable,
 							Source: &ast.ExprWithAlias{
@@ -225,6 +234,7 @@ func TestParseBasicSelectQueryWithJoin(t *testing.T) {
 								Alias:      &ast.ExprIdentifier{Value: "t2"},
 							},
 						},
+						OnKeyword: &ast.Keyword{Type: ast.KOn},
 						Condition: &ast.ExprComparisonOperator{
 							Left: &ast.ExprCompoundIdentifier{
 								Identifiers: []ast.Expression{
@@ -244,6 +254,7 @@ func TestParseBasicSelectQueryWithJoin(t *testing.T) {
 				},
 			},
 			WhereClause: &ast.WhereClause{
+				WhereKeyword: ast.Keyword{Type: ast.KWhere},
 				Clause: &ast.ExprComparisonOperator{
 					Left: &ast.ExprIdentifier{
 						Value: "LastPrice",
@@ -277,21 +288,36 @@ func TestParseBuiltinFunctionCall(t *testing.T) {
 							&ast.ExprIdentifier{Value: "price"},
 						},
 						OverClause: &ast.FunctionOverClause{
+							OverKeyword:      ast.Keyword{Type: ast.KOver},
+							PartitionKeyword: &ast.Keyword{Type: ast.KPartition},
+							PByKeyword:       &ast.Keyword{Type: ast.KBy},
 							PartitionByClause: []ast.Expression{
 								&ast.ExprIdentifier{Value: "InsertDate"},
 								&ast.ExprIdentifier{Value: "Stock"},
 							},
+							OrderKeyword: &ast.Keyword{Type: ast.KOrder},
+							OByKeyword:   &ast.Keyword{Type: ast.KBy},
 							OrderByClause: []ast.OrderByArg{
-								{Column: &ast.ExprIdentifier{Value: "InsertTime"}, Type: ast.OBAsc},
+								{
+									Column:       &ast.ExprIdentifier{Value: "InsertTime"},
+									OrderKeyword: &ast.Keyword{Type: ast.KAsc},
+									Type:         ast.OBAsc,
+								},
 							},
 							WindowFrameClause: &ast.WindowFrameClause{
-								RowsOrRange: ast.RRTRows,
+								RowsOrRangeKeyword: ast.Keyword{Type: ast.KRows},
+								RowsOrRange:        ast.RRTRows,
+								BetweenKeyword:     &ast.Keyword{Type: ast.KBetween},
 								Start: &ast.WindowFrameBound{
-									Type:       ast.WFBTPreceding,
-									Expression: &ast.ExprNumberLiteral{Value: "10"},
+									BoundKeyword1: ast.Keyword{Type: ast.KPreceding},
+									Type:          ast.WFBTPreceding,
+									Expression:    &ast.ExprNumberLiteral{Value: "10"},
 								},
+								AndKeyword: &ast.Keyword{Type: ast.KAnd},
 								End: &ast.WindowFrameBound{
-									Type: ast.WFBTCurrentRow,
+									BoundKeyword1: ast.Keyword{Type: ast.KCurrent},
+									BoundKeyword2: &ast.Keyword{Type: ast.KRow},
+									Type:          ast.WFBTCurrentRow,
 								},
 							},
 						},
@@ -331,20 +357,38 @@ func TestParseOrderByClause(t *testing.T) {
 				},
 			},
 			OrderByClause: &ast.OrderByClause{
+				OrderKeyword: ast.Keyword{Type: ast.KOrder},
+				ByKeyword:    ast.Keyword{Type: ast.KBy},
 				Expressions: []ast.OrderByArg{
-					{Column: &ast.ExprIdentifier{Value: "InsertDate"}, Type: ast.OBDesc},
-					{Column: &ast.ExprIdentifier{Value: "InsertTime"}, Type: ast.OBAsc},
-					{Column: &ast.ExprIdentifier{Value: "Stock"}},
+					{
+						Column:       &ast.ExprIdentifier{Value: "InsertDate"},
+						Type:         ast.OBDesc,
+						OrderKeyword: &ast.Keyword{Type: ast.KDesc},
+					},
+					{
+						Column:       &ast.ExprIdentifier{Value: "InsertTime"},
+						Type:         ast.OBAsc,
+						OrderKeyword: &ast.Keyword{Type: ast.KAsc},
+					},
+					{
+						Column: &ast.ExprIdentifier{Value: "Stock"},
+					},
 				},
 				OffsetFetch: &ast.OffsetFetchClause{
 					Offset: ast.OffsetArg{
-						Value:     &ast.ExprNumberLiteral{Value: "4"},
-						RowOrRows: ast.RRRow,
+						OffsetKeyword:    ast.Keyword{Type: ast.KOffset},
+						Value:            &ast.ExprNumberLiteral{Value: "4"},
+						RowOrRows:        ast.RRRow,
+						RowOrRowsKeyword: ast.Keyword{Type: ast.KRow},
 					},
 					Fetch: &ast.FetchArg{
-						Value:       &ast.ExprNumberLiteral{Value: "20"},
-						NextOrFirst: ast.NFFirst,
-						RowOrRows:   ast.RRRows,
+						FetchKeyword:       ast.Keyword{Type: ast.KFetch},
+						Value:              &ast.ExprNumberLiteral{Value: "20"},
+						NextOrFirst:        ast.NFFirst,
+						RowOrRows:          ast.RRRows,
+						NextOrFirstKeyword: ast.Keyword{Type: ast.KFirst},
+						RowOrRowsKeyword:   ast.Keyword{Type: ast.KRows},
+						OnlyKeyword:        ast.Keyword{Type: ast.KOnly},
 					},
 				},
 			},
@@ -386,6 +430,7 @@ func TestParseSubqueryCall(t *testing.T) {
 									},
 								},
 								WhereClause: &ast.WhereClause{
+									WhereKeyword: ast.Keyword{Type: ast.KWhere},
 									Clause: &ast.ExprComparisonOperator{
 										Left: &ast.ExprIdentifier{
 											Value: "LastPrice",
@@ -394,10 +439,13 @@ func TestParseSubqueryCall(t *testing.T) {
 										Right:    &ast.ExprNumberLiteral{Value: "10.0"}},
 								},
 								OrderByClause: &ast.OrderByClause{
+									OrderKeyword: ast.Keyword{Type: ast.KOrder},
+									ByKeyword:    ast.Keyword{Type: ast.KBy},
 									Expressions: []ast.OrderByArg{
 										{
-											Column: &ast.ExprIdentifier{Value: "LastPrice"},
-											Type:   ast.OBDesc,
+											Column:       &ast.ExprIdentifier{Value: "LastPrice"},
+											OrderKeyword: &ast.Keyword{Type: ast.KDesc},
+											Type:         ast.OBDesc,
 										},
 									},
 								},
@@ -449,8 +497,11 @@ func TestParseSomeLogicalOperators(t *testing.T) {
 				},
 			},
 			WhereClause: &ast.WhereClause{
+				WhereKeyword: ast.Keyword{Type: ast.KWhere},
 				Clause: &ast.ExprOrLogicalOperator{
+					OrKeyword: ast.Keyword{Type: ast.KOr},
 					Left: &ast.ExprAndLogicalOperator{
+						AndKeyword: ast.Keyword{Type: ast.KAnd},
 						Left: &ast.ExprComparisonOperator{
 							Left: &ast.ExprQuotedIdentifier{
 								Value: "LastPrice",
@@ -458,8 +509,9 @@ func TestParseSomeLogicalOperators(t *testing.T) {
 							Operator: ast.ComparisonOpLess,
 							Right:    &ast.ExprNumberLiteral{Value: "10.0"}},
 						Right: &ast.ExprInLogicalOperator{
+							InKeyword:      ast.Keyword{Type: ast.KIn},
 							TestExpression: &ast.ExprIdentifier{Value: "Stock"},
-							Not:            true,
+							NotKeyword:     &ast.Keyword{Type: ast.KNot},
 							Expressions: []ast.Expression{
 								&ast.ExprStringLiteral{Value: "AAL"},
 								&ast.ExprStringLiteral{Value: "AMZN"},
@@ -469,8 +521,10 @@ func TestParseSomeLogicalOperators(t *testing.T) {
 						},
 					},
 					Right: &ast.ExprBetweenLogicalOperator{
+						BetweenKeyword: ast.Keyword{Type: ast.KBetween},
 						TestExpression: &ast.ExprIdentifier{Value: "PercentChange"},
 						Begin:          &ast.ExprNumberLiteral{Value: "1"},
+						AndKeyword: ast.Keyword{Type: ast.KAnd},
 						End:            &ast.ExprNumberLiteral{Value: "4"},
 					},
 				},
@@ -503,9 +557,9 @@ func TestParseSelectItemWithAlias(t *testing.T) {
 							SelectItems: ast.SelectItems{
 								Items: []ast.Expression{
 									&ast.ExprWithAlias{
-										Expression:     &ast.ExprIdentifier{Value: "dt"},
-										AsTokenPresent: true,
-										Alias:          &ast.ExprQuotedIdentifier{Value: "Datetime"},
+										Expression: &ast.ExprIdentifier{Value: "dt"},
+										AsKeyword:  &ast.Keyword{Type: ast.KAs},
+										Alias:      &ast.ExprQuotedIdentifier{Value: "Datetime"},
 									},
 								},
 							},

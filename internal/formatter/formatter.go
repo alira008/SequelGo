@@ -244,6 +244,9 @@ func (f *Formatter) visitSelectBody(selectBody *ast.SelectBody) {
 	if selectBody.Distinct != nil {
 		f.printKeyword(fmt.Sprintf(" %s", selectBody.Distinct.TokenLiteral()))
 	}
+	if selectBody.AllKeyword != nil {
+		f.printKeyword(fmt.Sprintf(" %s", selectBody.AllKeyword.TokenLiteral()))
+	}
 	f.visitSelectTopArg(selectBody.Top)
 	f.visitSelectItems(selectBody.SelectItems)
 	f.visitSelectTableArg(selectBody.Table)
@@ -294,7 +297,7 @@ func (f *Formatter) visitSelectTableArg(selectTableArg *ast.TableArg) {
 
 	f.printNewLine()
 	f.printKeyword(selectTableArg.FromKeyword.TokenLiteral())
-    f.printSpace()
+	f.printSpace()
 	f.visitTableSource(selectTableArg.Table)
 	if len(selectTableArg.Joins) > 0 {
 		f.printNewLine()
@@ -324,17 +327,17 @@ func (f *Formatter) visitTableSource(tableSource *ast.TableSource) {
 }
 
 func (f *Formatter) visitTableJoin(tableJoin ast.Join) {
-	f.printKeyword(fmt.Sprintf(" %s", tableJoin.JoinKeyword1.TokenLiteral()))
-	if tableJoin.JoinKeyword2 != nil {
-		f.printKeyword(fmt.Sprintf(" %s ", tableJoin.JoinKeyword2.TokenLiteral()))
+	f.printKeyword(fmt.Sprintf("%s", tableJoin.JoinTypeKeyword1.TokenLiteral()))
+	if tableJoin.JoinTypeKeyword2 != nil {
+		f.printKeyword(fmt.Sprintf(" %s", tableJoin.JoinTypeKeyword2.TokenLiteral()))
 	}
-	if tableJoin.JoinKeyword3 != nil {
-		f.printKeyword(fmt.Sprintf(" %s ", tableJoin.JoinKeyword3.TokenLiteral()))
-	}
+	f.printKeyword(fmt.Sprintf(" %s ", tableJoin.JoinKeyword.TokenLiteral()))
 
 	f.visitTableSource(tableJoin.Table)
-	f.printKeyword(" on ")
 	if tableJoin.Condition != nil {
+		if tableJoin.Condition != nil {
+			f.printKeyword(fmt.Sprintf(" %s ", tableJoin.OnKeyword.TokenLiteral()))
+		}
 		f.visitExpression(tableJoin.Condition)
 	}
 }
@@ -345,7 +348,9 @@ func (f *Formatter) visitSelectWhereClause(whereClause *ast.WhereClause) {
 	}
 
 	f.printNewLine()
-	f.printKeyword("where ")
+	f.printKeyword(whereClause.WhereKeyword.TokenLiteral())
+	f.printSpace()
+
 	f.visitExpression(whereClause.Clause)
 }
 
@@ -358,7 +363,10 @@ func (f *Formatter) visitSelectGroupByClause(groupByClause *ast.GroupByClause) {
 	}
 
 	f.printNewLine()
-	f.printKeyword("group by ")
+	f.printKeyword(groupByClause.GroupKeyword.TokenLiteral())
+	f.printSpace()
+	f.printKeyword(groupByClause.ByKeyword.TokenLiteral())
+	f.printSpace()
 	for i, e := range groupByClause.Items {
 		if i > 0 {
 			f.printSelectColumnComma()
@@ -373,7 +381,8 @@ func (f *Formatter) visitSelectHavingClause(havingClause *ast.HavingClause) {
 	}
 
 	f.printNewLine()
-	f.printKeyword("having ")
+	f.printKeyword(havingClause.HavingKeyword.TokenLiteral())
+	f.printSpace()
 	f.visitExpression(havingClause.Clause)
 }
 
@@ -383,22 +392,30 @@ func (f *Formatter) visitSelectOrderByClause(orderByClause *ast.OrderByClause) {
 	}
 
 	f.printNewLine()
-	f.printKeyword("order by ")
+	f.printKeyword(orderByClause.OrderKeyword.TokenLiteral())
+	f.printSpace()
+	f.printKeyword(orderByClause.ByKeyword.TokenLiteral())
+	f.printSpace()
+	// f.printKeyword("order by ")
 	for i, e := range orderByClause.Expressions {
 		if i > 0 {
 			f.printSelectColumnComma()
 		}
 		f.visitExpression(e.Column)
-		switch e.Type {
-		case ast.OBNone:
-			break
-		case ast.OBAsc:
-			f.printKeyword(" asc")
-			break
-		case ast.OBDesc:
-			f.printKeyword(" desc")
-			break
+		if e.OrderKeyword != nil {
+			f.printSpace()
+			f.printKeyword(e.OrderKeyword.TokenLiteral())
 		}
+		// switch e.Type {
+		// case ast.OBNone:
+		// 	break
+		// case ast.OBAsc:
+		// 	f.printKeyword(" asc")
+		// 	break
+		// case ast.OBDesc:
+		// 	f.printKeyword(" desc")
+		// 	break
+		// }
 	}
 	f.visitSelectOffsetFetchClause(orderByClause.OffsetFetch)
 }
@@ -414,17 +431,21 @@ func (f *Formatter) visitSelectOffsetFetchClause(offsetFetchClause *ast.OffsetFe
 
 func (f *Formatter) visitSelectOffsetClause(offsetArg ast.OffsetArg) {
 	f.printNewLine()
-	f.printKeyword(" offset ")
+	f.printSpace()
+	f.printKeyword(offsetArg.OffsetKeyword.TokenLiteral())
+	f.printSpace()
 	f.visitExpression(offsetArg.Value)
 	f.printSpace()
-	switch offsetArg.RowOrRows {
-	case ast.RRRow:
-		f.printKeyword("row ")
-		break
-	case ast.RRRows:
-		f.printKeyword("rows ")
-		break
-	}
+	f.printKeyword(offsetArg.RowOrRowsKeyword.TokenLiteral())
+	f.printSpace()
+	// switch offsetArg.RowOrRows {
+	// case ast.RRRow:
+	// 	f.printKeyword("row ")
+	// 	break
+	// case ast.RRRows:
+	// 	f.printKeyword("rows ")
+	// 	break
+	// }
 }
 
 func (f *Formatter) visitSelectFetchClause(fetchArg *ast.FetchArg) {
@@ -433,26 +454,33 @@ func (f *Formatter) visitSelectFetchClause(fetchArg *ast.FetchArg) {
 	}
 
 	f.printNewLine()
-	f.printKeyword("fetch ")
-	switch fetchArg.NextOrFirst {
-	case ast.NFNext:
-		f.printKeyword("next ")
-		break
-	case ast.NFFirst:
-		f.printKeyword("first ")
-		break
-	}
+	f.printKeyword(fetchArg.FetchKeyword.TokenLiteral())
+	f.printSpace()
+	f.printKeyword(fetchArg.NextOrFirstKeyword.TokenLiteral())
+	f.printSpace()
+	// switch fetchArg.NextOrFirst {
+	// case ast.NFNext:
+	// 	f.printKeyword("next ")
+	// 	break
+	// case ast.NFFirst:
+	// 	f.printKeyword("first ")
+	// 	break
+	// }
 	f.visitExpression(fetchArg.Value)
 	f.printSpace()
-	switch fetchArg.RowOrRows {
-	case ast.RRRow:
-		f.printKeyword("row ")
-		break
-	case ast.RRRows:
-		f.printKeyword("rows ")
-		break
-	}
-	f.printKeyword("only ")
+	f.printKeyword(fetchArg.RowOrRowsKeyword.TokenLiteral())
+	f.printSpace()
+	f.printKeyword(fetchArg.OnlyKeyword.TokenLiteral())
+	f.printSpace()
+	// switch fetchArg.RowOrRows {
+	// case ast.RRRow:
+	// 	f.printKeyword("row ")
+	// 	break
+	// case ast.RRRows:
+	// 	f.printKeyword("rows ")
+	// 	break
+	// }
+	// f.printKeyword("only ")
 }
 
 func (f *Formatter) visitStringLiteralExpression(e *ast.ExprStringLiteral) {
@@ -482,8 +510,9 @@ func (f *Formatter) visitStarExpression() {
 func (f *Formatter) visitExpressionWithAlias(e *ast.ExprWithAlias) {
 	f.visitExpression(e.Expression)
 	f.printSpace()
-	if e.AsTokenPresent {
-		f.printKeyword("as ")
+	if e.AsKeyword != nil {
+		f.printKeyword(e.AsKeyword.TokenLiteral())
+		f.printSpace()
 	}
 	f.visitExpression(e.Alias)
 }
@@ -557,9 +586,13 @@ func (f *Formatter) visitExpressionFunctionCall(e *ast.ExprFunctionCall) {
 }
 
 func (f *Formatter) visitOverClause(oc *ast.FunctionOverClause) {
-	f.printKeyword(" OVER (")
+	f.printSpace()
+	f.printKeyword(oc.OverKeyword.TokenLiteral())
+	f.printSpace()
+	f.formattedQuery += "("
 	if len(oc.PartitionByClause) > 0 {
-		f.printKeyword("partition by ")
+		f.printKeyword(fmt.Sprintf("%s %s ", oc.PartitionKeyword.TokenLiteral(),
+			oc.PByKeyword.TokenLiteral()))
 	}
 	for i, e := range oc.PartitionByClause {
 		if i > 0 {
@@ -569,23 +602,31 @@ func (f *Formatter) visitOverClause(oc *ast.FunctionOverClause) {
 	}
 
 	if len(oc.OrderByClause) > 0 {
-		f.printKeyword(" order by ")
+		f.printSpace()
+		f.printKeyword(oc.OrderKeyword.TokenLiteral())
+		f.printSpace()
+		f.printKeyword(oc.OByKeyword.TokenLiteral())
+		f.printSpace()
 	}
 	for i, e := range oc.OrderByClause {
 		if i > 0 {
 			f.printExpressionListComma()
 		}
 		f.visitExpression(e.Column)
-		switch e.Type {
-		case ast.OBNone:
-			break
-		case ast.OBAsc:
-			f.printKeyword(" asc")
-			break
-		case ast.OBDesc:
-			f.printKeyword(" desc")
-			break
+		if e.OrderKeyword != nil {
+			f.printSpace()
+			f.printKeyword(e.OrderKeyword.TokenLiteral())
 		}
+		// switch e.Type {
+		// case ast.OBNone:
+		// 	break
+		// case ast.OBAsc:
+		// 	f.printKeyword(" asc")
+		// 	break
+		// case ast.OBDesc:
+		// 	f.printKeyword(" desc")
+		// 	break
+		// }
 	}
 
 	if oc.WindowFrameClause != nil {
@@ -599,20 +640,35 @@ func (f *Formatter) visitWindowFrameClause(wf *ast.WindowFrameClause) {
 	f.visitRowsOrRange(wf.RowsOrRange)
 
 	if wf.End != nil {
-		f.printKeyword("between ")
+		f.printKeyword(wf.BetweenKeyword.TokenLiteral())
+		f.printSpace()
 	}
 
-	f.visitWindowFrameBoundType(wf.Start.Type)
-	f.visitExpression(wf.Start.Expression)
+	if wf.Start.Expression != nil {
+		f.visitExpression(wf.Start.Expression)
+		f.printSpace()
+	}
+	f.printKeyword(fmt.Sprintf("%s", wf.Start.BoundKeyword1.TokenLiteral()))
+	if wf.Start.BoundKeyword2 != nil {
+		f.printKeyword(fmt.Sprintf(" %s", wf.Start.BoundKeyword2.TokenLiteral()))
+	}
 
 	if wf.End == nil {
 		return
 	}
 
-	f.printKeyword(" and ")
-	f.visitWindowFrameBoundType(wf.End.Type)
-	f.visitExpression(wf.End.Expression)
+	f.printSpace()
+	f.printKeyword(wf.AndKeyword.TokenLiteral())
+	f.printSpace()
 
+	if wf.End.Expression != nil {
+		f.visitExpression(wf.End.Expression)
+		f.printSpace()
+	}
+	f.printKeyword(fmt.Sprintf("%s", wf.End.BoundKeyword1.TokenLiteral()))
+	if wf.End.BoundKeyword2 != nil {
+		f.printKeyword(fmt.Sprintf(" %s", wf.End.BoundKeyword2.TokenLiteral()))
+	}
 }
 
 func (f *Formatter) visitComparisonOperatorType(op ast.ComparisonOperatorType) {
@@ -659,9 +715,9 @@ func (f *Formatter) visitRowsOrRange(r ast.RowsOrRangeType) {
 }
 
 func (f *Formatter) visitExpressionCast(e *ast.ExprCast) {
-	f.printKeyword("cast(")
+	f.printKeyword(fmt.Sprintf("%s(", e.CastKeyword.TokenLiteral()))
 	f.visitExpression(e.Expression)
-	f.printKeyword(" as ")
+	f.printKeyword(fmt.Sprintf(" %s ", e.AsKeyword.TokenLiteral()))
 	f.visitDataType(&e.DataType)
 	f.formattedQuery += ")"
 }
@@ -770,7 +826,7 @@ func (f *Formatter) visitAndLogicalOperatorExpression(e *ast.ExprAndLogicalOpera
 	f.increaseIndent()
 	f.printNewLine()
 
-	f.printKeyword("and ")
+	f.printKeyword(fmt.Sprintf("%s ", e.AndKeyword.TokenLiteral()))
 	f.visitExpression(e.Right)
 
 	f.decreaseIndent()
@@ -779,41 +835,41 @@ func (f *Formatter) visitAndLogicalOperatorExpression(e *ast.ExprAndLogicalOpera
 func (f *Formatter) visitAllLogicalOperatorExpression(e *ast.ExprAllLogicalOperator) {
 	f.visitExpression(e.ScalarExpression)
 	f.visitComparisonOperatorType(e.ComparisonOperator)
-	f.printKeyword(" all ")
+	f.printKeyword(fmt.Sprintf(" %s ", e.AllKeyword.TokenLiteral()))
 	f.visitExpressionSubquery(e.Subquery)
 }
 
 func (f *Formatter) visitBetweenLogicalOperatorExpression(e *ast.ExprBetweenLogicalOperator) {
 	f.visitExpression(e.TestExpression)
-	if e.Not {
-		f.printKeyword(" not")
+	if e.NotKeyword != nil {
+		f.printKeyword(fmt.Sprintf(" %s", e.NotKeyword.TokenLiteral()))
 	}
-	f.printKeyword(" between ")
+	f.printKeyword(fmt.Sprintf(" %s ", e.BetweenKeyword.TokenLiteral()))
 	f.visitExpression(e.Begin)
-	f.printKeyword(" and ")
+	f.printKeyword(fmt.Sprintf(" %s ", e.AndKeyword.TokenLiteral()))
 	f.visitExpression(e.End)
 }
 
 func (f *Formatter) visitExistsLogicalOperatorExpression(e *ast.ExprExistsLogicalOperator) {
-	f.printKeyword("exists")
+	f.printKeyword(fmt.Sprintf("%s", e.ExistsKeyword.TokenLiteral()))
 	f.visitExpressionSubquery(e.Subquery)
 }
 
 func (f *Formatter) visitInSubqueryLogicalOperatorExpression(e *ast.ExprInSubqueryLogicalOperator) {
 	f.visitExpression(e.TestExpression)
-	if e.Not {
-		f.printKeyword(" not")
+	if e.NotKeyword != nil {
+		f.printKeyword(fmt.Sprintf(" %s", e.NotKeyword.TokenLiteral()))
 	}
-	f.printKeyword(" in ")
+	f.printKeyword(fmt.Sprintf(" %s ", e.InKeyword.TokenLiteral()))
 	f.visitExpressionSubquery(e.Subquery)
 }
 
 func (f *Formatter) visitInLogicalOperatorExpression(e *ast.ExprInLogicalOperator) {
 	f.visitExpression(e.TestExpression)
-	if e.Not {
-		f.printKeyword(" not")
+	if e.NotKeyword != nil {
+		f.printKeyword(fmt.Sprintf(" %s", e.NotKeyword.TokenLiteral()))
 	}
-	f.printKeyword(" in ")
+	f.printKeyword(fmt.Sprintf(" %s ", e.InKeyword.TokenLiteral()))
 	f.formattedQuery += "("
 	for i, e := range e.Expressions {
 		if i == 0 && f.settings.IndentInLists {
@@ -836,34 +892,34 @@ func (f *Formatter) visitInLogicalOperatorExpression(e *ast.ExprInLogicalOperato
 
 func (f *Formatter) visitLikeLogicalOperatorExpression(e *ast.ExprLikeLogicalOperator) {
 	f.visitExpression(e.MatchExpression)
-	if e.Not {
-		f.printKeyword(" not")
+	if e.NotKeyword != nil {
+		f.printKeyword(fmt.Sprintf(" %s", e.NotKeyword.TokenLiteral()))
 	}
-	f.printKeyword(" like ")
+	f.printKeyword(fmt.Sprintf(" %s ", e.LikeKeyword.TokenLiteral()))
 	f.visitExpression(e.Pattern)
 }
 
 func (f *Formatter) visitNotLogicalOperatorExpression(e *ast.ExprNotLogicalOperator) {
-	f.printKeyword("not ")
+	f.printKeyword(fmt.Sprintf("%s ", e.NotKeyword.TokenLiteral()))
 	f.visitExpression(e.Expression)
 }
 
 func (f *Formatter) visitOrLogicalOperatorExpression(e *ast.ExprOrLogicalOperator) {
 	f.visitExpression(e.Left)
-	f.printKeyword(" or ")
+	f.printKeyword(fmt.Sprintf(" %s ", e.OrKeyword.TokenLiteral()))
 	f.visitExpression(e.Right)
 }
 
 func (f *Formatter) visitSomeLogicalOperatorExpression(e *ast.ExprSomeLogicalOperator) {
 	f.visitExpression(e.ScalarExpression)
 	f.visitComparisonOperatorType(e.ComparisonOperator)
-	f.printKeyword(" some ")
+	f.printKeyword(fmt.Sprintf(" %s ", e.SomeKeyword.TokenLiteral()))
 	f.visitExpressionSubquery(e.Subquery)
 }
 
 func (f *Formatter) visitAnyLogicalOperatorExpression(e *ast.ExprAnyLogicalOperator) {
 	f.visitExpression(e.ScalarExpression)
 	f.visitComparisonOperatorType(e.ComparisonOperator)
-	f.printKeyword(" any ")
+	f.printKeyword(fmt.Sprintf(" %s ", e.AnyKeyword.TokenLiteral()))
 	f.visitExpressionSubquery(e.Subquery)
 }

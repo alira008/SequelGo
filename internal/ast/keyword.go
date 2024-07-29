@@ -21,10 +21,10 @@ func NewKeywordFromToken(token lexer.Token) Keyword {
 	}
 }
 
-func (k Keyword) expressionNode()    {}
-func (k *Keyword) SetSpan(span Span) { k.Span = span }
-func (k Keyword) GetSpan() Span      { return k.Span }
-func (k Keyword) TokenLiteral() string      { return k.Type.String() }
+func (k Keyword) expressionNode()      {}
+func (k *Keyword) SetSpan(span Span)   { k.Span = span }
+func (k Keyword) GetSpan() Span        { return k.Span }
+func (k Keyword) TokenLiteral() string { return k.Type.String() }
 
 type KeywordType uint8
 
@@ -41,6 +41,7 @@ const (
 	KBy
 	KCascade
 	KCase
+	KCast
 	KChar
 	KColumn
 	KColumns
@@ -191,6 +192,7 @@ var Keywords = map[string]KeywordType{
 	"cascade":       KCascade,
 	"case":          KCase,
 	"char":          KChar,
+	"cast":          KCast,
 	"column":        KColumn,
 	"columns":       KColumns,
 	"commit":        KCommit,
@@ -352,6 +354,8 @@ func (k KeywordType) String() string {
 		return "Cascade"
 	case KCase:
 		return "Case"
+	case KCast:
+		return "Cast"
 	case KChar:
 		return "Char"
 	case KColumn:

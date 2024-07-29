@@ -14,14 +14,16 @@ type DeleteStatement struct{}
 
 type SelectStatement struct {
 	Span
-	CTE        *[]CommonTableExpression
-	SelectBody *SelectBody
+	WithKeyword *Keyword
+	CTE         *[]CommonTableExpression
+	SelectBody  *SelectBody
 }
 
 type SelectBody struct {
 	Span
-    SelectKeyword Keyword
+	SelectKeyword Keyword
 	Distinct      *Keyword
+	AllKeyword    *Keyword
 	Top           *TopArg
 	SelectItems   SelectItems
 	Table         *TableArg
@@ -41,6 +43,7 @@ func (ds DeclareStatement) TokenLiteral() string {
 func (ss SelectStatement) TokenLiteral() string {
 	var str strings.Builder
 	if ss.CTE != nil {
+		str.WriteString(fmt.Sprintf("%s ", ss.WithKeyword.TokenLiteral()))
 		ctes := []string{}
 
 		for _, cte := range *ss.CTE {
@@ -49,14 +52,20 @@ func (ss SelectStatement) TokenLiteral() string {
 
 		str.WriteString(strings.Join(ctes, ", "))
 	}
-	return ss.SelectBody.TokenLiteral()
+	str.WriteString(" ")
+	str.WriteString(ss.SelectBody.TokenLiteral())
+	return str.String()
 }
 func (sb SelectBody) TokenLiteral() string {
 	var str strings.Builder
-    str.WriteString(fmt.Sprintf("%s ", sb.SelectKeyword.TokenLiteral()))
+	str.WriteString(fmt.Sprintf("%s ", sb.SelectKeyword.TokenLiteral()))
 
 	if sb.Distinct != nil {
 		str.WriteString(fmt.Sprintf("%s ", sb.Distinct.TokenLiteral()))
+	}
+
+	if sb.AllKeyword != nil {
+		str.WriteString(fmt.Sprintf("%s ", sb.AllKeyword.TokenLiteral()))
 	}
 
 	if sb.Top != nil {
@@ -70,16 +79,13 @@ func (sb SelectBody) TokenLiteral() string {
 	}
 
 	if sb.WhereClause != nil {
-		str.WriteString(" WHERE ")
 		str.WriteString(sb.WhereClause.TokenLiteral())
 	}
 
 	if sb.GroupByClause != nil {
-		str.WriteString(" GROUP BY ")
 		str.WriteString(sb.GroupByClause.TokenLiteral())
 	}
 	if sb.HavingClause != nil {
-		str.WriteString(" HAVING ")
 		str.WriteString(sb.HavingClause.TokenLiteral())
 	}
 
@@ -90,8 +96,8 @@ func (sb SelectBody) TokenLiteral() string {
 	return str.String()
 }
 
-func (ss *SelectStatement) GetSpan() Span    { return ss.Span }
-func (sb *SelectBody) SetSpan(span Span) { sb.Span = span }
+func (ss *SelectStatement) GetSpan() Span { return ss.Span }
+func (sb *SelectBody) SetSpan(span Span)  { sb.Span = span }
 
 func (ss *SelectStatement) SetSpan(span Span) { ss.Span = span }
-func (sb *SelectBody) GetSpan() Span              { return sb.Span }
+func (sb *SelectBody) GetSpan() Span          { return sb.Span }
