@@ -10,7 +10,7 @@ import (
 func TestParseBasicSelectQuery(t *testing.T) {
 	expected := "SELECT TOP 30 PERCENT WITH TIES\n    LastPrice\n    ,HighPrice\n    ,LowPrice\n    ,QuoteTime "
 	expected += "'QuoTime'\n    ,*\nFROM MarketTable mkt\nWHERE QuoTime < '6:30'\n    AND lastPrice NOT "
-	expected += "BETWEEN 2 AND 4\n    AND Symbol IN (\n        'aal'\n        ,'amzn'\n        ,'googl'"
+	expected += "BETWEEN 2\n            AND 4\n    AND Symbol IN (\n        'aal'\n        ,'amzn'\n        ,'googl'"
 	expected += "\n    )\n    AND InsertDate = CAST(GETDATE() AS DATE)\nORDER BY Symbol"
 
 	input := "-- hello sir\nSelect top 30 percent with ties LastPrice, HighPrice , LowPrice,"
@@ -25,7 +25,7 @@ func TestParseDetailedSelectQuery(t *testing.T) {
 	expected := "SELECT TOP 30 PERCENT\n    LastPrice\n    ,[Time]\n    ,@Hello\n    ,PC AS "
 	expected += "'PercentChange'\n    ,143245\nFROM MarketTable mkt\nINNER JOIN IndexTable it ON "
 	expected += "mkt.[Time] = it.QuoteTime\nWHERE QuoteTime BETWEEN '6:30'"
-	expected += " AND '13:00'\n    AND Symbol IN (\n        SELECT DISTINCT "
+	expected += "\n        AND '13:00'\n    AND Symbol IN (\n        SELECT DISTINCT "
 	expected += "Symbol\n        FROM MarketSymbols\n    )\n    AND"
 	expected += " InsertTime = CAST(GETDATE() AS TIME)\nORDER BY Symbol DESC"
 

@@ -78,10 +78,10 @@ func Walk(v Visitor, node Node) {
 		Walk(v, n.Alias)
 		break
 	case *ExprCompoundIdentifier:
-		// walkList(v, n.Identifiers)
+		walkList(v, n.Identifiers)
 		break
 	case *SelectItems:
-		// walkList(v, n.Items)
+		walkList(v, n.Items)
 		break
 	case *WhereClause:
 		Walk(v, &n.WhereKeyword)
