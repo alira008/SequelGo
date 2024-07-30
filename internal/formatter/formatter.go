@@ -46,7 +46,7 @@ func (f *Formatter) Format(input string) (string, error) {
 }
 
 func (f *Formatter) Visit(node ast.Node) ast.Visitor {
-	f.printCommentsBeforeNode(node)
+	// f.printCommentsBeforeNode(node)
 
 	switch n := node.(type) {
 	case *ast.Query:
@@ -56,7 +56,7 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 				f.printNewLine()
 			}
 			ast.Walk(f, s)
-            f.printCommentsAfterNode(s)
+            // f.printCommentsAfterNode(s)
 		}
 		break
 	case *ast.SelectStatement:
@@ -626,7 +626,7 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		return f
 	}
 
-	f.printCommentsAfterNode(node)
+	// f.printCommentsAfterNode(node)
 	return nil
 }
 
