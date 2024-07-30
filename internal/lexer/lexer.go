@@ -110,9 +110,9 @@ func (l *Lexer) NextToken() Token {
 			token.Type = TMinusEqual
 			token.Value = "-="
 		} else if l.peekChar() == '-' {
-            comment:=l.readCommentLine()
-            token.Type = TCommentLine
-            token.Value = comment
+			comment := l.readCommentLine()
+			token.Type = TCommentLine
+			token.Value = comment
 		} else {
 			token.Type = TMinus
 			token.Value = "-"
@@ -198,22 +198,22 @@ func (l *Lexer) NextToken() Token {
 		token.Type = TRightBracket
 		token.Value = "]"
 	case '\'':
-		peekChar := l.peekChar()
-		if l.isAlphaNumeric(peekChar) {
-			// Read identifier until '\''
-			stringLiteral := l.readQuotedString()
-			// if the last character is not '\'', then it's a syntax error
-			if l.ch == 0 {
-				token.Type = TSyntaxError
-				token.Value = stringLiteral
-			} else {
-				token.Type = TStringLiteral
-				token.Value = stringLiteral
-			}
-		} else {
+		// peekChar := l.peekChar()
+		// if l.isAlphaNumeric(peekChar) {
+		// Read identifier until '\''
+		stringLiteral := l.readQuotedString()
+		// if the last character is not '\'', then it's a syntax error
+		if l.ch == 0 {
 			token.Type = TSyntaxError
-			token.Value = "'"
+			token.Value = stringLiteral
+		} else {
+			token.Type = TStringLiteral
+			token.Value = stringLiteral
 		}
+		// } else {
+		// 	token.Type = TSyntaxError
+		// 	token.Value = "'"
+		// }
 	case '{':
 		token.Type = TLeftBrace
 		token.Value = "{"
@@ -327,7 +327,7 @@ func (l *Lexer) readCommentLine() string {
 		l.readChar()
 	}
 
-	return strings.TrimSpace(l.input[start:l.current+1])
+	return strings.TrimSpace(l.input[start : l.current+1])
 }
 
 func (l *Lexer) readQuotedIdentifier() string {
