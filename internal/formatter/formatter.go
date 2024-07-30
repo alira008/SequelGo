@@ -652,7 +652,7 @@ func (f *Formatter) associateCommentsWithNodes(node ast.Node) {
 	// Associate each comment with the nearest node.
 	for _, comment := range f.comments {
 		closestNode := f.findClosestNode(comment.GetSpan().StartPosition, nodes)
-		fmt.Println("\tclosest node: ", closestNode.TokenLiteral(), "\n\tcomment: ", comment.TokenLiteral())
+		// fmt.Println("\tclosest node: ", closestNode.TokenLiteral(), "\n\tcomment: ", comment.TokenLiteral())
 		if closestNode != nil {
 			f.NodeToComments[closestNode] = append(f.NodeToComments[closestNode], comment)
 		}
@@ -668,7 +668,7 @@ func (f *Formatter) findClosestNode(commentPos ast.Position, nodes []ast.Node) a
 			closestNode = node
 		}
 	}
-	fmt.Println("distance ", minDistance)
+	// fmt.Println("distance ", minDistance)
 	return closestNode
 }
 

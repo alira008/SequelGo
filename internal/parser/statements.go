@@ -1554,7 +1554,7 @@ func (p *Parser) parseFunctionArgs() (*[]ast.Expression, error) {
 					args = append(args, compoundIdentifier)
 				}
 			} else if p.peekTokenIs(lexer.TLeftParen) {
-				p.logger.Info("iner func")
+				// p.logger.Info("iner func")
 				function := &ast.ExprFunction{
 					Type: ast.FuncUserDefined,
 					Name: identifier,

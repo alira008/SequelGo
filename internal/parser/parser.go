@@ -203,7 +203,7 @@ func (p *Parser) Parse() ast.Query {
 
 		p.nextToken()
 	}
-	fmt.Printf("num of comments: %d\n", len(p.comments))
+	// fmt.Printf("num of comments: %d\n", len(p.comments))
 	query.Comments = p.comments
 	p.comments = nil
 	return query
