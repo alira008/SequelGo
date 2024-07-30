@@ -86,9 +86,8 @@ type HavingClause struct {
 
 type GroupByClause struct {
 	Span
-	GroupKeyword Keyword
-	ByKeyword    Keyword
-	Items        []Expression
+	GroupByKeyword [2]Keyword
+	Items          []Expression
 }
 
 type ExprSubquery struct {
@@ -97,11 +96,10 @@ type ExprSubquery struct {
 
 type TopArg struct {
 	Span
-	TopKeyword     Keyword
-	WithKeyword    *Keyword
-	TiesKeyword    *Keyword
-	PercentKeyword *Keyword
-	Quantity       Expression
+	TopKeyword      Keyword
+	WithTiesKeyword *[2]Keyword
+	PercentKeyword  *Keyword
+	Quantity        Expression
 }
 
 type TableArg struct {
@@ -119,21 +117,19 @@ type TableSource struct {
 
 type Join struct {
 	Span
-	JoinTypeKeyword1 Keyword
-	JoinTypeKeyword2 *Keyword
-	JoinKeyword      Keyword
-	Type             JoinType
-	Table            *TableSource
-	OnKeyword        *Keyword
-	Condition        Expression
+	JoinTypeKeyword []Keyword
+	JoinKeyword     Keyword
+	Type            JoinType
+	Table           *TableSource
+	OnKeyword       *Keyword
+	Condition       Expression
 }
 
 type OrderByClause struct {
 	Span
-	OrderKeyword Keyword
-	ByKeyword    Keyword
-	Expressions  []OrderByArg
-	OffsetFetch  *OffsetFetchClause
+	OrderByKeyword [2]Keyword
+	Expressions    []OrderByArg
+	OffsetFetch    *OffsetFetchClause
 }
 
 type OffsetFetchClause struct {
@@ -175,14 +171,12 @@ type ExprExpressionList struct {
 
 type FunctionOverClause struct {
 	Span
-	OverKeyword       Keyword
-	PartitionKeyword  *Keyword
-	PByKeyword        *Keyword
-	PartitionByClause []Expression
-	OrderKeyword      *Keyword
-	OByKeyword        *Keyword
-	OrderByClause     []OrderByArg
-	WindowFrameClause *WindowFrameClause
+	OverKeyword        Keyword
+	PartitionByKeyword *[2]Keyword
+	PartitionByClause  []Expression
+	OrderByKeyword     *[2]Keyword
+	OrderByClause      []OrderByArg
+	WindowFrameClause  *WindowFrameClause
 }
 
 type WindowFrameClause struct {
@@ -197,10 +191,9 @@ type WindowFrameClause struct {
 
 type WindowFrameBound struct {
 	Span
-	BoundKeyword1 Keyword
-	BoundKeyword2 *Keyword
-	Type          WindowFrameBoundType
-	Expression    Expression
+	BoundKeyword []Keyword
+	Type         WindowFrameBoundType
+	Expression   Expression
 }
 
 type ExprFunction struct {
@@ -218,10 +211,10 @@ type ExprFunctionCall struct {
 
 type ExprCast struct {
 	Span
-    CastKeyword Keyword
-	Expression Expression
-    AsKeyword Keyword
-	DataType   DataType
+	CastKeyword Keyword
+	Expression  Expression
+	AsKeyword   Keyword
+	DataType    DataType
 }
 
 type CommonTableExpression struct {
@@ -321,8 +314,10 @@ func (h HavingClause) TokenLiteral() string {
 }
 func (gb GroupByClause) TokenLiteral() string {
 	var str strings.Builder
-	str.WriteString(fmt.Sprintf(" %s %s ", gb.GroupKeyword.TokenLiteral(),
-		gb.ByKeyword.TokenLiteral()))
+	str.WriteString(" ")
+	for _, k := range gb.GroupByKeyword {
+		str.WriteString(fmt.Sprintf("%s ", k.TokenLiteral()))
+	}
 	str.WriteString(expressionListToString(gb.Items, ", "))
 
 	return str.String()
@@ -357,9 +352,9 @@ func (ts TableSource) TokenLiteral() string {
 func (j Join) TokenLiteral() string {
 	var str strings.Builder
 
-	str.WriteString(fmt.Sprintf(" %s", j.JoinTypeKeyword1.TokenLiteral()))
-	if j.JoinTypeKeyword2 != nil {
-		str.WriteString(fmt.Sprintf(" %s ", j.JoinTypeKeyword2.TokenLiteral()))
+	str.WriteString(" ")
+	for _, k := range j.JoinTypeKeyword {
+		str.WriteString(fmt.Sprintf("%s ", k.TokenLiteral()))
 	}
 
 	str.WriteString(j.Table.TokenLiteral())
@@ -382,12 +377,10 @@ func (ta TopArg) TokenLiteral() string {
 		str.WriteString(fmt.Sprintf(" %s", ta.PercentKeyword.TokenLiteral()))
 	}
 
-	if ta.WithKeyword != nil {
-		str.WriteString(fmt.Sprintf(" %s", ta.WithKeyword.TokenLiteral()))
-	}
-
-	if ta.TiesKeyword != nil {
-		str.WriteString(fmt.Sprintf(" %s", ta.TiesKeyword.TokenLiteral()))
+	if ta.WithTiesKeyword != nil {
+		for _, k := range ta.WithTiesKeyword {
+			str.WriteString(fmt.Sprintf(" %s", k.TokenLiteral()))
+		}
 	}
 
 	return str.String()
@@ -404,8 +397,10 @@ func (o OrderByClause) TokenLiteral() string {
 		orderByArgs = append(orderByArgs, o.TokenLiteral())
 	}
 
-	str.WriteString(fmt.Sprintf(" %s %s ", o.OrderKeyword.TokenLiteral(),
-		o.ByKeyword.TokenLiteral()))
+	str.WriteString(" ")
+	for _, k := range o.OrderByKeyword {
+		str.WriteString(fmt.Sprintf("%s ", k.TokenLiteral()))
+	}
 	str.WriteString(strings.Join(orderByArgs, ", "))
 
 	if o.OffsetFetch == nil {
@@ -573,9 +568,11 @@ func (w WindowFrameBound) TokenLiteral() string {
 		str.WriteString(w.Expression.TokenLiteral())
 		str.WriteString(" ")
 	}
-	str.WriteString(fmt.Sprintf("%s", w.BoundKeyword1.TokenLiteral()))
-	if w.BoundKeyword2 != nil {
-		str.WriteString(fmt.Sprintf(" %s", w.BoundKeyword2.TokenLiteral()))
+	for i, k := range w.BoundKeyword {
+		if i > 0 {
+			str.WriteString(" ")
+		}
+		str.WriteString(fmt.Sprintf("%s", k.TokenLiteral()))
 	}
 	// switch w.Type {
 	// case WFBTFollowing:
@@ -631,8 +628,11 @@ func (e FunctionOverClause) TokenLiteral() string {
 	str.WriteString(fmt.Sprintf(" %s (", e.OverKeyword.TokenLiteral()))
 
 	if len(e.PartitionByClause) > 0 {
-		str.WriteString(fmt.Sprintf("%s %s ", e.PartitionKeyword.TokenLiteral(),
-			e.PByKeyword.TokenLiteral()))
+		if e.PartitionByKeyword != nil {
+			for _, k := range e.PartitionByKeyword {
+				str.WriteString(fmt.Sprintf("%s ", k.TokenLiteral()))
+			}
+		}
 		var expressions []string
 		for _, p := range e.PartitionByClause {
 			expressions = append(expressions, p.TokenLiteral())
@@ -640,9 +640,16 @@ func (e FunctionOverClause) TokenLiteral() string {
 		str.WriteString(strings.Join(expressions, ", "))
 	}
 
+	if len(e.PartitionByClause) > 0 && len(e.OrderByClause) > 0 {
+		str.WriteString(" ")
+	}
+
 	if len(e.OrderByClause) > 0 {
-		str.WriteString(fmt.Sprintf(" %s %s ", e.OrderKeyword.TokenLiteral(),
-			e.OByKeyword.TokenLiteral()))
+		if e.OrderByKeyword != nil {
+			for _, k := range e.OrderByKeyword {
+				str.WriteString(fmt.Sprintf("%s ", k.TokenLiteral()))
+			}
+		}
 		var args []string
 		for _, o := range e.OrderByClause {
 			args = append(args, o.TokenLiteral())

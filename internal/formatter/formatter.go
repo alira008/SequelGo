@@ -56,7 +56,7 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 				f.printNewLine()
 			}
 			ast.Walk(f, s)
-            // f.printCommentsAfterNode(s)
+			// f.printCommentsAfterNode(s)
 		}
 		break
 	case *ast.SelectStatement:
@@ -153,9 +153,10 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		break
 	case *ast.GroupByClause:
 		f.printNewLine()
-		ast.Walk(f, &n.GroupKeyword)
-		ast.Walk(f, &n.ByKeyword)
-		f.printSpace()
+		for _, k := range n.GroupByKeyword {
+			ast.Walk(f, &k)
+			f.printSpace()
+		}
 		for _, e := range n.Items {
 			ast.Walk(f, e)
 		}
@@ -173,10 +174,8 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		return f
 	case *ast.Join:
 		f.printNewLine()
-		ast.Walk(f, &n.JoinTypeKeyword1)
-		f.printSpace()
-		if n.JoinTypeKeyword2 != nil {
-			ast.Walk(f, n.JoinTypeKeyword2)
+		for _, k := range n.JoinTypeKeyword {
+			ast.Walk(f, &k)
 			f.printSpace()
 		}
 		ast.Walk(f, &n.JoinKeyword)
@@ -200,13 +199,10 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 			f.printSpace()
 			ast.Walk(f, n.PercentKeyword)
 		}
-		if n.WithKeyword != nil {
-			f.printSpace()
-			ast.Walk(f, n.WithKeyword)
-
-			if n.TiesKeyword != nil {
+		if n.WithTiesKeyword != nil {
+			for _, k := range n.WithTiesKeyword {
 				f.printSpace()
-				ast.Walk(f, n.TiesKeyword)
+				ast.Walk(f, &k)
 			}
 		}
 		break
@@ -219,10 +215,10 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		break
 	case *ast.OrderByClause:
 		f.printNewLine()
-		ast.Walk(f, &n.OrderKeyword)
-		f.printSpace()
-		ast.Walk(f, &n.ByKeyword)
-		f.printSpace()
+		for _, k := range n.OrderByKeyword {
+			ast.Walk(f, &k)
+			f.printSpace()
+		}
 		for i, e := range n.Expressions {
 			if i > 0 {
 				f.printSpace()
@@ -289,11 +285,12 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		}
 		break
 	case *ast.WindowFrameBound:
-		ast.Walk(f, &n.BoundKeyword1)
-		if n.BoundKeyword2 != nil {
-			f.printSpace()
-			ast.Walk(f, n.BoundKeyword2)
-		}
+        for i, k := range n.BoundKeyword {
+            if i > 0 {
+                f.printSpace()
+            }
+			ast.Walk(f, &k)
+        }
 		if n.Expression != nil {
 			f.printSpace()
 			ast.Walk(f, n.Expression)
@@ -330,13 +327,11 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		ast.Walk(f, &n.OverKeyword)
 		f.printSpace()
 		f.formattedQuery += "("
-		if n.PartitionKeyword != nil {
-			ast.Walk(f, n.PartitionKeyword)
-			f.printSpace()
-		}
-		if n.PByKeyword != nil {
-			ast.Walk(f, n.PByKeyword)
-			f.printSpace()
+		if n.PartitionByKeyword != nil {
+			for _, k := range n.PartitionByKeyword {
+				ast.Walk(f, &k)
+				f.printSpace()
+			}
 		}
 		for i, e := range n.PartitionByClause {
 			if i > 0 {
@@ -345,17 +340,15 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 			ast.Walk(f, e)
 		}
 
-		if n.PartitionKeyword != nil && n.OrderKeyword != nil {
+		if n.PartitionByKeyword != nil && n.OrderByKeyword != nil {
 			f.printSpace()
 		}
 
-		if n.OrderKeyword != nil {
-			ast.Walk(f, n.OrderKeyword)
-			f.printSpace()
-		}
-		if n.OByKeyword != nil {
-			ast.Walk(f, n.OByKeyword)
-			f.printSpace()
+		if n.OrderByKeyword != nil {
+			for _, k := range n.OrderByKeyword {
+				ast.Walk(f, &k)
+				f.printSpace()
+			}
 		}
 		for i, e := range n.OrderByClause {
 			if i > 0 {

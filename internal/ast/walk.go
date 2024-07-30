@@ -22,9 +22,9 @@ func Walk(v Visitor, node Node) {
 		walkList(v, n.Statements)
 		break
 	case *SelectStatement:
-        if n.WithKeyword != nil {
-            Walk(v, n.WithKeyword)
-        }
+		if n.WithKeyword != nil {
+			Walk(v, n.WithKeyword)
+		}
 		if n.CTE != nil {
 			for _, cte := range *n.CTE {
 				Walk(v, &cte)
@@ -92,8 +92,9 @@ func Walk(v Visitor, node Node) {
 		Walk(v, n.Clause)
 		break
 	case *GroupByClause:
-		Walk(v, &n.GroupKeyword)
-		Walk(v, &n.ByKeyword)
+		for _, k := range n.GroupByKeyword {
+			Walk(v, &k)
+		}
 		walkList(v, n.Items)
 		break
 	case *TableArg:
@@ -107,9 +108,8 @@ func Walk(v Visitor, node Node) {
 		Walk(v, n.Source)
 		break
 	case *Join:
-		Walk(v, &n.JoinTypeKeyword1)
-		if n.JoinTypeKeyword2 != nil {
-			Walk(v, n.JoinTypeKeyword2)
+		for _, k := range n.JoinTypeKeyword {
+			Walk(v, &k)
 		}
 		Walk(v, &n.JoinKeyword)
 		Walk(v, n.Table)
@@ -124,11 +124,10 @@ func Walk(v Visitor, node Node) {
 		if n.PercentKeyword != nil {
 			Walk(v, n.PercentKeyword)
 		}
-		if n.WithKeyword != nil {
-			Walk(v, n.WithKeyword)
-		}
-		if n.TiesKeyword != nil {
-			Walk(v, n.TiesKeyword)
+		if n.WithTiesKeyword != nil {
+			for _, k := range n.WithTiesKeyword {
+				Walk(v, &k)
+			}
 		}
 		break
 	case *OrderByArg:
@@ -138,8 +137,9 @@ func Walk(v Visitor, node Node) {
 		}
 		break
 	case *OrderByClause:
-		Walk(v, &n.OrderKeyword)
-		Walk(v, &n.ByKeyword)
+		for _, k := range n.OrderByKeyword {
+			Walk(v, &k)
+		}
 		for _, e := range n.Expressions {
 			Walk(v, &e)
 		}
@@ -176,9 +176,8 @@ func Walk(v Visitor, node Node) {
 		Walk(v, n.Name)
 		break
 	case *WindowFrameBound:
-		Walk(v, &n.BoundKeyword1)
-		if n.BoundKeyword2 != nil {
-			Walk(v, n.BoundKeyword2)
+		for _, k := range n.BoundKeyword {
+			Walk(v, &k)
 		}
 		Walk(v, n.Expression)
 		break
@@ -197,18 +196,16 @@ func Walk(v Visitor, node Node) {
 		break
 	case *FunctionOverClause:
 		Walk(v, &n.OverKeyword)
-		if n.PartitionKeyword != nil {
-			Walk(v, n.PartitionKeyword)
-		}
-		if n.PByKeyword != nil {
-			Walk(v, n.PByKeyword)
+		if n.PartitionByKeyword != nil {
+			for _, k := range n.PartitionByKeyword {
+				Walk(v, &k)
+			}
 		}
 		walkList(v, n.PartitionByClause)
-		if n.OrderKeyword != nil {
-			Walk(v, n.OrderKeyword)
-		}
-		if n.OByKeyword != nil {
-			Walk(v, n.OByKeyword)
+		if n.OrderByKeyword != nil {
+			for _, k := range n.OrderByKeyword {
+				Walk(v, &k)
+			}
 		}
 		for _, o := range n.OrderByClause {
 			Walk(v, &o)
