@@ -310,7 +310,7 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 		newExpr = expr
 	default:
 		p.errorToken = ETCurrent
-		return nil, fmt.Errorf("Unimplemented expression %s", p.currentToken.Type.String())
+		return nil, p.currentErrorString(fmt.Sprintf("Unimplemented expression %s", p.currentToken.Type.String()))
 	}
 
 	return newExpr, nil
@@ -373,7 +373,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 		if err != nil {
 			return nil, err
 		}
-        fmt.Println("mod test", right.TokenLiteral())
+		fmt.Println("mod test", right.TokenLiteral())
 		return &ast.ExprArithmeticOperator{
 			Left:     left,
 			Operator: operator,
@@ -538,5 +538,5 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 		}
 	}
 	p.errorToken = ETCurrent
-	return nil, p.currentErrorString("Unimplemented expression")
+	return nil, p.currentErrorString(fmt.Sprintf("Unimplemented expression %s", p.currentToken.Type.String()))
 }
