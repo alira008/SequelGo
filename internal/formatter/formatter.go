@@ -5,6 +5,7 @@ import (
 	"SequelGo/internal/lexer"
 	"SequelGo/internal/parser"
 	"fmt"
+	"math"
 	"strings"
 
 	"go.uber.org/zap"
@@ -38,12 +39,14 @@ func (f *Formatter) Format(input string) (string, error) {
 	}
 	f.comments = query.Comments
 
+	f.associateCommentsWithNodes(&query)
 	ast.Walk(f, &query)
 
 	return f.formattedQuery, nil
 }
 
 func (f *Formatter) Visit(node ast.Node) ast.Visitor {
+	f.printCommentsBeforeNode(node)
 
 	switch n := node.(type) {
 	case *ast.Query:
@@ -53,10 +56,11 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 				f.printNewLine()
 			}
 			ast.Walk(f, s)
+            f.printCommentsAfterNode(s)
 		}
-		return nil
-	case *ast.SelectStatement:
 		break
+	case *ast.SelectStatement:
+		return f
 	case *ast.SelectBody:
 		ast.Walk(f, &n.SelectKeyword)
 		if n.AllKeyword != nil {
@@ -84,25 +88,25 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		if n.OrderByClause != nil {
 			ast.Walk(f, n.OrderByClause)
 		}
-		return nil
+		break
 	case *ast.ExprStringLiteral:
 		f.formattedQuery += fmt.Sprintf("'%s'", n.Value)
-		return nil
+		break
 	case *ast.ExprNumberLiteral:
 		f.formattedQuery += n.Value
-		return nil
+		break
 	case *ast.ExprLocalVariable:
 		f.formattedQuery += fmt.Sprintf("@%s", n.Value)
-		return nil
+		break
 	case *ast.ExprIdentifier:
 		f.formattedQuery += n.Value
-		return nil
+		break
 	case *ast.ExprQuotedIdentifier:
 		f.formattedQuery += fmt.Sprintf("[%s]", n.Value)
-		return nil
+		break
 	case *ast.ExprStar:
 		f.formattedQuery += "*"
-		return nil
+		break
 	case *ast.ExprWithAlias:
 		ast.Walk(f, n.Expression)
 		f.printSpace()
@@ -111,7 +115,7 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 			f.printSpace()
 		}
 		ast.Walk(f, n.Alias)
-		return nil
+		break
 	case *ast.ExprCompoundIdentifier:
 		for i, e := range n.Identifiers {
 			if i > 0 {
@@ -119,7 +123,7 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 			}
 			ast.Walk(f, e)
 		}
-		return nil
+		break
 	case *ast.SelectItems:
 		if len(n.Items) > 1 {
 			f.increaseIndent()
@@ -134,19 +138,19 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 			}
 			ast.Walk(f, e)
 		}
-		return nil
+		break
 	case *ast.WhereClause:
 		f.printNewLine()
 		ast.Walk(f, &n.WhereKeyword)
 		f.printSpace()
 		ast.Walk(f, n.Clause)
-		return nil
+		break
 	case *ast.HavingClause:
 		f.printNewLine()
 		ast.Walk(f, &n.HavingKeyword)
 		f.printSpace()
 		ast.Walk(f, n.Clause)
-		return nil
+		break
 	case *ast.GroupByClause:
 		f.printNewLine()
 		ast.Walk(f, &n.GroupKeyword)
@@ -155,7 +159,7 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		for _, e := range n.Items {
 			ast.Walk(f, e)
 		}
-		return nil
+		break
 	case *ast.TableArg:
 		f.printNewLine()
 		ast.Walk(f, &n.FromKeyword)
@@ -164,9 +168,9 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		for _, j := range n.Joins {
 			ast.Walk(f, &j)
 		}
-		return nil
-	case *ast.TableSource:
 		break
+	case *ast.TableSource:
+		return f
 	case *ast.Join:
 		f.printNewLine()
 		ast.Walk(f, &n.JoinTypeKeyword1)
@@ -186,7 +190,7 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		if n.Condition != nil {
 			ast.Walk(f, n.Condition)
 		}
-		return nil
+		break
 	case *ast.TopArg:
 		f.printSpace()
 		ast.Walk(f, &n.TopKeyword)
@@ -205,14 +209,14 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 				ast.Walk(f, n.TiesKeyword)
 			}
 		}
-		return nil
+		break
 	case *ast.OrderByArg:
 		ast.Walk(f, n.Column)
 		if n.OrderKeyword != nil {
 			f.printSpace()
 			ast.Walk(f, n.OrderKeyword)
 		}
-		return nil
+		break
 	case *ast.OrderByClause:
 		f.printNewLine()
 		ast.Walk(f, &n.OrderKeyword)
@@ -229,7 +233,7 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		if n.OffsetFetch != nil {
 			ast.Walk(f, n.OffsetFetch)
 		}
-		return nil
+		break
 	case *ast.OffsetArg:
 		f.printNewLine()
 		ast.Walk(f, &n.OffsetKeyword)
@@ -237,7 +241,7 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		ast.Walk(f, n.Value)
 		f.printSpace()
 		ast.Walk(f, &n.RowOrRowsKeyword)
-		return nil
+		break
 	case *ast.FetchArg:
 		f.printNewLine()
 		ast.Walk(f, &n.FetchKeyword)
@@ -249,13 +253,13 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		ast.Walk(f, &n.RowOrRowsKeyword)
 		f.printSpace()
 		ast.Walk(f, &n.OnlyKeyword)
-		return nil
+		break
 	case *ast.OffsetFetchClause:
 		ast.Walk(f, &n.Offset)
 		if n.Fetch != nil {
 			ast.Walk(f, n.Fetch)
 		}
-		return nil
+		break
 	case *ast.ExprSubquery:
 		f.formattedQuery += "("
 		f.increaseIndent()
@@ -268,8 +272,14 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		f.printNewLine()
 		f.decreaseIndent()
 		f.formattedQuery += ")"
-		return nil
+		break
 	case *ast.ExprExpressionList:
+		for i, e := range n.List {
+			if i > 0 {
+				f.printExpressionListComma()
+			}
+			ast.Walk(f, e)
+		}
 		break
 	case *ast.ExprFunction:
 		if n.Type == ast.FuncUserDefined {
@@ -277,7 +287,7 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		} else {
 			f.printKeyword(n.Name.TokenLiteral())
 		}
-		return nil
+		break
 	case *ast.WindowFrameBound:
 		ast.Walk(f, &n.BoundKeyword1)
 		if n.BoundKeyword2 != nil {
@@ -288,7 +298,7 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 			f.printSpace()
 			ast.Walk(f, n.Expression)
 		}
-		return nil
+		break
 	case *ast.WindowFrameClause:
 		f.increaseIndent()
 		f.increaseIndent()
@@ -312,7 +322,7 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		}
 		f.decreaseIndent()
 		f.decreaseIndent()
-		return nil
+		break
 	case *ast.FunctionOverClause:
 		f.increaseIndent()
 		f.increaseIndent()
@@ -359,7 +369,7 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		f.formattedQuery += ")"
 		f.decreaseIndent()
 		f.decreaseIndent()
-		return nil
+		break
 	case *ast.ExprFunctionCall:
 		ast.Walk(f, n.Name)
 		f.formattedQuery += "("
@@ -373,7 +383,7 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		if n.OverClause != nil {
 			ast.Walk(f, n.OverClause)
 		}
-		return nil
+		break
 	case *ast.ExprCast:
 		ast.Walk(f, &n.CastKeyword)
 		f.formattedQuery += "("
@@ -383,7 +393,7 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		f.printSpace()
 		ast.Walk(f, &n.DataType)
 		f.formattedQuery += ")"
-		return nil
+		break
 	case *ast.CommonTableExpression:
 		f.formattedQuery += n.Name
 		if n.Columns != nil {
@@ -397,7 +407,7 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		ast.Walk(f, &n.Query)
 		f.formattedQuery += ")"
 		f.decreaseIndent()
-		return nil
+		break
 	case *ast.DataType:
 		switch n.Kind {
 		case ast.DTInt:
@@ -452,31 +462,31 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 			}
 			break
 		}
-		return nil
+		break
 	case *ast.NumericSize:
 		f.formattedQuery += fmt.Sprintf("%d", n.Precision)
 		if n.Scale != nil {
 			f.formattedQuery += fmt.Sprintf(", %d", *n.Scale)
 		}
-		return nil
+		break
 	case *ast.ExprUnaryOperator:
 		f.visitUnaryOperatorType(n.Operator)
 		ast.Walk(f, n.Right)
-		return nil
+		break
 	case *ast.ExprComparisonOperator:
 		ast.Walk(f, n.Left)
 		f.printSpace()
 		f.visitComparisonOperatorType(n.Operator)
 		f.printSpace()
 		ast.Walk(f, n.Right)
-		return nil
+		break
 	case *ast.ExprArithmeticOperator:
 		ast.Walk(f, n.Left)
 		f.printSpace()
 		f.visitArithmeticOperatorType(n.Operator)
 		f.printSpace()
 		ast.Walk(f, n.Right)
-		return nil
+		break
 	case *ast.ExprAndLogicalOperator:
 		ast.Walk(f, n.Left)
 		f.increaseIndent()
@@ -485,7 +495,7 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		f.printSpace()
 		ast.Walk(f, n.Right)
 		f.decreaseIndent()
-		return nil
+		break
 	case *ast.ExprAllLogicalOperator:
 		ast.Walk(f, n.ScalarExpression)
 		f.printSpace()
@@ -494,7 +504,7 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		ast.Walk(f, &n.AllKeyword)
 		f.printSpace()
 		ast.Walk(f, n.Subquery)
-		return nil
+		break
 	case *ast.ExprBetweenLogicalOperator:
 		ast.Walk(f, n.TestExpression)
 		f.printSpace()
@@ -513,9 +523,10 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		ast.Walk(f, n.End)
 		f.decreaseIndent()
 		f.decreaseIndent()
-		return nil
-	case *ast.ExprExistsLogicalOperator:
 		break
+	case *ast.ExprExistsLogicalOperator:
+		return f
+		// break
 	case *ast.ExprInSubqueryLogicalOperator:
 		ast.Walk(f, n.TestExpression)
 		f.printSpace()
@@ -528,7 +539,7 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		ast.Walk(f, &n.InKeyword)
 		f.printSpace()
 		ast.Walk(f, n.Subquery)
-		return nil
+		break
 	case *ast.ExprInLogicalOperator:
 		ast.Walk(f, n.TestExpression)
 		f.printSpace()
@@ -559,7 +570,7 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 			f.decreaseIndent()
 		}
 		f.formattedQuery += ")"
-		return nil
+		break
 	case *ast.ExprLikeLogicalOperator:
 		ast.Walk(f, n.MatchExpression)
 		f.printSpace()
@@ -573,12 +584,12 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		f.printSpace()
 
 		ast.Walk(f, n.Pattern)
-		return nil
+		break
 	case *ast.ExprNotLogicalOperator:
 		ast.Walk(f, &n.NotKeyword)
 		f.printSpace()
 		ast.Walk(f, n.Expression)
-		return nil
+		break
 	case *ast.ExprOrLogicalOperator:
 		ast.Walk(f, n.Left)
 		f.increaseIndent()
@@ -587,7 +598,7 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		f.printSpace()
 		ast.Walk(f, n.Right)
 		f.decreaseIndent()
-		return nil
+		break
 	case *ast.ExprSomeLogicalOperator:
 		ast.Walk(f, n.ScalarExpression)
 		f.printSpace()
@@ -596,7 +607,7 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		ast.Walk(f, &n.SomeKeyword)
 		f.printSpace()
 		ast.Walk(f, n.Subquery)
-		return nil
+		break
 	case *ast.ExprAnyLogicalOperator:
 		ast.Walk(f, n.ScalarExpression)
 		f.printSpace()
@@ -605,17 +616,18 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		ast.Walk(f, &n.AnyKeyword)
 		f.printSpace()
 		ast.Walk(f, n.Subquery)
-		return nil
+		break
 	case *ast.Keyword:
 		f.printKeyword(n.TokenLiteral())
-		return nil
+		break
 	case nil:
-		return nil
+		break
 	default:
-		return nil
+		return f
 	}
 
-	return f
+	f.printCommentsAfterNode(node)
+	return nil
 }
 
 func nodeList(n ast.Node) []ast.Node {
@@ -640,6 +652,7 @@ func (f *Formatter) associateCommentsWithNodes(node ast.Node) {
 	// Associate each comment with the nearest node.
 	for _, comment := range f.comments {
 		closestNode := f.findClosestNode(comment.GetSpan().StartPosition, nodes)
+		fmt.Println("\tclosest node: ", closestNode.TokenLiteral(), "\n\tcomment: ", comment.TokenLiteral())
 		if closestNode != nil {
 			f.NodeToComments[closestNode] = append(f.NodeToComments[closestNode], comment)
 		}
@@ -647,22 +660,29 @@ func (f *Formatter) associateCommentsWithNodes(node ast.Node) {
 }
 func (f *Formatter) findClosestNode(commentPos ast.Position, nodes []ast.Node) ast.Node {
 	var closestNode ast.Node
-	minDistance := int64(^uint(0) >> 1) // Initialize to max int value
+	minDistance := int64(math.MaxInt64) // Initialize to max int value
 	for _, node := range nodes {
-		distance := f.positionDistance(commentPos, node.GetSpan().StartPosition)
+		distance := f.positionDistance(commentPos, node.GetSpan().EndPosition)
 		if distance < minDistance {
 			minDistance = distance
 			closestNode = node
 		}
 	}
+	fmt.Println("distance ", minDistance)
 	return closestNode
 }
 
 func (f *Formatter) positionDistance(pos1, pos2 ast.Position) int64 {
 	// Simple distance measure considering line difference first, then column difference
 	lineDiff := abs(int64(pos1.Line) - int64(pos2.Line))
-	columnDiff := abs(int64(pos1.Col) - int64(pos2.Col))
-	return lineDiff*1000 + columnDiff // Assuming line difference is more significant
+	if lineDiff == 0 {
+		columnDiff := abs(int64(pos1.Col) - int64(pos2.Col))
+		return columnDiff
+	} else {
+		columnDiff := abs(int64(pos1.Col)-int64(math.MaxInt32)) + abs(int64(pos2.Col)-int64(math.MaxInt32))
+		return lineDiff*1000 + columnDiff
+	}
+	// return lineDiff*1000 + columnDiff // Assuming line difference is more significant
 }
 
 func abs(x int64) int64 {
@@ -767,7 +787,8 @@ func (f *Formatter) printCommentsBeforeNode(node ast.Node) {
 	if comments, ok := f.NodeToComments[node]; ok {
 		for _, comment := range comments {
 			if comment.GetSpan().StartPosition.Line < node.GetSpan().StartPosition.Line {
-				f.formattedQuery += fmt.Sprintf("\n%s", comment.TokenLiteral())
+				f.formattedQuery += fmt.Sprintf("%s", comment.TokenLiteral())
+				f.printNewLine()
 			}
 		}
 	}
@@ -778,11 +799,12 @@ func (f *Formatter) printCommentsAfterNode(node ast.Node) {
 		for _, comment := range comments {
 			if comment.GetSpan().StartPosition.Line == node.GetSpan().StartPosition.Line &&
 				comment.GetSpan().StartPosition.Col > node.GetSpan().StartPosition.Col {
-				f.formattedQuery += fmt.Sprintf(" %s\n", comment.TokenLiteral())
+				f.formattedQuery += fmt.Sprintf(" %s", comment.TokenLiteral())
+				f.printNewLine()
 			}
 			if comment.GetSpan().StartPosition.Line > node.GetSpan().StartPosition.Line {
-
-				f.formattedQuery += fmt.Sprintf("\n%s", comment.TokenLiteral())
+				f.printNewLine()
+				f.formattedQuery += fmt.Sprintf("%s", comment.TokenLiteral())
 			}
 		}
 	}
