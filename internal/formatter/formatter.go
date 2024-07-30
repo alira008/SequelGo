@@ -39,21 +39,13 @@ func (f *Formatter) Format(input string) (string, error) {
 	f.comments = query.Comments
 
 	ast.Walk(f, &query)
-	// for i, s := range query.Statements {
-	// 	if i > 0 {
-	// 		f.printNewLine()
-	// 		f.printNewLine()
-	// 	}
-	// 	f.associateCommentsWithNodes(s)
-	// 	f.walkQuery(s)
-	// }
 
 	return f.formattedQuery, nil
 }
 
 func (f *Formatter) Visit(node ast.Node) ast.Visitor {
-	switch n := node.(type) {
 
+	switch n := node.(type) {
 	case *ast.Query:
 		for i, s := range n.Statements {
 			if i > 0 {
@@ -499,7 +491,7 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		f.printSpace()
 		f.visitComparisonOperatorType(n.ComparisonOperator)
 		f.printSpace()
-        ast.Walk(f, &n.AllKeyword)
+		ast.Walk(f, &n.AllKeyword)
 		f.printSpace()
 		ast.Walk(f, n.Subquery)
 		return nil
@@ -601,7 +593,7 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		f.printSpace()
 		f.visitComparisonOperatorType(n.ComparisonOperator)
 		f.printSpace()
-        ast.Walk(f, &n.SomeKeyword)
+		ast.Walk(f, &n.SomeKeyword)
 		f.printSpace()
 		ast.Walk(f, n.Subquery)
 		return nil
@@ -610,7 +602,7 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		f.printSpace()
 		f.visitComparisonOperatorType(n.ComparisonOperator)
 		f.printSpace()
-        ast.Walk(f, &n.AnyKeyword)
+		ast.Walk(f, &n.AnyKeyword)
 		f.printSpace()
 		ast.Walk(f, n.Subquery)
 		return nil
@@ -847,7 +839,6 @@ func (f *Formatter) visitUnaryOperatorType(o ast.UnaryOperatorType) {
 		f.formattedQuery += "-"
 	}
 }
-
 
 func (f *Formatter) visitArithmeticOperatorType(o ast.ArithmeticOperatorType) {
 	switch o {
