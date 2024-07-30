@@ -69,8 +69,8 @@ func NewComment(token lexer.Token) Comment {
 func (q *Query) SetSpan(span Span)   { q.Span = span }
 func (c *Comment) SetSpan(span Span) { c.Span = span }
 
-func (q *Query) GetSpan() Span   { return q.Span }
-func (c *Comment) GetSpan() Span { return c.Span }
+func (q Query) GetSpan() Span   { return q.Span }
+func (c Comment) GetSpan() Span { return c.Span }
 
 func (q *Query) TokenLiteral() string {
 	str := strings.Builder{}

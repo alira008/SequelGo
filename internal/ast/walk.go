@@ -18,7 +18,13 @@ func Walk(v Visitor, node Node) {
 	}
 
 	switch n := node.(type) {
+	case *Query:
+		walkList(v, n.Statements)
+		break
 	case *SelectStatement:
+        if n.WithKeyword != nil {
+            Walk(v, n.WithKeyword)
+        }
 		if n.CTE != nil {
 			for _, cte := range *n.CTE {
 				Walk(v, &cte)
@@ -27,6 +33,13 @@ func Walk(v Visitor, node Node) {
 		Walk(v, n.SelectBody)
 		break
 	case *SelectBody:
+		Walk(v, &n.SelectKeyword)
+		if n.Distinct != nil {
+			Walk(v, n.Distinct)
+		}
+		if n.AllKeyword != nil {
+			Walk(v, n.AllKeyword)
+		}
 		if n.Top != nil {
 			Walk(v, n.Top)
 		}
@@ -59,24 +72,32 @@ func Walk(v Visitor, node Node) {
 		break
 	case *ExprWithAlias:
 		Walk(v, n.Expression)
+		if n.AsKeyword != nil {
+			Walk(v, n.AsKeyword)
+		}
 		Walk(v, n.Alias)
 		break
 	case *ExprCompoundIdentifier:
-		walkList(v, n.Identifiers)
+		// walkList(v, n.Identifiers)
 		break
 	case *SelectItems:
-		walkList(v, n.Items)
+		// walkList(v, n.Items)
 		break
 	case *WhereClause:
+		Walk(v, &n.WhereKeyword)
 		Walk(v, n.Clause)
 		break
 	case *HavingClause:
+		Walk(v, &n.HavingKeyword)
 		Walk(v, n.Clause)
 		break
 	case *GroupByClause:
+		Walk(v, &n.GroupKeyword)
+		Walk(v, &n.ByKeyword)
 		walkList(v, n.Items)
 		break
 	case *TableArg:
+		Walk(v, &n.FromKeyword)
 		Walk(v, n.Table)
 		for _, j := range n.Joins {
 			Walk(v, &j)
@@ -86,16 +107,39 @@ func Walk(v Visitor, node Node) {
 		Walk(v, n.Source)
 		break
 	case *Join:
+		Walk(v, &n.JoinTypeKeyword1)
+		if n.JoinTypeKeyword2 != nil {
+			Walk(v, n.JoinTypeKeyword2)
+		}
+		Walk(v, &n.JoinKeyword)
 		Walk(v, n.Table)
+		if n.OnKeyword != nil {
+			Walk(v, n.OnKeyword)
+		}
 		Walk(v, n.Condition)
 		break
 	case *TopArg:
+		Walk(v, &n.TopKeyword)
 		Walk(v, n.Quantity)
+		if n.PercentKeyword != nil {
+			Walk(v, n.PercentKeyword)
+		}
+		if n.WithKeyword != nil {
+			Walk(v, n.WithKeyword)
+		}
+		if n.TiesKeyword != nil {
+			Walk(v, n.TiesKeyword)
+		}
 		break
 	case *OrderByArg:
 		Walk(v, n.Column)
+		if n.OrderKeyword != nil {
+			Walk(v, n.OrderKeyword)
+		}
 		break
 	case *OrderByClause:
+		Walk(v, &n.OrderKeyword)
+		Walk(v, &n.ByKeyword)
 		for _, e := range n.Expressions {
 			Walk(v, &e)
 		}
@@ -105,10 +149,16 @@ func Walk(v Visitor, node Node) {
 		}
 		break
 	case *OffsetArg:
+		Walk(v, &n.OffsetKeyword)
+		Walk(v, &n.RowOrRowsKeyword)
 		Walk(v, n.Value)
 		break
 	case *FetchArg:
+		Walk(v, &n.FetchKeyword)
 		Walk(v, n.Value)
+		Walk(v, &n.NextOrFirstKeyword)
+		Walk(v, &n.RowOrRowsKeyword)
+		Walk(v, &n.OnlyKeyword)
 		break
 	case *OffsetFetchClause:
 		Walk(v, &n.Offset)
@@ -126,16 +176,40 @@ func Walk(v Visitor, node Node) {
 		Walk(v, n.Name)
 		break
 	case *WindowFrameBound:
+		Walk(v, &n.BoundKeyword1)
+		if n.BoundKeyword2 != nil {
+			Walk(v, n.BoundKeyword2)
+		}
 		Walk(v, n.Expression)
 		break
 	case *WindowFrameClause:
+		Walk(v, &n.RowsOrRangeKeyword)
+		if n.BetweenKeyword != nil {
+			Walk(v, n.BetweenKeyword)
+		}
 		Walk(v, n.Start)
+		if n.AndKeyword != nil {
+			Walk(v, n.AndKeyword)
+		}
 		if n.End != nil {
 			Walk(v, n.End)
 		}
 		break
 	case *FunctionOverClause:
+		Walk(v, &n.OverKeyword)
+		if n.PartitionKeyword != nil {
+			Walk(v, n.PartitionKeyword)
+		}
+		if n.PByKeyword != nil {
+			Walk(v, n.PByKeyword)
+		}
 		walkList(v, n.PartitionByClause)
+		if n.OrderKeyword != nil {
+			Walk(v, n.OrderKeyword)
+		}
+		if n.OByKeyword != nil {
+			Walk(v, n.OByKeyword)
+		}
 		for _, o := range n.OrderByClause {
 			Walk(v, &o)
 		}
@@ -147,14 +221,17 @@ func Walk(v Visitor, node Node) {
 		Walk(v, n.Name)
 		walkList(v, n.Args)
 		if n.OverClause != nil {
-		Walk(v, n.OverClause)
-        }
+			Walk(v, n.OverClause)
+		}
 		break
 	case *ExprCast:
+		Walk(v, &n.CastKeyword)
 		Walk(v, n.Expression)
+		Walk(v, &n.AsKeyword)
 		break
 	case *CommonTableExpression:
 		Walk(v, n.Columns)
+		Walk(v, &n.AsKeyword)
 		Walk(v, &n.Query)
 		break
 	case *DataType:
@@ -175,46 +252,69 @@ func Walk(v Visitor, node Node) {
 		break
 	case *ExprAndLogicalOperator:
 		Walk(v, n.Left)
+		Walk(v, &n.AndKeyword)
 		Walk(v, n.Right)
 		break
 	case *ExprAllLogicalOperator:
 		Walk(v, n.ScalarExpression)
+		Walk(v, &n.AllKeyword)
 		Walk(v, n.Subquery)
 		break
 	case *ExprBetweenLogicalOperator:
 		Walk(v, n.TestExpression)
+		Walk(v, &n.BetweenKeyword)
 		Walk(v, n.Begin)
+		Walk(v, &n.AndKeyword)
 		Walk(v, n.End)
 		break
 	case *ExprExistsLogicalOperator:
+		Walk(v, &n.ExistsKeyword)
 		Walk(v, n.Subquery)
 		break
 	case *ExprInSubqueryLogicalOperator:
 		Walk(v, n.TestExpression)
+		if n.NotKeyword != nil {
+			Walk(v, n.NotKeyword)
+		}
+		Walk(v, &n.InKeyword)
 		Walk(v, n.Subquery)
 		break
 	case *ExprInLogicalOperator:
 		Walk(v, n.TestExpression)
+		if n.NotKeyword != nil {
+			Walk(v, n.NotKeyword)
+		}
+		Walk(v, &n.InKeyword)
 		walkList(v, n.Expressions)
 		break
 	case *ExprLikeLogicalOperator:
+		if n.NotKeyword != nil {
+			Walk(v, n.NotKeyword)
+		}
+		Walk(v, &n.LikeKeyword)
 		Walk(v, n.MatchExpression)
 		Walk(v, n.Pattern)
 		break
 	case *ExprNotLogicalOperator:
+		Walk(v, &n.NotKeyword)
 		Walk(v, n.Expression)
 		break
 	case *ExprOrLogicalOperator:
 		Walk(v, n.Left)
+		Walk(v, &n.OrKeyword)
 		Walk(v, n.Right)
 		break
 	case *ExprSomeLogicalOperator:
 		Walk(v, n.ScalarExpression)
+		Walk(v, &n.SomeKeyword)
 		Walk(v, n.Subquery)
 		break
 	case *ExprAnyLogicalOperator:
 		Walk(v, n.ScalarExpression)
+		Walk(v, &n.AnyKeyword)
 		Walk(v, n.Subquery)
+		break
+	case *Keyword:
 		break
 	default:
 		panic(fmt.Sprintf("ast.Walk: unexpected node type %T", n))

@@ -38,16 +38,232 @@ func (f *Formatter) Format(input string) (string, error) {
 	}
 	f.comments = query.Comments
 
-	for i, s := range query.Statements {
-		if i > 0 {
-			f.printNewLine()
-			f.printNewLine()
-		}
-		f.associateCommentsWithNodes(s)
-		f.walkQuery(s)
-	}
+	ast.Inspect(&query, f.visitNode)
+	// for i, s := range query.Statements {
+	// 	if i > 0 {
+	// 		f.printNewLine()
+	// 		f.printNewLine()
+	// 	}
+	// 	f.associateCommentsWithNodes(s)
+	// 	f.walkQuery(s)
+	// }
 
 	return f.formattedQuery, nil
+}
+
+func (f *Formatter) visitNode(node ast.Node) bool {
+	switch n := node.(type) {
+
+	case *ast.Query:
+		//walkList(v, n.Statements)
+		break
+	case *ast.SelectStatement:
+		break
+	case *ast.SelectBody:
+		if n.Distinct != nil {
+			// f.printSpace()
+		}
+		if n.AllKeyword != nil {
+			// f.printSpace()
+		}
+		break
+	case *ast.ExprStringLiteral:
+		f.formattedQuery += fmt.Sprintf("'%s'", n.Value)
+		break
+	case *ast.ExprNumberLiteral:
+		f.formattedQuery += n.Value
+		break
+	case *ast.ExprLocalVariable:
+		f.formattedQuery += fmt.Sprintf("@%s", n.Value)
+		break
+	case *ast.ExprIdentifier:
+		f.formattedQuery += n.Value
+		break
+	case *ast.ExprQuotedIdentifier:
+		f.formattedQuery += fmt.Sprintf("[%s]", n.Value)
+		break
+	case *ast.ExprStar:
+		f.formattedQuery += "*"
+		break
+	case *ast.ExprWithAlias:
+		break
+	case *ast.ExprCompoundIdentifier:
+		idents := make([]string, 0, len(n.Identifiers))
+		for _, e := range n.Identifiers {
+			idents = append(idents, e.TokenLiteral())
+		}
+		f.formattedQuery += strings.Join(idents, ".")
+		//walkList(v, n.Identifiers)
+		break
+	case *ast.SelectItems:
+		f.printNewLine()
+		items := make([]string, 0, len(n.Items))
+		for _, e := range n.Items {
+			items = append(items, e.TokenLiteral())
+		}
+		f.formattedQuery += strings.Join(items, ",\n")
+		//walkList(v, n.Items)
+		break
+	case *ast.WhereClause:
+		//Walk(v, n.Clause)
+		break
+	case *ast.HavingClause:
+		//Walk(v, n.Clause)
+		break
+	case *ast.GroupByClause:
+		//walkList(v, n.Items)
+		break
+	case *ast.TableArg:
+		//Walk(v, n.Table)
+		// for _, j := range n.Joins {
+		//Walk(v, &j)
+		// }
+		break
+	case *ast.TableSource:
+		//Walk(v, n.Source)
+		break
+	case *ast.Join:
+		//Walk(v, n.Table)
+		//Walk(v, n.Condition)
+		break
+	case *ast.TopArg:
+		//Walk(v, n.Quantity)
+		break
+	case *ast.OrderByArg:
+		//Walk(v, n.Column)
+		break
+	case *ast.OrderByClause:
+		// for _, e := range n.Expressions {
+		//Walk(v, &e)
+		// }
+
+		if n.OffsetFetch != nil {
+			//Walk(v, n.OffsetFetch)
+		}
+		break
+	case *ast.OffsetArg:
+		//Walk(v, n.Value)
+		break
+	case *ast.FetchArg:
+		//Walk(v, n.Value)
+		break
+	case *ast.OffsetFetchClause:
+		//Walk(v, &n.Offset)
+		if n.Fetch != nil {
+			//Walk(v, n.Fetch)
+		}
+		break
+	case *ast.ExprSubquery:
+		//Walk(v, &n.SelectBody)
+		break
+	case *ast.ExprExpressionList:
+		//walkList(v, n.List)
+		break
+	case *ast.ExprFunction:
+		//Walk(v, n.Name)
+		break
+	case *ast.WindowFrameBound:
+		//Walk(v, n.Expression)
+		break
+	case *ast.WindowFrameClause:
+		//Walk(v, n.Start)
+		if n.End != nil {
+			//Walk(v, n.End)
+		}
+		break
+	case *ast.FunctionOverClause:
+		//walkList(v, n.PartitionByClause)
+		// for _, o := range n.OrderByClause {
+		//Walk(v, &o)
+		// }
+		if n.WindowFrameClause != nil {
+			//Walk(v, n.WindowFrameClause)
+		}
+		break
+	case *ast.ExprFunctionCall:
+		//Walk(v, n.Name)
+		//walkList(v, n.Args)
+		if n.OverClause != nil {
+			//Walk(v, n.OverClause)
+		}
+		break
+	case *ast.ExprCast:
+		//Walk(v, n.Expression)
+		break
+	case *ast.CommonTableExpression:
+		//Walk(v, n.Columns)
+		//Walk(v, &n.Query)
+		break
+	case *ast.DataType:
+		//Walk(v, n.DecimalNumericSize)
+		break
+	case *ast.NumericSize:
+		break
+	case *ast.ExprUnaryOperator:
+		//Walk(v, n.Right)
+		break
+	case *ast.ExprComparisonOperator:
+		//Walk(v, n.Left)
+		//Walk(v, n.Right)
+		break
+	case *ast.ExprArithmeticOperator:
+		//Walk(v, n.Left)
+		//Walk(v, n.Right)
+		break
+	case *ast.ExprAndLogicalOperator:
+		//Walk(v, n.Left)
+		//Walk(v, n.Right)
+		break
+	case *ast.ExprAllLogicalOperator:
+		//Walk(v, n.ScalarExpression)
+		//Walk(v, n.Subquery)
+		break
+	case *ast.ExprBetweenLogicalOperator:
+		//Walk(v, n.TestExpression)
+		//Walk(v, n.Begin)
+		//Walk(v, n.End)
+		break
+	case *ast.ExprExistsLogicalOperator:
+		//Walk(v, n.Subquery)
+		break
+	case *ast.ExprInSubqueryLogicalOperator:
+		//Walk(v, n.TestExpression)
+		//Walk(v, n.Subquery)
+		break
+	case *ast.ExprInLogicalOperator:
+		//Walk(v, n.TestExpression)
+		//walkList(v, n.Expressions)
+		break
+	case *ast.ExprLikeLogicalOperator:
+		//Walk(v, n.MatchExpression)
+		//Walk(v, n.Pattern)
+		break
+	case *ast.ExprNotLogicalOperator:
+		//Walk(v, n.Expression)
+		break
+	case *ast.ExprOrLogicalOperator:
+		//Walk(v, n.Left)
+		//Walk(v, n.Right)
+		break
+	case *ast.ExprSomeLogicalOperator:
+		//Walk(v, n.ScalarExpression)
+		//Walk(v, n.Subquery)
+		break
+	case *ast.ExprAnyLogicalOperator:
+		//Walk(v, n.ScalarExpression)
+		//Walk(v, n.Subquery)
+		break
+	case *ast.Keyword:
+		f.printKeyword(n.TokenLiteral())
+		break
+	case nil:
+		return false
+	default:
+		panic(fmt.Sprintf("ast.Walk: unexpected node type %T", n))
+	}
+
+	f.printSpace()
+	return true
 }
 
 func nodeList(n ast.Node) []ast.Node {
@@ -230,7 +446,7 @@ func (f *Formatter) printCommentsAfterNode(node ast.Node) {
 }
 
 func (f *Formatter) visitExpression(expression ast.Expression) {
-    f.printCommentsBeforeNode(expression)
+	f.printCommentsBeforeNode(expression)
 	switch e := expression.(type) {
 	case *ast.ExprStringLiteral:
 		f.visitStringLiteralExpression(e)
@@ -317,7 +533,7 @@ func (f *Formatter) visitExpression(expression ast.Expression) {
 		f.visitKeyword(e)
 		break
 	}
-    f.printCommentsAfterNode(expression)
+	f.printCommentsAfterNode(expression)
 }
 
 func (f *Formatter) visitKeyword(keyword *ast.Keyword) {
