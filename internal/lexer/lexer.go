@@ -141,8 +141,8 @@ func (l *Lexer) NextToken() Token {
 			token.Type = TPercentEqual
 			token.Value = "%="
 		} else {
-			token.Type = TPercent
-			token.Value = "*"
+			token.Type = TMod
+			token.Value = "%"
 		}
 	case '^':
 		if l.peekChar() == '=' {

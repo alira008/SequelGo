@@ -20,6 +20,7 @@ var PrecedenceMap = map[lexer.TokenType]Precedence{
 	lexer.TTilde: PrecedenceHighest,
     lexer.TAsterisk: PrecedenceProduct,
     lexer.TDivide: PrecedenceProduct,
+    lexer.TMod: PrecedenceProduct,
     lexer.TPlus: PrecedenceSum,
     lexer.TMinus: PrecedenceSum,
     lexer.TEqual: PrecedenceComparison,

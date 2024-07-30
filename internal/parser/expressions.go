@@ -373,6 +373,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 		if err != nil {
 			return nil, err
 		}
+        fmt.Println("mod test", right.TokenLiteral())
 		return &ast.ExprArithmeticOperator{
 			Left:     left,
 			Operator: operator,
