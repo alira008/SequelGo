@@ -373,6 +373,36 @@ func (e *ExprOrLogicalOperator) SetTrailingComments(comments []Comment) {e.Trail
 func (e *ExprSomeLogicalOperator) SetTrailingComments(comments []Comment) {e.TrailingComments=&comments}
 func (e *ExprAnyLogicalOperator) SetTrailingComments(comments []Comment) {e.TrailingComments=&comments}
 
+func (e *ExprUnaryOperator) GetLeadingComments() *[]Comment {return e.LeadingComments }
+func (e *ExprComparisonOperator) GetLeadingComments() *[]Comment {return e.LeadingComments }
+func (e *ExprArithmeticOperator) GetLeadingComments() *[]Comment {return e.LeadingComments }
+func (e *ExprAndLogicalOperator) GetLeadingComments() *[]Comment {return e.LeadingComments }
+func (e *ExprAllLogicalOperator) GetLeadingComments() *[]Comment {return e.LeadingComments }
+func (e *ExprBetweenLogicalOperator) GetLeadingComments() *[]Comment {return e.LeadingComments }
+func (e *ExprExistsLogicalOperator) GetLeadingComments() *[]Comment {return e.LeadingComments }
+func (e *ExprInSubqueryLogicalOperator) GetLeadingComments() *[]Comment {return e.LeadingComments }
+func (e *ExprInLogicalOperator) GetLeadingComments() *[]Comment {return e.LeadingComments }
+func (e *ExprLikeLogicalOperator) GetLeadingComments() *[]Comment {return e.LeadingComments }
+func (e *ExprNotLogicalOperator) GetLeadingComments() *[]Comment {return e.LeadingComments }
+func (e *ExprOrLogicalOperator) GetLeadingComments() *[]Comment {return e.LeadingComments }
+func (e *ExprSomeLogicalOperator) GetLeadingComments() *[]Comment {return e.LeadingComments }
+func (e *ExprAnyLogicalOperator) GetLeadingComments() *[]Comment {return e.LeadingComments }
+
+func (e *ExprUnaryOperator) GetTrailingComments() *[]Comment {return e.TrailingComments }
+func (e *ExprComparisonOperator) GetTrailingComments() *[]Comment {return e.TrailingComments }
+func (e *ExprArithmeticOperator) GetTrailingComments() *[]Comment {return e.TrailingComments }
+func (e *ExprAndLogicalOperator) GetTrailingComments() *[]Comment {return e.TrailingComments }
+func (e *ExprAllLogicalOperator) GetTrailingComments() *[]Comment {return e.TrailingComments }
+func (e *ExprBetweenLogicalOperator) GetTrailingComments() *[]Comment {return e.TrailingComments }
+func (e *ExprExistsLogicalOperator) GetTrailingComments() *[]Comment {return e.TrailingComments }
+func (e *ExprInSubqueryLogicalOperator) GetTrailingComments() *[]Comment {return e.TrailingComments }
+func (e *ExprInLogicalOperator) GetTrailingComments() *[]Comment {return e.TrailingComments }
+func (e *ExprLikeLogicalOperator) GetTrailingComments() *[]Comment {return e.TrailingComments }
+func (e *ExprNotLogicalOperator) GetTrailingComments() *[]Comment {return e.TrailingComments }
+func (e *ExprOrLogicalOperator) GetTrailingComments() *[]Comment {return e.TrailingComments }
+func (e *ExprSomeLogicalOperator) GetTrailingComments() *[]Comment {return e.TrailingComments }
+func (e *ExprAnyLogicalOperator) GetTrailingComments() *[]Comment {return e.TrailingComments }
+
 type UnaryOperatorType uint8
 type ComparisonOperatorType uint8
 type ArithmeticOperatorType uint8

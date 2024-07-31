@@ -12,8 +12,8 @@ type Node interface {
 	GetSpan() Span
 	SetLeadingComments(comments []Comment)
 	SetTrailingComments(comments []Comment)
-	// GetLeadingComments() []Comment
-	// GetTrailingComments() []Comment
+	GetLeadingComments() *[]Comment
+	GetTrailingComments() *[]Comment
 }
 
 type Position struct {
@@ -45,7 +45,7 @@ type Comment struct {
 	Span
 	LeadingComments  *[]Comment
 	TrailingComments *[]Comment
-	Value string
+	Value            string
 }
 
 func NewSpanFromLexerPosition(Start, End lexer.Position) Span {
@@ -79,10 +79,17 @@ func (c *Comment) SetSpan(span Span) { c.Span = span }
 func (q Query) GetSpan() Span   { return q.Span }
 func (c Comment) GetSpan() Span { return c.Span }
 
-func (q *Query) SetLeadingComments(comments []Comment) { q.LeadingComments = &comments }
-func (q *Query) SetTrailingComments(comments []Comment) { q.TrailingComments = &comments }
+func (q *Query) SetLeadingComments(comments []Comment)   { q.LeadingComments = &comments }
 func (c *Comment) SetLeadingComments(comments []Comment) { c.LeadingComments = &comments }
+
 func (c *Comment) SetTrailingComments(comments []Comment) { c.TrailingComments = &comments }
+func (q *Query) SetTrailingComments(comments []Comment)   { q.TrailingComments = &comments }
+
+func (q *Query) GetLeadingComments() *[]Comment   { return q.LeadingComments }
+func (c *Comment) GetLeadingComments() *[]Comment { return c.LeadingComments }
+
+func (c *Comment) GetTrailingComments() *[]Comment { return c.TrailingComments }
+func (q *Query) GetTrailingComments() *[]Comment   { return q.TrailingComments }
 
 func (q *Query) TokenLiteral() string {
 	str := strings.Builder{}

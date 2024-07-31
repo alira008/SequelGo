@@ -3,7 +3,8 @@ package parser
 import (
 	"SequelGo/internal/ast"
 	"SequelGo/internal/lexer"
-	"fmt"
+
+	// "fmt"
 	"strconv"
 )
 
@@ -136,6 +137,8 @@ func (p *Parser) parseTopArg() (*ast.TopArg, error) {
 	p.nextToken()
 	topArg := ast.TopArg{}
 	topKw := ast.NewKeywordFromToken(p.currentToken)
+	topKw.SetLeadingComments(p.popLeadingComments())
+	topKw.SetTrailingComments(p.popTrailingComments())
 	topArg.TopKeyword = topKw
 	startPosition := p.currentToken.Start
 	p.logger.Debug(p.currentToken)
@@ -148,27 +151,37 @@ func (p *Parser) parseTopArg() (*ast.TopArg, error) {
 		Value: p.currentToken.Value,
 		Span:  ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
 	}
+	expr.SetLeadingComments(p.popLeadingComments())
+	expr.SetTrailingComments(p.popTrailingComments())
 	topArg.Quantity = expr
 
 	if p.peekTokenIs(lexer.TPercent) {
 		p.nextToken()
 		kw := ast.NewKeywordFromToken(p.currentToken)
+		kw.SetLeadingComments(p.popLeadingComments())
+		kw.SetTrailingComments(p.popTrailingComments())
 		topArg.PercentKeyword = &kw
 	}
 
 	if p.peekTokenIs(lexer.TWith) {
 		p.nextToken()
 		withKw := ast.NewKeywordFromToken(p.currentToken)
+		withKw.SetLeadingComments(p.popLeadingComments())
+		withKw.SetTrailingComments(p.popTrailingComments())
 
 		err := p.expectPeek(lexer.TTies)
 		if err != nil {
 			return nil, err
 		}
 		tiesKw := ast.NewKeywordFromToken(p.currentToken)
+		tiesKw.SetLeadingComments(p.popLeadingComments())
+		tiesKw.SetTrailingComments(p.popTrailingComments())
 		topArg.WithTiesKeyword = &[2]ast.Keyword{withKw, tiesKw}
 	}
 
 	topArg.Span = ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End)
+	topArg.SetLeadingComments(p.popLeadingComments())
+	topArg.SetTrailingComments(p.popTrailingComments())
 	return &topArg, nil
 }
 
@@ -178,18 +191,21 @@ func (p *Parser) parseSelectBody() (ast.SelectBody, error) {
 	startPositionSelectBody := p.currentToken.Start
 	stmt.SelectKeyword = ast.NewKeywordFromToken(p.currentToken)
 	if p.peekTokenIs(lexer.TDistinct) {
-        leading := p.popLeadingComments()
+		leading := p.popLeadingComments()
 		p.nextToken()
 		kw := ast.NewKeywordFromToken(p.currentToken)
-        kw.SetLeadingComments(leading)
-        kw.SetTrailingComments(p.popTrailingComments())
+		kw.SetLeadingComments(leading)
+		kw.SetTrailingComments(p.popTrailingComments())
 		stmt.Distinct = &kw
 	}
 
 	// check for optional all keyword
 	if p.peekTokenIs(lexer.TAll) {
+		leading := p.popLeadingComments()
 		p.nextToken()
 		kw := ast.NewKeywordFromToken(p.currentToken)
+		kw.SetLeadingComments(leading)
+		kw.SetTrailingComments(p.popTrailingComments())
 		stmt.AllKeyword = &kw
 	}
 
@@ -279,8 +295,6 @@ func (p *Parser) parseSelectItems() (*ast.SelectItems, error) {
 	p.logger.Debug(p.currentToken)
 	p.logger.Debug(p.peekToken)
 	for {
-		startPosition := p.currentToken.Start
-
 		err := p.expectPeekMany(append([]lexer.TokenType{lexer.TIdentifier,
 			lexer.TNumericLiteral,
 			lexer.TStringLiteral,
@@ -289,8 +303,6 @@ func (p *Parser) parseSelectItems() (*ast.SelectItems, error) {
 			lexer.TLeftParen,
 			lexer.TMinus,
 			lexer.TPlus,
-			// rework checking keywords
-			lexer.TSum,
 			lexer.TQuotedIdentifier}, ast.BuiltinFunctionsTokenType...))
 		if err != nil {
 			return nil, err
@@ -313,43 +325,7 @@ func (p *Parser) parseSelectItems() (*ast.SelectItems, error) {
 			}
 			break
 		}
-		if (p.peekToken.Type == lexer.TAs ||
-			p.peekToken.Type == lexer.TIdentifier ||
-			p.peekToken.Type == lexer.TStringLiteral ||
-			p.peekToken.Type == lexer.TQuotedIdentifier) && !p.peekToken2IsAny(ast.DataTypeTokenTypes) {
-			exprAlias := &ast.ExprWithAlias{Expression: expr}
-
-			if p.peekToken.Type == lexer.TAs {
-				p.nextToken()
-				kw := ast.NewKeywordFromToken(p.currentToken)
-				exprAlias.AsKeyword = &kw
-			}
-
-			// needed in case we just parsed AS keyword
-			err := p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier, lexer.TStringLiteral, lexer.TQuotedIdentifier})
-			if err != nil {
-				return nil, err
-			}
-
-			alias, err := p.parseExpression(PrecedenceLowest)
-			if err != nil {
-				return nil, err
-			}
-
-			switch alias.(type) {
-			case *ast.ExprIdentifier, *ast.ExprStringLiteral, *ast.ExprQuotedIdentifier:
-				break
-			default:
-				err = fmt.Errorf("Expected (Identifier or StringLiteral or QuotedIdentifier) for Alias")
-				return nil, err
-			}
-			exprAlias.Alias = alias
-			exprAlias.Span = ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End)
-			exprAlias.SetTrailingComments(p.popTrailingComments())
-			selectItems.Items = append(selectItems.Items, exprAlias)
-		} else {
-			selectItems.Items = append(selectItems.Items, expr)
-		}
+		selectItems.Items = append(selectItems.Items, expr)
 
 		if p.peekToken.Type != lexer.TComma {
 			break
@@ -674,17 +650,22 @@ func (p *Parser) parseHavingExpression() (*ast.HavingClause, error) {
 func (p *Parser) parseOrderByClause() (*ast.OrderByClause, error) {
 	p.nextToken()
 	orderKeyword := ast.NewKeywordFromToken(p.currentToken)
+    orderKeyword.SetLeadingComments(p.popLeadingComments())
+    orderKeyword.SetTrailingComments(p.popTrailingComments())
 	startPosition := p.currentToken.Start
 	err := p.expectPeek(lexer.TBy)
 	if err != nil {
 		return nil, err
 	}
 	byKeyword := ast.NewKeywordFromToken(p.currentToken)
+    byKeyword.SetLeadingComments(p.popLeadingComments())
+    byKeyword.SetTrailingComments(p.popTrailingComments())
 	p.logger.Debug("parsing order by clause")
 	args, err := p.parseOrderByArgs()
 	if err != nil {
 		return nil, err
 	}
+    
 	orderByClause := &ast.OrderByClause{
 		OrderByKeyword: [2]ast.Keyword{orderKeyword, byKeyword},
 		Expressions:    args,
@@ -702,6 +683,8 @@ func (p *Parser) parseOrderByClause() (*ast.OrderByClause, error) {
 
 	orderByClause.OffsetFetch = offsetFetchClause
 	orderByClause.Span = ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End)
+    orderByClause.SetLeadingComments(p.popLeadingComments())
+    orderByClause.SetTrailingComments(p.popTrailingComments())
 
 	return orderByClause, nil
 }
@@ -728,6 +711,8 @@ func (p *Parser) parseOrderByArgs() ([]ast.OrderByArg, error) {
 		if p.peekTokenIs(lexer.TAsc) {
 			p.nextToken()
 			orderKeyword := ast.NewKeywordFromToken(p.currentToken)
+            orderKeyword.SetLeadingComments(p.popLeadingComments())
+            orderKeyword.SetTrailingComments(p.popTrailingComments())
 			items = append(items, ast.OrderByArg{
 				Column:       expr,
 				Type:         ast.OBAsc,
@@ -737,6 +722,8 @@ func (p *Parser) parseOrderByArgs() ([]ast.OrderByArg, error) {
 		} else if p.peekTokenIs(lexer.TDesc) {
 			p.nextToken()
 			orderKeyword := ast.NewKeywordFromToken(p.currentToken)
+            orderKeyword.SetLeadingComments(p.popLeadingComments())
+            orderKeyword.SetTrailingComments(p.popTrailingComments())
 			items = append(items, ast.OrderByArg{
 				Column:       expr,
 				Type:         ast.OBDesc,

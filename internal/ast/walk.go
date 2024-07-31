@@ -17,21 +17,21 @@ func Walk(v Visitor, node Node) {
 		return
 	}
 
+    // if n.LeadingComments != nil {
+    //     for _, c := range *n.LeadingComments {
+    //        Walk(v, &c) 
+    //     }
+    // }
+    // if node.TrailingComments != nil {
+    //     for _, c := range *n.TrailingComments {
+    //        Walk(v, &c) 
+    //     }
+    // }
 	switch n := node.(type) {
 	case *Comment:
 		break
 	case *Query:
-        if n.LeadingComments != nil {
-            for _, c := range *n.LeadingComments {
-               Walk(v, &c) 
-            }
-        }
 		walkList(v, n.Statements)
-        if n.TrailingComments != nil {
-            for _, c := range *n.TrailingComments {
-               Walk(v, &c) 
-            }
-        }
 		break
 	case *SelectStatement:
 		if n.WithKeyword != nil {
@@ -77,53 +77,23 @@ func Walk(v Visitor, node Node) {
 	case *ExprLocalVariable:
 		break
 	case *ExprIdentifier:
-        if n.LeadingComments != nil {
-            for _, c := range *n.LeadingComments {
-               Walk(v, &c) 
-            }
-        }
-        if n.TrailingComments != nil {
-            for _, c := range *n.TrailingComments {
-               Walk(v, &c) 
-            }
-        }
 		break
 	case *ExprQuotedIdentifier:
 		break
 	case *ExprStar:
 		break
 	case *ExprWithAlias:
-        if n.LeadingComments != nil {
-            for _, c := range *n.LeadingComments {
-               Walk(v, &c) 
-            }
-        }
 		Walk(v, n.Expression)
 		if n.AsKeyword != nil {
 			Walk(v, n.AsKeyword)
 		}
 		Walk(v, n.Alias)
-        if n.TrailingComments != nil {
-            for _, c := range *n.TrailingComments {
-               Walk(v, &c) 
-            }
-        }
 		break
 	case *ExprCompoundIdentifier:
 		walkList(v, n.Identifiers)
 		break
 	case *SelectItems:
-        if n.LeadingComments != nil {
-            for _, c := range *n.LeadingComments {
-               Walk(v, &c) 
-            }
-        }
 		walkList(v, n.Items)
-        if n.TrailingComments != nil {
-            for _, c := range *n.TrailingComments {
-               Walk(v, &c) 
-            }
-        }
 		break
 	case *WhereClause:
 		Walk(v, &n.WhereKeyword)

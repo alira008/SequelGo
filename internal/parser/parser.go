@@ -182,10 +182,6 @@ func (p *Parser) isLeadingComment(current, comment lexer.Token) bool {
 	return comment.Start.Line < current.Start.Line
 }
 
-func (p *Parser) isTrailingComment(current, comment lexer.Token) bool {
-	return comment.Start.Line == current.Start.Line && current.Start.Col < comment.Start.Col
-}
-
 func (p *Parser) popLeadingComments() []ast.Comment {
 	leading := p.leadingComments
 	p.leadingComments = nil

@@ -117,6 +117,12 @@ func (ns *NumericSize) SetLeadingComments(comments []Comment) { ns.LeadingCommen
 func (dt *DataType) SetTrailingComments(comments []Comment)    { dt.TrailingComments = &comments }
 func (ns *NumericSize) SetTrailingComments(comments []Comment) { ns.TrailingComments = &comments }
 
+func (dt *DataType) GetLeadingComments() *[]Comment    { return dt.LeadingComments }
+func (ns *NumericSize) GetLeadingComments() *[]Comment { return ns.LeadingComments }
+
+func (dt *DataType) GetTrailingComments() *[]Comment    { return dt.TrailingComments }
+func (ns *NumericSize) GetTrailingComments() *[]Comment { return ns.TrailingComments }
+
 type DataTypeKind uint8
 
 const (

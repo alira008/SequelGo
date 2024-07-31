@@ -111,3 +111,9 @@ func (ss *SelectStatement) SetTrailingComments(comments []Comment) {ss.TrailingC
 
 func (sb *SelectBody) SetLeadingComments(comments []Comment) {sb.LeadingComments = &comments}
 func (ss *SelectStatement) SetLeadingComments(comments []Comment) {ss.LeadingComments = &comments}
+
+func (sb *SelectBody) GetTrailingComments() *[]Comment {return sb.TrailingComments }
+func (ss *SelectStatement) GetTrailingComments() *[]Comment {return ss.TrailingComments }
+
+func (sb *SelectBody) GetLeadingComments() *[]Comment {return sb.LeadingComments }
+func (ss *SelectStatement) GetLeadingComments() *[]Comment {return ss.LeadingComments }
