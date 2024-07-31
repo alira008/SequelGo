@@ -29,6 +29,8 @@ type Parser struct {
 	errors           []string
 	trailingComments []ast.Comment
 	leadingComments  []ast.Comment
+	afterComments    []ast.Comment
+	Comments    []ast.Comment
 }
 
 func NewParser(logger *zap.SugaredLogger, lexer *lexer.Lexer) *Parser {
@@ -49,9 +51,12 @@ func (p *Parser) nextToken() {
 	for p.peekToken2Is(lexer.TCommentLine) {
 		if p.isLeadingComment(p.currentToken, p.peekToken2) {
 			p.leadingComments = append(p.leadingComments, ast.NewComment(p.peekToken2))
-		} else {
+		} else if p.isTrailingComment(p.currentToken, p.peekToken2) {
 			p.trailingComments = append(p.trailingComments, ast.NewComment(p.peekToken2))
+		} else {
+			p.afterComments = append(p.afterComments, ast.NewComment(p.peekToken2))
 		}
+        p.Comments = append(p.Comments, ast.NewComment(p.peekToken2))
 		p.peekToken2 = p.l.NextToken()
 	}
 	p.errorToken = ETNone
@@ -182,9 +187,16 @@ func (p *Parser) isLeadingComment(current, comment lexer.Token) bool {
 	return comment.Start.Line < current.Start.Line
 }
 
+func (p *Parser) isTrailingComment(current, comment lexer.Token) bool {
+	return comment.Start.Line == current.Start.Line && comment.Start.Col > current.Start.Col
+}
+
 func (p *Parser) popLeadingComments() []ast.Comment {
 	leading := p.leadingComments
-	p.leadingComments = nil
+	if leading != nil {
+		p.leadingComments = p.afterComments
+		p.afterComments = nil
+	}
 	return leading
 }
 
@@ -226,6 +238,5 @@ func (p *Parser) Parse() ast.Query {
 
 		p.nextToken()
 	}
-	// fmt.Printf("num of comments: %d\n", len(p.comments))
 	return query
 }

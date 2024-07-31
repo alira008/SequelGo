@@ -8,15 +8,15 @@ import (
 
 func (p *Parser) parseExpression(precedence Precedence) (ast.Expression, error) {
 	startPosition := p.currentToken.Start
-	// leading := p.popLeadingComments()
-	// trailing := p.popTrailingComments()
+    leading := p.popLeadingComments()
 	leftExpr, err := p.parsePrefixExpression()
 	endPosition := p.currentToken.End
 	if err != nil {
 		return nil, err
 	}
-	// leftExpr.SetLeadingComments(leading)
-	// leftExpr.SetTrailingComments(trailing)
+	trailing := p.popTrailingComments()
+	leftExpr.SetLeadingComments(leading)
+	leftExpr.SetTrailingComments(trailing)
 	leftExpr.SetSpan(ast.NewSpanFromLexerPosition(startPosition, endPosition))
 
 	// parse infix sql expressions using stacks to keep track of precedence
@@ -24,15 +24,15 @@ func (p *Parser) parseExpression(precedence Precedence) (ast.Expression, error) 
 		p.nextToken()
 
 		startPosition = p.currentToken.Start
-		// leading := p.popLeadingComments()
-		// trailing := p.popTrailingComments()
+		leading := p.popLeadingComments()
 		leftExpr, err = p.parseInfixExpression(leftExpr)
 		if err != nil {
 			return nil, err
 		}
 		endPosition = p.currentToken.End
-		// leftExpr.SetLeadingComments(leading)
-		// leftExpr.SetTrailingComments(trailing)
+		trailing := p.popTrailingComments()
+		leftExpr.SetLeadingComments(leading)
+		leftExpr.SetTrailingComments(trailing)
 		leftExpr.SetSpan(ast.NewSpanFromLexerPosition(startPosition, endPosition))
 	}
 
@@ -114,6 +114,8 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 			if p.peekToken.Type == lexer.TAs {
 				p.nextToken()
 				kw := ast.NewKeywordFromToken(p.currentToken)
+				kw.SetLeadingComments(p.popLeadingComments())
+				kw.SetTrailingComments(p.popTrailingComments())
 				expr.AsKeyword = &kw
 			}
 
@@ -122,19 +124,38 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 			if err != nil {
 				return nil, err
 			}
-
-			alias, err := p.parseExpression(PrecedenceLowest)
-			if err != nil {
-				return nil, err
+			var alias ast.Expression
+			if p.currentTokenIs(lexer.TIdentifier) {
+				alias = &ast.ExprIdentifier{
+					Value: p.currentToken.Value,
+					Span:  ast.NewSpanFromLexerPosition(p.currentToken.Start, p.currentToken.End),
+				}
+			}else if p.currentTokenIs(lexer.TStringLiteral) {
+				alias = &ast.ExprStringLiteral{
+					Value: p.currentToken.Value,
+					Span:  ast.NewSpanFromLexerPosition(p.currentToken.Start, p.currentToken.End),
+				}
+			}else if p.currentTokenIs(lexer.TQuotedIdentifier) {
+				alias = &ast.ExprQuotedIdentifier{
+					Value: p.currentToken.Value,
+					Span:  ast.NewSpanFromLexerPosition(p.currentToken.Start, p.currentToken.End),
+				}
 			}
+            alias.SetLeadingComments(p.popLeadingComments())
+            alias.SetTrailingComments(p.popTrailingComments())
 
-			switch alias.(type) {
-			case *ast.ExprIdentifier, *ast.ExprStringLiteral, *ast.ExprQuotedIdentifier:
-				break
-			default:
-				err = p.currentErrorString("Expected (Identifier or StringLiteral or QuotedIdentifier) for Alias")
-				return nil, err
-			}
+			// alias, err := p.parseExpression(PrecedenceLowest)
+			// if err != nil {
+			// 	return nil, err
+			// }
+
+			// switch alias.(type) {
+			// case *ast.ExprIdentifier, *ast.ExprStringLiteral, *ast.ExprQuotedIdentifier:
+			// 	break
+			// default:
+			// 	err = p.currentErrorString("Expected (Identifier or StringLiteral or QuotedIdentifier) for Alias")
+			// 	return nil, err
+			// }
 			expr.Alias = alias
 			newExpr = expr
 		}

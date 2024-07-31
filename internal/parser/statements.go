@@ -180,21 +180,19 @@ func (p *Parser) parseTopArg() (*ast.TopArg, error) {
 	}
 
 	topArg.Span = ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End)
-	topArg.SetLeadingComments(p.popLeadingComments())
-	topArg.SetTrailingComments(p.popTrailingComments())
 	return &topArg, nil
 }
 
 func (p *Parser) parseSelectBody() (ast.SelectBody, error) {
 	stmt := ast.SelectBody{}
-	stmt.SetLeadingComments(p.popLeadingComments())
 	startPositionSelectBody := p.currentToken.Start
 	stmt.SelectKeyword = ast.NewKeywordFromToken(p.currentToken)
+	stmt.SelectKeyword.SetLeadingComments(p.popLeadingComments())
+	stmt.SelectKeyword.SetTrailingComments(p.popTrailingComments())
 	if p.peekTokenIs(lexer.TDistinct) {
-		leading := p.popLeadingComments()
 		p.nextToken()
 		kw := ast.NewKeywordFromToken(p.currentToken)
-		kw.SetLeadingComments(leading)
+		kw.SetLeadingComments(p.popLeadingComments())
 		kw.SetTrailingComments(p.popTrailingComments())
 		stmt.Distinct = &kw
 	}
@@ -650,22 +648,22 @@ func (p *Parser) parseHavingExpression() (*ast.HavingClause, error) {
 func (p *Parser) parseOrderByClause() (*ast.OrderByClause, error) {
 	p.nextToken()
 	orderKeyword := ast.NewKeywordFromToken(p.currentToken)
-    orderKeyword.SetLeadingComments(p.popLeadingComments())
-    orderKeyword.SetTrailingComments(p.popTrailingComments())
+	orderKeyword.SetLeadingComments(p.popLeadingComments())
+	orderKeyword.SetTrailingComments(p.popTrailingComments())
 	startPosition := p.currentToken.Start
 	err := p.expectPeek(lexer.TBy)
 	if err != nil {
 		return nil, err
 	}
 	byKeyword := ast.NewKeywordFromToken(p.currentToken)
-    byKeyword.SetLeadingComments(p.popLeadingComments())
-    byKeyword.SetTrailingComments(p.popTrailingComments())
+	byKeyword.SetLeadingComments(p.popLeadingComments())
+	byKeyword.SetTrailingComments(p.popTrailingComments())
 	p.logger.Debug("parsing order by clause")
 	args, err := p.parseOrderByArgs()
 	if err != nil {
 		return nil, err
 	}
-    
+
 	orderByClause := &ast.OrderByClause{
 		OrderByKeyword: [2]ast.Keyword{orderKeyword, byKeyword},
 		Expressions:    args,
@@ -683,8 +681,8 @@ func (p *Parser) parseOrderByClause() (*ast.OrderByClause, error) {
 
 	orderByClause.OffsetFetch = offsetFetchClause
 	orderByClause.Span = ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End)
-    orderByClause.SetLeadingComments(p.popLeadingComments())
-    orderByClause.SetTrailingComments(p.popTrailingComments())
+	orderByClause.SetLeadingComments(p.popLeadingComments())
+	orderByClause.SetTrailingComments(p.popTrailingComments())
 
 	return orderByClause, nil
 }
@@ -711,8 +709,8 @@ func (p *Parser) parseOrderByArgs() ([]ast.OrderByArg, error) {
 		if p.peekTokenIs(lexer.TAsc) {
 			p.nextToken()
 			orderKeyword := ast.NewKeywordFromToken(p.currentToken)
-            orderKeyword.SetLeadingComments(p.popLeadingComments())
-            orderKeyword.SetTrailingComments(p.popTrailingComments())
+			orderKeyword.SetLeadingComments(p.popLeadingComments())
+			orderKeyword.SetTrailingComments(p.popTrailingComments())
 			items = append(items, ast.OrderByArg{
 				Column:       expr,
 				Type:         ast.OBAsc,
@@ -722,8 +720,8 @@ func (p *Parser) parseOrderByArgs() ([]ast.OrderByArg, error) {
 		} else if p.peekTokenIs(lexer.TDesc) {
 			p.nextToken()
 			orderKeyword := ast.NewKeywordFromToken(p.currentToken)
-            orderKeyword.SetLeadingComments(p.popLeadingComments())
-            orderKeyword.SetTrailingComments(p.popTrailingComments())
+			orderKeyword.SetLeadingComments(p.popLeadingComments())
+			orderKeyword.SetTrailingComments(p.popTrailingComments())
 			items = append(items, ast.OrderByArg{
 				Column:       expr,
 				Type:         ast.OBDesc,
@@ -752,6 +750,7 @@ func (p *Parser) parseOffsetFetchClause() (*ast.OffsetFetchClause, error) {
 	p.logger.Debug("parsing offset fetch clause")
 	startPosition := p.currentToken.Start
 	p.nextToken()
+	leading := p.popLeadingComments()
 
 	offset, err := p.parseOffset()
 	if err != nil {
@@ -761,8 +760,10 @@ func (p *Parser) parseOffsetFetchClause() (*ast.OffsetFetchClause, error) {
 		Offset: offset,
 		Span:   ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
 	}
+	offsetFetchClause.SetLeadingComments(leading)
 
 	if !p.peekTokenIs(lexer.TFetch) {
+		offsetFetchClause.SetTrailingComments(p.popTrailingComments())
 		return &offsetFetchClause, nil
 	}
 
@@ -774,6 +775,7 @@ func (p *Parser) parseOffsetFetchClause() (*ast.OffsetFetchClause, error) {
 
 	offsetFetchClause.Fetch = &fetch
 	offsetFetchClause.Span = ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End)
+	offsetFetchClause.SetTrailingComments(p.popTrailingComments())
 
 	return &offsetFetchClause, nil
 }
@@ -783,6 +785,8 @@ func (p *Parser) parseOffset() (ast.OffsetArg, error) {
 	offsetKeyword := ast.NewKeywordFromToken(p.currentToken)
 	p.nextToken()
 	offsetArg := ast.OffsetArg{OffsetKeyword: offsetKeyword}
+	offsetArg.SetLeadingComments(p.popLeadingComments())
+	offsetArg.SetTrailingComments(p.popTrailingComments())
 	offset, err := p.parseExpression(PrecedenceLowest)
 	if err != nil {
 		return offsetArg, err
@@ -811,11 +815,15 @@ func (p *Parser) parseOffset() (ast.OffsetArg, error) {
 func (p *Parser) parseFetch() (ast.FetchArg, error) {
 	startPosition := p.currentToken.Start
 	fetchArg := ast.FetchArg{FetchKeyword: ast.NewKeywordFromToken(p.currentToken)}
+	fetchArg.SetLeadingComments(p.popLeadingComments())
+	fetchArg.SetTrailingComments(p.popTrailingComments())
 	if err := p.expectPeekMany([]lexer.TokenType{lexer.TFirst, lexer.TNext}); err != nil {
 		return fetchArg, err
 	}
 
 	fetchArg.NextOrFirstKeyword = ast.NewKeywordFromToken(p.currentToken)
+	fetchArg.NextOrFirstKeyword.SetLeadingComments(p.popLeadingComments())
+	fetchArg.NextOrFirstKeyword.SetTrailingComments(p.popTrailingComments())
 	switch p.currentToken.Type {
 	case lexer.TFirst:
 		fetchArg.NextOrFirst = ast.NFFirst
@@ -838,6 +846,8 @@ func (p *Parser) parseFetch() (ast.FetchArg, error) {
 	}
 
 	fetchArg.RowOrRowsKeyword = ast.NewKeywordFromToken(p.currentToken)
+	fetchArg.RowOrRowsKeyword.SetLeadingComments(p.popLeadingComments())
+	fetchArg.RowOrRowsKeyword.SetTrailingComments(p.popTrailingComments())
 	switch p.currentToken.Type {
 	case lexer.TRow:
 		fetchArg.RowOrRows = ast.RRRow
@@ -851,6 +861,8 @@ func (p *Parser) parseFetch() (ast.FetchArg, error) {
 		return fetchArg, err
 	}
 	fetchArg.OnlyKeyword = ast.NewKeywordFromToken(p.currentToken)
+	fetchArg.OnlyKeyword.SetLeadingComments(p.popLeadingComments())
+	fetchArg.OnlyKeyword.SetTrailingComments(p.popTrailingComments())
 	fetchArg.Span = ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End)
 
 	return fetchArg, nil
@@ -860,6 +872,8 @@ func (p *Parser) parseOverClause() (*ast.FunctionOverClause, error) {
 	p.nextToken()
 	startPosition := p.currentToken.Start
 	overKeyword := ast.NewKeywordFromToken(p.currentToken)
+	overKeyword.SetLeadingComments(p.popLeadingComments())
+	overKeyword.SetTrailingComments(p.popTrailingComments())
 	if err := p.expectPeek(lexer.TLeftParen); err != nil {
 		return nil, err
 	}
@@ -869,31 +883,39 @@ func (p *Parser) parseOverClause() (*ast.FunctionOverClause, error) {
 	if p.peekTokenIs(lexer.TPartition) {
 		p.nextToken()
 		partitionKeyword := ast.NewKeywordFromToken(p.currentToken)
+		partitionKeyword.SetLeadingComments(p.popLeadingComments())
+		partitionKeyword.SetTrailingComments(p.popTrailingComments())
 		if err := p.expectPeek(lexer.TBy); err != nil {
 			return nil, err
 		}
-		pbyKeyword := ast.NewKeywordFromToken(p.currentToken)
+		byKeyword := ast.NewKeywordFromToken(p.currentToken)
+		byKeyword.SetLeadingComments(p.popLeadingComments())
+		byKeyword.SetTrailingComments(p.popTrailingComments())
 		expressions, err := p.parsePartitionClause()
 		if err != nil {
 			return nil, err
 		}
 		functionOverClause.PartitionByClause = expressions
-		functionOverClause.PartitionByKeyword = &[2]ast.Keyword{partitionKeyword, pbyKeyword}
+		functionOverClause.PartitionByKeyword = &[2]ast.Keyword{partitionKeyword, byKeyword}
 	}
 
 	if p.peekTokenIs(lexer.TOrder) {
 		p.nextToken()
 		orderKeyword := ast.NewKeywordFromToken(p.currentToken)
+		orderKeyword.SetLeadingComments(p.popLeadingComments())
+		orderKeyword.SetTrailingComments(p.popTrailingComments())
 		if err := p.expectPeek(lexer.TBy); err != nil {
 			return nil, err
 		}
-		obyKeyword := ast.NewKeywordFromToken(p.currentToken)
+		byKeyword := ast.NewKeywordFromToken(p.currentToken)
+		byKeyword.SetLeadingComments(p.popLeadingComments())
+		byKeyword.SetTrailingComments(p.popTrailingComments())
 		args, err := p.parseOrderByArgs()
 		if err != nil {
 			return nil, err
 		}
 		functionOverClause.OrderByClause = args
-		functionOverClause.OrderByKeyword = &[2]ast.Keyword{orderKeyword, obyKeyword}
+		functionOverClause.OrderByKeyword = &[2]ast.Keyword{orderKeyword, byKeyword}
 	}
 
 	if p.peekTokenIs(lexer.TRows) || p.peekTokenIs(lexer.TRange) {
@@ -952,6 +974,8 @@ func (p *Parser) parseWindowFrameClause() (*ast.WindowFrameClause, error) {
 	}
 	p.nextToken()
 	rowsOrRangeKeyword := ast.NewKeywordFromToken(p.currentToken)
+	rowsOrRangeKeyword.SetLeadingComments(p.popLeadingComments())
+	rowsOrRangeKeyword.SetTrailingComments(p.popTrailingComments())
 	var betweenKeyword *ast.Keyword
 
 	var windowFrameStart ast.WindowFrameBound
@@ -965,18 +989,26 @@ func (p *Parser) parseWindowFrameClause() (*ast.WindowFrameClause, error) {
 		p.nextToken()
 		betweenKeywordTemp := ast.NewKeywordFromToken(p.currentToken)
 		betweenKeyword = &betweenKeywordTemp
+		betweenKeyword.SetLeadingComments(p.popLeadingComments())
+		betweenKeyword.SetTrailingComments(p.popTrailingComments())
 	}
 	p.logger.Debug("p.currentToken.Value: ", p.currentToken.Value)
 	p.logger.Debug("p.peekToken.Value: ", p.peekToken.Value)
 	var boundKeywordStart []ast.Keyword
 	if p.peekTokenIs(lexer.TUnbounded) {
 		p.nextToken()
-		boundKeywordStart = append(boundKeywordStart, ast.NewKeywordFromToken(p.currentToken))
+        boundKeyword := ast.NewKeywordFromToken(p.currentToken)
+		boundKeyword.SetLeadingComments(p.popLeadingComments())
+		boundKeyword.SetTrailingComments(p.popTrailingComments())
+		boundKeywordStart = append(boundKeywordStart, boundKeyword)
 
 		if err := p.expectPeek(lexer.TPreceding); err != nil {
 			return nil, err
 		}
-		boundKeywordStart = append(boundKeywordStart, ast.NewKeywordFromToken(p.currentToken))
+        boundKeyword2 := ast.NewKeywordFromToken(p.currentToken)
+		boundKeyword2.SetLeadingComments(p.popLeadingComments())
+		boundKeyword2.SetTrailingComments(p.popTrailingComments())
+		boundKeywordStart = append(boundKeywordStart, boundKeyword2)
 		windowFrameStart = ast.WindowFrameBound{
 			BoundKeyword: boundKeywordStart,
 			Type:         ast.WFBTUnboundedPreceding,
@@ -984,11 +1016,17 @@ func (p *Parser) parseWindowFrameClause() (*ast.WindowFrameClause, error) {
 		}
 	} else if p.peekTokenIs(lexer.TCurrent) {
 		p.nextToken()
-		boundKeywordStart = append(boundKeywordStart, ast.NewKeywordFromToken(p.currentToken))
+        boundKeyword := ast.NewKeywordFromToken(p.currentToken)
+		boundKeyword.SetLeadingComments(p.popLeadingComments())
+		boundKeyword.SetTrailingComments(p.popTrailingComments())
+		boundKeywordStart = append(boundKeywordStart, boundKeyword)
 		if err := p.expectPeek(lexer.TRow); err != nil {
 			return nil, err
 		}
-		boundKeywordStart = append(boundKeywordStart, ast.NewKeywordFromToken(p.currentToken))
+        boundKeyword2 := ast.NewKeywordFromToken(p.currentToken)
+		boundKeyword2.SetLeadingComments(p.popLeadingComments())
+		boundKeyword2.SetTrailingComments(p.popTrailingComments())
+		boundKeywordStart = append(boundKeywordStart, boundKeyword2)
 		windowFrameStart = ast.WindowFrameBound{
 			BoundKeyword: boundKeywordStart,
 			Type:         ast.WFBTCurrentRow,
@@ -1004,7 +1042,10 @@ func (p *Parser) parseWindowFrameClause() (*ast.WindowFrameClause, error) {
 		if err := p.expectPeek(lexer.TPreceding); err != nil {
 			return nil, err
 		}
-		boundKeywordStart = append(boundKeywordStart, ast.NewKeywordFromToken(p.currentToken))
+        boundKeyword := ast.NewKeywordFromToken(p.currentToken)
+		boundKeyword.SetLeadingComments(p.popLeadingComments())
+		boundKeyword.SetTrailingComments(p.popTrailingComments())
+		boundKeywordStart = append(boundKeywordStart, boundKeyword)
 		windowFrameStart = ast.WindowFrameBound{
 			BoundKeyword: boundKeywordStart,
 			Type:         ast.WFBTPreceding,
@@ -1034,11 +1075,17 @@ func (p *Parser) parseWindowFrameClause() (*ast.WindowFrameClause, error) {
 	var boundKeywordEnd []ast.Keyword
 	if p.peekTokenIs(lexer.TUnbounded) {
 		p.nextToken()
-		boundKeywordEnd = append(boundKeywordEnd, ast.NewKeywordFromToken(p.currentToken))
+        boundKeyword := ast.NewKeywordFromToken(p.currentToken)
+		boundKeyword.SetLeadingComments(p.popLeadingComments())
+		boundKeyword.SetTrailingComments(p.popTrailingComments())
+		boundKeywordEnd = append(boundKeywordEnd, boundKeyword)
 		if err := p.expectPeek(lexer.TFollowing); err != nil {
 			return nil, err
 		}
-		boundKeywordEnd = append(boundKeywordEnd, ast.NewKeywordFromToken(p.currentToken))
+        boundKeyword2 := ast.NewKeywordFromToken(p.currentToken)
+		boundKeyword2.SetLeadingComments(p.popLeadingComments())
+		boundKeyword2.SetTrailingComments(p.popTrailingComments())
+		boundKeywordEnd = append(boundKeywordEnd, boundKeyword2)
 		windowFrameEnd = ast.WindowFrameBound{
 			Type:         ast.WFBTUnboundedFollowing,
 			BoundKeyword: boundKeywordEnd,
@@ -1046,11 +1093,17 @@ func (p *Parser) parseWindowFrameClause() (*ast.WindowFrameClause, error) {
 		}
 	} else if p.peekTokenIs(lexer.TCurrent) {
 		p.nextToken()
-		boundKeywordEnd = append(boundKeywordEnd, ast.NewKeywordFromToken(p.currentToken))
+        boundKeyword := ast.NewKeywordFromToken(p.currentToken)
+		boundKeyword.SetLeadingComments(p.popLeadingComments())
+		boundKeyword.SetTrailingComments(p.popTrailingComments())
+		boundKeywordEnd = append(boundKeywordEnd, boundKeyword)
 		if err := p.expectPeek(lexer.TRow); err != nil {
 			return nil, err
 		}
-		boundKeywordEnd = append(boundKeywordEnd, ast.NewKeywordFromToken(p.currentToken))
+        boundKeyword2 := ast.NewKeywordFromToken(p.currentToken)
+		boundKeyword2.SetLeadingComments(p.popLeadingComments())
+		boundKeyword2.SetTrailingComments(p.popTrailingComments())
+		boundKeywordEnd = append(boundKeywordEnd, boundKeyword2)
 		windowFrameEnd = ast.WindowFrameBound{
 			BoundKeyword: boundKeywordEnd,
 			Type:         ast.WFBTCurrentRow,
@@ -1065,7 +1118,10 @@ func (p *Parser) parseWindowFrameClause() (*ast.WindowFrameClause, error) {
 		if err := p.expectPeek(lexer.TFollowing); err != nil {
 			return nil, err
 		}
-		boundKeywordEnd = append(boundKeywordEnd, ast.NewKeywordFromToken(p.currentToken))
+        boundKeyword := ast.NewKeywordFromToken(p.currentToken)
+		boundKeyword.SetLeadingComments(p.popLeadingComments())
+		boundKeyword.SetTrailingComments(p.popTrailingComments())
+		boundKeywordEnd = append(boundKeywordEnd, boundKeyword)
 		windowFrameEnd = ast.WindowFrameBound{
 			Type:         ast.WFBTFollowing,
 			BoundKeyword: boundKeywordEnd,
