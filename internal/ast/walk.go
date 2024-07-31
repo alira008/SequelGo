@@ -17,16 +17,6 @@ func Walk(v Visitor, node Node) {
 		return
 	}
 
-    // if n.LeadingComments != nil {
-    //     for _, c := range *n.LeadingComments {
-    //        Walk(v, &c) 
-    //     }
-    // }
-    // if node.TrailingComments != nil {
-    //     for _, c := range *n.TrailingComments {
-    //        Walk(v, &c) 
-    //     }
-    // }
 	switch n := node.(type) {
 	case *Comment:
 		break

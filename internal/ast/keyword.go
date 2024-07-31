@@ -7,9 +7,9 @@ import (
 
 type Keyword struct {
 	Span
-    LeadingComments *[]Comment
-    TrailingComments *[]Comment
-	Type KeywordType
+	LeadingComments  *[]Comment
+	TrailingComments *[]Comment
+	Type             KeywordType
 }
 
 func NewKeywordFromToken(token lexer.Token) Keyword {
@@ -23,14 +23,14 @@ func NewKeywordFromToken(token lexer.Token) Keyword {
 	}
 }
 
-func (k Keyword) expressionNode()      {}
-func (k *Keyword) SetSpan(span Span)   { k.Span = span }
-func (k Keyword) GetSpan() Span        { return k.Span }
-func (k *Keyword) SetLeadingComments(comments []Comment) {k.LeadingComments=&comments}
-func (k *Keyword) SetTrailingComments(comments []Comment) {k.TrailingComments=&comments}
-func (k *Keyword) GetLeadingComments() *[]Comment {return k.LeadingComments }
-func (k *Keyword) GetTrailingComments() *[]Comment {return k.TrailingComments }
-func (k Keyword) TokenLiteral() string { return k.Type.String() }
+func (k Keyword) expressionNode()                         {}
+func (k *Keyword) SetSpan(span Span)                      { k.Span = span }
+func (k Keyword) GetSpan() Span                           { return k.Span }
+func (k *Keyword) SetLeadingComments(comments []Comment)  { k.LeadingComments = &comments }
+func (k *Keyword) SetTrailingComments(comments []Comment) { k.TrailingComments = &comments }
+func (k *Keyword) GetLeadingComments() *[]Comment         { return k.LeadingComments }
+func (k *Keyword) GetTrailingComments() *[]Comment        { return k.TrailingComments }
+func (k Keyword) TokenLiteral() string                    { return k.Type.String() }
 
 type KeywordType uint8
 

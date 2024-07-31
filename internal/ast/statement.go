@@ -14,27 +14,27 @@ type DeleteStatement struct{}
 
 type SelectStatement struct {
 	Span
-    LeadingComments *[]Comment
-    TrailingComments *[]Comment
-	WithKeyword *Keyword
-	CTE         *[]CommonTableExpression
-	SelectBody  *SelectBody
+	LeadingComments  *[]Comment
+	TrailingComments *[]Comment
+	WithKeyword      *Keyword
+	CTE              *[]CommonTableExpression
+	SelectBody       *SelectBody
 }
 
 type SelectBody struct {
 	Span
-    LeadingComments *[]Comment
-    TrailingComments *[]Comment
-	SelectKeyword Keyword
-	Distinct      *Keyword
-	AllKeyword    *Keyword
-	Top           *TopArg
-	SelectItems   SelectItems
-	Table         *TableArg
-	WhereClause   *WhereClause
-	HavingClause  *HavingClause
-	GroupByClause *GroupByClause
-	OrderByClause *OrderByClause
+	LeadingComments  *[]Comment
+	TrailingComments *[]Comment
+	SelectKeyword    Keyword
+	Distinct         *Keyword
+	AllKeyword       *Keyword
+	Top              *TopArg
+	SelectItems      SelectItems
+	Table            *TableArg
+	WhereClause      *WhereClause
+	HavingClause     *HavingClause
+	GroupByClause    *GroupByClause
+	OrderByClause    *OrderByClause
 }
 
 func (ds DeclareStatement) statementNode() {}
@@ -101,19 +101,19 @@ func (sb SelectBody) TokenLiteral() string {
 }
 
 func (ss *SelectStatement) GetSpan() Span { return ss.Span }
-func (sb *SelectBody) GetSpan() Span          { return sb.Span }
+func (sb *SelectBody) GetSpan() Span      { return sb.Span }
 
-func (sb *SelectBody) SetSpan(span Span)  { sb.Span = span }
+func (sb *SelectBody) SetSpan(span Span)      { sb.Span = span }
 func (ss *SelectStatement) SetSpan(span Span) { ss.Span = span }
 
-func (sb *SelectBody) SetTrailingComments(comments []Comment) {sb.TrailingComments = &comments}
-func (ss *SelectStatement) SetTrailingComments(comments []Comment) {ss.TrailingComments = &comments}
+func (sb *SelectBody) SetTrailingComments(comments []Comment)      { sb.TrailingComments = &comments }
+func (ss *SelectStatement) SetTrailingComments(comments []Comment) { ss.TrailingComments = &comments }
 
-func (sb *SelectBody) SetLeadingComments(comments []Comment) {sb.LeadingComments = &comments}
-func (ss *SelectStatement) SetLeadingComments(comments []Comment) {ss.LeadingComments = &comments}
+func (sb *SelectBody) SetLeadingComments(comments []Comment)      { sb.LeadingComments = &comments }
+func (ss *SelectStatement) SetLeadingComments(comments []Comment) { ss.LeadingComments = &comments }
 
-func (sb *SelectBody) GetTrailingComments() *[]Comment {return sb.TrailingComments }
-func (ss *SelectStatement) GetTrailingComments() *[]Comment {return ss.TrailingComments }
+func (sb *SelectBody) GetTrailingComments() *[]Comment      { return sb.TrailingComments }
+func (ss *SelectStatement) GetTrailingComments() *[]Comment { return ss.TrailingComments }
 
-func (sb *SelectBody) GetLeadingComments() *[]Comment {return sb.LeadingComments }
-func (ss *SelectStatement) GetLeadingComments() *[]Comment {return ss.LeadingComments }
+func (sb *SelectBody) GetLeadingComments() *[]Comment      { return sb.LeadingComments }
+func (ss *SelectStatement) GetLeadingComments() *[]Comment { return ss.LeadingComments }
