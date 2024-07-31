@@ -28,35 +28,49 @@ var BuiltinFunctionsTokenType = []lexer.TokenType{
 
 type ExprStringLiteral struct {
 	Span
+    LeadingComments *[]Comment
+    TrailingComments *[]Comment
 	Value string
 }
 
 type ExprNumberLiteral struct {
 	Span
+    LeadingComments *[]Comment
+    TrailingComments *[]Comment
 	Value string
 }
 
 type ExprLocalVariable struct {
 	Span
+    LeadingComments *[]Comment
+    TrailingComments *[]Comment
 	Value string
 }
 
 type ExprIdentifier struct {
 	Span
+    LeadingComments *[]Comment
+    TrailingComments *[]Comment
 	Value string
 }
 
 type ExprQuotedIdentifier struct {
 	Span
+    LeadingComments *[]Comment
+    TrailingComments *[]Comment
 	Value string
 }
 
 type ExprStar struct {
+    LeadingComments *[]Comment
+    TrailingComments *[]Comment
 	Span
 }
 
 type ExprWithAlias struct {
 	Span
+    LeadingComments *[]Comment
+    TrailingComments *[]Comment
 	Expression Expression
 	AsKeyword  *Keyword
 	Alias      Expression
@@ -64,38 +78,52 @@ type ExprWithAlias struct {
 
 type ExprCompoundIdentifier struct {
 	Span
+    LeadingComments *[]Comment
+    TrailingComments *[]Comment
 	Identifiers []Expression
 }
 
 type SelectItems struct {
 	Span
+    LeadingComments *[]Comment
+    TrailingComments *[]Comment
 	Items []Expression
 }
 
 type WhereClause struct {
 	Span
+    LeadingComments *[]Comment
+    TrailingComments *[]Comment
 	WhereKeyword Keyword
 	Clause       Expression
 }
 
 type HavingClause struct {
 	Span
+    LeadingComments *[]Comment
+    TrailingComments *[]Comment
 	HavingKeyword Keyword
 	Clause        Expression
 }
 
 type GroupByClause struct {
 	Span
+    LeadingComments *[]Comment
+    TrailingComments *[]Comment
 	GroupByKeyword [2]Keyword
 	Items          []Expression
 }
 
 type ExprSubquery struct {
 	SelectBody
+    LeadingComments *[]Comment
+    TrailingComments *[]Comment
 }
 
 type TopArg struct {
 	Span
+    LeadingComments *[]Comment
+    TrailingComments *[]Comment
 	TopKeyword      Keyword
 	WithTiesKeyword *[2]Keyword
 	PercentKeyword  *Keyword
@@ -104,6 +132,8 @@ type TopArg struct {
 
 type TableArg struct {
 	Span
+    LeadingComments *[]Comment
+    TrailingComments *[]Comment
 	FromKeyword Keyword
 	Table       *TableSource
 	Joins       []Join
@@ -111,12 +141,16 @@ type TableArg struct {
 
 type TableSource struct {
 	Span
+    LeadingComments *[]Comment
+    TrailingComments *[]Comment
 	Type   TableSourceType
 	Source Expression
 }
 
 type Join struct {
 	Span
+    LeadingComments *[]Comment
+    TrailingComments *[]Comment
 	JoinTypeKeyword []Keyword
 	JoinKeyword     Keyword
 	Type            JoinType
@@ -127,6 +161,8 @@ type Join struct {
 
 type OrderByClause struct {
 	Span
+    LeadingComments *[]Comment
+    TrailingComments *[]Comment
 	OrderByKeyword [2]Keyword
 	Expressions    []OrderByArg
 	OffsetFetch    *OffsetFetchClause
@@ -134,12 +170,16 @@ type OrderByClause struct {
 
 type OffsetFetchClause struct {
 	Span
+    LeadingComments *[]Comment
+    TrailingComments *[]Comment
 	Offset OffsetArg
 	Fetch  *FetchArg
 }
 
 type OrderByArg struct {
 	Span
+    LeadingComments *[]Comment
+    TrailingComments *[]Comment
 	Column       Expression
 	OrderKeyword *Keyword
 	Type         OrderByType
@@ -147,6 +187,8 @@ type OrderByArg struct {
 
 type OffsetArg struct {
 	Span
+    LeadingComments *[]Comment
+    TrailingComments *[]Comment
 	OffsetKeyword    Keyword
 	RowOrRowsKeyword Keyword
 	Value            Expression
@@ -155,6 +197,8 @@ type OffsetArg struct {
 
 type FetchArg struct {
 	Span
+    LeadingComments *[]Comment
+    TrailingComments *[]Comment
 	FetchKeyword       Keyword
 	Value              Expression
 	NextOrFirst        NextOrFirst
@@ -166,11 +210,15 @@ type FetchArg struct {
 
 type ExprExpressionList struct {
 	Span
+    LeadingComments *[]Comment
+    TrailingComments *[]Comment
 	List []Expression
 }
 
 type FunctionOverClause struct {
 	Span
+    LeadingComments *[]Comment
+    TrailingComments *[]Comment
 	OverKeyword        Keyword
 	PartitionByKeyword *[2]Keyword
 	PartitionByClause  []Expression
@@ -181,6 +229,8 @@ type FunctionOverClause struct {
 
 type WindowFrameClause struct {
 	Span
+    LeadingComments *[]Comment
+    TrailingComments *[]Comment
 	RowsOrRangeKeyword Keyword
 	RowsOrRange        RowsOrRangeType
 	BetweenKeyword     *Keyword
@@ -191,6 +241,8 @@ type WindowFrameClause struct {
 
 type WindowFrameBound struct {
 	Span
+    LeadingComments *[]Comment
+    TrailingComments *[]Comment
 	BoundKeyword []Keyword
 	Type         WindowFrameBoundType
 	Expression   Expression
@@ -198,12 +250,16 @@ type WindowFrameBound struct {
 
 type ExprFunction struct {
 	Span
+    LeadingComments *[]Comment
+    TrailingComments *[]Comment
 	Type FuncType
 	Name Expression
 }
 
 type ExprFunctionCall struct {
 	Span
+    LeadingComments *[]Comment
+    TrailingComments *[]Comment
 	Name       *ExprFunction
 	Args       []Expression
 	OverClause *FunctionOverClause
@@ -211,6 +267,8 @@ type ExprFunctionCall struct {
 
 type ExprCast struct {
 	Span
+    LeadingComments *[]Comment
+    TrailingComments *[]Comment
 	CastKeyword Keyword
 	Expression  Expression
 	AsKeyword   Keyword
@@ -219,6 +277,8 @@ type ExprCast struct {
 
 type CommonTableExpression struct {
 	Span
+    LeadingComments *[]Comment
+    TrailingComments *[]Comment
 	Name      string
 	Columns   *ExprExpressionList
 	AsKeyword Keyword
@@ -770,6 +830,68 @@ func (e FunctionOverClause) GetSpan() Span       { return e.Span }
 func (e ExprFunctionCall) GetSpan() Span         { return e.Span }
 func (e ExprCast) GetSpan() Span                 { return e.Span }
 func (cte *CommonTableExpression) GetSpan() Span { return cte.Span }
+
+func (e *ExprStringLiteral) SetLeadingComments(comments []Comment) {e.LeadingComments=&comments}
+func (e *ExprNumberLiteral) SetLeadingComments(comments []Comment) {e.LeadingComments=&comments}
+func (e *ExprLocalVariable) SetLeadingComments(comments []Comment) {e.LeadingComments=&comments}
+func (e *ExprIdentifier) SetLeadingComments(comments []Comment) {e.LeadingComments=&comments}
+func (e *ExprQuotedIdentifier) SetLeadingComments(comments []Comment) {e.LeadingComments=&comments}
+func (e *ExprStar) SetLeadingComments(comments []Comment) {e.LeadingComments=&comments}
+func (e *ExprWithAlias) SetLeadingComments(comments []Comment) {e.LeadingComments=&comments}
+func (e *ExprCompoundIdentifier) SetLeadingComments(comments []Comment) {e.LeadingComments=&comments}
+func (si *SelectItems) SetLeadingComments(comments []Comment) {si.LeadingComments=&comments}
+func (w *WhereClause) SetLeadingComments(comments []Comment) {w.LeadingComments=&comments}
+func (h *HavingClause) SetLeadingComments(comments []Comment) {h.LeadingComments=&comments}
+func (gb *GroupByClause) SetLeadingComments(comments []Comment) {gb.LeadingComments=&comments}
+func (ta *TableArg) SetLeadingComments(comments []Comment) {ta.LeadingComments=&comments}
+func (ts *TableSource) SetLeadingComments(comments []Comment) {ts.LeadingComments=&comments}
+func (j *Join) SetLeadingComments(comments []Comment) {j.LeadingComments=&comments}
+func (ta *TopArg) SetLeadingComments(comments []Comment) {ta.LeadingComments=&comments}
+func (o *OrderByClause) SetLeadingComments(comments []Comment) {o.LeadingComments=&comments}
+func (o *OffsetFetchClause) SetLeadingComments(comments []Comment) {o.LeadingComments=&comments}
+func (o *OrderByArg) SetLeadingComments(comments []Comment) {o.LeadingComments=&comments}
+func (o *OffsetArg) SetLeadingComments(comments []Comment) {o.LeadingComments=&comments}
+func (f *FetchArg) SetLeadingComments(comments []Comment) {f.LeadingComments=&comments}
+func (e *ExprSubquery) SetLeadingComments(comments []Comment) {e.LeadingComments=&comments}
+func (e *ExprExpressionList) SetLeadingComments(comments []Comment) {e.LeadingComments=&comments}
+func (e *ExprFunction) SetLeadingComments(comments []Comment) {e.LeadingComments=&comments}
+func (w *WindowFrameBound) SetLeadingComments(comments []Comment) {w.LeadingComments=&comments}
+func (w *WindowFrameClause) SetLeadingComments(comments []Comment) {w.LeadingComments=&comments}
+func (e *FunctionOverClause) SetLeadingComments(comments []Comment) {e.LeadingComments=&comments}
+func (e *ExprFunctionCall) SetLeadingComments(comments []Comment) {e.LeadingComments=&comments}
+func (e *ExprCast) SetLeadingComments(comments []Comment) {e.LeadingComments=&comments}
+func (cte *CommonTableExpression) SetLeadingComments(comments []Comment) {cte.LeadingComments=&comments}
+
+func (e *ExprStringLiteral) SetTrailingComments(comments []Comment) {e.TrailingComments=&comments}
+func (e *ExprNumberLiteral) SetTrailingComments(comments []Comment) {e.TrailingComments=&comments}
+func (e *ExprLocalVariable) SetTrailingComments(comments []Comment) {e.TrailingComments=&comments}
+func (e *ExprIdentifier) SetTrailingComments(comments []Comment) {e.TrailingComments=&comments}
+func (e *ExprQuotedIdentifier) SetTrailingComments(comments []Comment) {e.TrailingComments=&comments}
+func (e *ExprStar) SetTrailingComments(comments []Comment) {e.TrailingComments=&comments}
+func (e *ExprWithAlias) SetTrailingComments(comments []Comment) {e.TrailingComments=&comments}
+func (e *ExprCompoundIdentifier) SetTrailingComments(comments []Comment) {e.TrailingComments=&comments}
+func (si *SelectItems) SetTrailingComments(comments []Comment) {si.TrailingComments=&comments}
+func (w *WhereClause) SetTrailingComments(comments []Comment) {w.TrailingComments=&comments}
+func (h *HavingClause) SetTrailingComments(comments []Comment) {h.TrailingComments=&comments}
+func (gb *GroupByClause) SetTrailingComments(comments []Comment) {gb.TrailingComments=&comments}
+func (ta *TableArg) SetTrailingComments(comments []Comment) {ta.TrailingComments=&comments}
+func (ts *TableSource) SetTrailingComments(comments []Comment) {ts.TrailingComments=&comments}
+func (j *Join) SetTrailingComments(comments []Comment) {j.TrailingComments=&comments}
+func (ta *TopArg) SetTrailingComments(comments []Comment) {ta.TrailingComments=&comments}
+func (o *OrderByClause) SetTrailingComments(comments []Comment) {o.TrailingComments=&comments}
+func (o *OffsetFetchClause) SetTrailingComments(comments []Comment) {o.TrailingComments=&comments}
+func (o *OrderByArg) SetTrailingComments(comments []Comment) {o.TrailingComments=&comments}
+func (o *OffsetArg) SetTrailingComments(comments []Comment) {o.TrailingComments=&comments}
+func (f *FetchArg) SetTrailingComments(comments []Comment) {f.TrailingComments=&comments}
+func (e *ExprSubquery) SetTrailingComments(comments []Comment) {e.TrailingComments=&comments}
+func (e *ExprExpressionList) SetTrailingComments(comments []Comment) {e.TrailingComments=&comments}
+func (e *ExprFunction) SetTrailingComments(comments []Comment) {e.TrailingComments=&comments}
+func (w *WindowFrameBound) SetTrailingComments(comments []Comment) {w.TrailingComments=&comments}
+func (w *WindowFrameClause) SetTrailingComments(comments []Comment) {w.TrailingComments=&comments}
+func (e *FunctionOverClause) SetTrailingComments(comments []Comment) {e.TrailingComments=&comments}
+func (e *ExprFunctionCall) SetTrailingComments(comments []Comment) {e.TrailingComments=&comments}
+func (e *ExprCast) SetTrailingComments(comments []Comment) {e.TrailingComments=&comments}
+func (cte *CommonTableExpression) SetTrailingComments(comments []Comment) {cte.TrailingComments=&comments}
 
 type TableSourceType uint8
 

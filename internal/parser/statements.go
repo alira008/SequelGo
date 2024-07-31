@@ -174,11 +174,15 @@ func (p *Parser) parseTopArg() (*ast.TopArg, error) {
 
 func (p *Parser) parseSelectBody() (ast.SelectBody, error) {
 	stmt := ast.SelectBody{}
+	stmt.SetLeadingComments(p.popLeadingComments())
 	startPositionSelectBody := p.currentToken.Start
 	stmt.SelectKeyword = ast.NewKeywordFromToken(p.currentToken)
 	if p.peekTokenIs(lexer.TDistinct) {
+        leading := p.popLeadingComments()
 		p.nextToken()
 		kw := ast.NewKeywordFromToken(p.currentToken)
+        kw.SetLeadingComments(leading)
+        kw.SetTrailingComments(p.popTrailingComments())
 		stmt.Distinct = &kw
 	}
 
@@ -246,6 +250,7 @@ func (p *Parser) parseSelectBody() (ast.SelectBody, error) {
 		p.currentToken.End,
 	)
 
+	stmt.SetTrailingComments(p.popTrailingComments())
 	return stmt, nil
 }
 
@@ -269,6 +274,7 @@ func (p *Parser) parseSelectSubquery() (ast.ExprSubquery, error) {
 
 func (p *Parser) parseSelectItems() (*ast.SelectItems, error) {
 	selectItems := ast.SelectItems{}
+	selectItems.SetLeadingComments(p.popLeadingComments())
 	startPositionSelectItems := p.currentToken.Start
 	p.logger.Debug(p.currentToken)
 	p.logger.Debug(p.peekToken)
@@ -339,6 +345,7 @@ func (p *Parser) parseSelectItems() (*ast.SelectItems, error) {
 			}
 			exprAlias.Alias = alias
 			exprAlias.Span = ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End)
+			exprAlias.SetTrailingComments(p.popTrailingComments())
 			selectItems.Items = append(selectItems.Items, exprAlias)
 		} else {
 			selectItems.Items = append(selectItems.Items, expr)
@@ -352,6 +359,7 @@ func (p *Parser) parseSelectItems() (*ast.SelectItems, error) {
 	}
 
 	selectItems.SetSpan(ast.NewSpanFromLexerPosition(startPositionSelectItems, p.currentToken.End))
+	selectItems.SetTrailingComments(p.popTrailingComments())
 	return &selectItems, nil
 }
 

@@ -14,6 +14,8 @@ type DeleteStatement struct{}
 
 type SelectStatement struct {
 	Span
+    LeadingComments *[]Comment
+    TrailingComments *[]Comment
 	WithKeyword *Keyword
 	CTE         *[]CommonTableExpression
 	SelectBody  *SelectBody
@@ -21,6 +23,8 @@ type SelectStatement struct {
 
 type SelectBody struct {
 	Span
+    LeadingComments *[]Comment
+    TrailingComments *[]Comment
 	SelectKeyword Keyword
 	Distinct      *Keyword
 	AllKeyword    *Keyword
@@ -97,7 +101,13 @@ func (sb SelectBody) TokenLiteral() string {
 }
 
 func (ss *SelectStatement) GetSpan() Span { return ss.Span }
-func (sb *SelectBody) SetSpan(span Span)  { sb.Span = span }
-
-func (ss *SelectStatement) SetSpan(span Span) { ss.Span = span }
 func (sb *SelectBody) GetSpan() Span          { return sb.Span }
+
+func (sb *SelectBody) SetSpan(span Span)  { sb.Span = span }
+func (ss *SelectStatement) SetSpan(span Span) { ss.Span = span }
+
+func (sb *SelectBody) SetTrailingComments(comments []Comment) {sb.TrailingComments = &comments}
+func (ss *SelectStatement) SetTrailingComments(comments []Comment) {ss.TrailingComments = &comments}
+
+func (sb *SelectBody) SetLeadingComments(comments []Comment) {sb.LeadingComments = &comments}
+func (ss *SelectStatement) SetLeadingComments(comments []Comment) {ss.LeadingComments = &comments}

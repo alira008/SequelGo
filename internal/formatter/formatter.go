@@ -37,9 +37,8 @@ func (f *Formatter) Format(input string) (string, error) {
 	if len(p.Errors()) > 0 {
 		return "", fmt.Errorf(strings.Join(p.Errors(), "\n"))
 	}
-	f.comments = query.Comments
 
-	f.associateCommentsWithNodes(&query)
+	// f.associateCommentsWithNodes(&query)
 	ast.Walk(f, &query)
 
 	return f.formattedQuery, nil
@@ -49,7 +48,16 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 	// f.printCommentsBeforeNode(node)
 
 	switch n := node.(type) {
+	case *ast.Comment:
+		f.formattedQuery += fmt.Sprintf("-- %s", n.Value)
+		break
 	case *ast.Query:
+		if n.LeadingComments != nil {
+			for _, c := range *n.LeadingComments {
+				ast.Walk(f, &c)
+				f.printNewLine()
+			}
+		}
 		for i, s := range n.Statements {
 			if i > 0 {
 				f.printNewLine()
@@ -58,10 +66,21 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 			ast.Walk(f, s)
 			// f.printCommentsAfterNode(s)
 		}
+		if n.TrailingComments != nil {
+			for _, c := range *n.TrailingComments {
+				ast.Walk(f, &c)
+				f.printNewLine()
+			}
+		}
 		break
 	case *ast.SelectStatement:
 		return f
 	case *ast.SelectBody:
+		if n.LeadingComments != nil {
+			for _, c := range *n.LeadingComments {
+				ast.Walk(f, &c)
+			}
+		}
 		ast.Walk(f, &n.SelectKeyword)
 		if n.AllKeyword != nil {
 			f.printSpace()
@@ -88,6 +107,11 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		if n.OrderByClause != nil {
 			ast.Walk(f, n.OrderByClause)
 		}
+		if n.TrailingComments != nil {
+			for _, c := range *n.TrailingComments {
+				ast.Walk(f, &c)
+			}
+		}
 		break
 	case *ast.ExprStringLiteral:
 		f.formattedQuery += fmt.Sprintf("'%s'", n.Value)
@@ -99,7 +123,19 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		f.formattedQuery += fmt.Sprintf("@%s", n.Value)
 		break
 	case *ast.ExprIdentifier:
+		if n.LeadingComments != nil {
+			for _, c := range *n.LeadingComments {
+				ast.Walk(f, &c)
+				f.printNewLine()
+			}
+		}
 		f.formattedQuery += n.Value
+		if n.TrailingComments != nil {
+			for _, c := range *n.TrailingComments {
+				f.printSpace()
+				ast.Walk(f, &c)
+			}
+		}
 		break
 	case *ast.ExprQuotedIdentifier:
 		f.formattedQuery += fmt.Sprintf("[%s]", n.Value)
@@ -108,6 +144,12 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		f.formattedQuery += "*"
 		break
 	case *ast.ExprWithAlias:
+		if n.LeadingComments != nil {
+			for _, c := range *n.LeadingComments {
+				ast.Walk(f, &c)
+				f.printNewLine()
+			}
+		}
 		ast.Walk(f, n.Expression)
 		f.printSpace()
 		if n.AsKeyword != nil {
@@ -115,6 +157,13 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 			f.printSpace()
 		}
 		ast.Walk(f, n.Alias)
+		if n.TrailingComments != nil {
+			for _, c := range *n.TrailingComments {
+				f.printSpace()
+				ast.Walk(f, &c)
+				f.printNewLine()
+			}
+		}
 		break
 	case *ast.ExprCompoundIdentifier:
 		for i, e := range n.Identifiers {
@@ -125,10 +174,15 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		}
 		break
 	case *ast.SelectItems:
+		if n.LeadingComments != nil {
+			for _, c := range *n.LeadingComments {
+				ast.Walk(f, &c)
+				f.printNewLine()
+			}
+		}
 		if len(n.Items) > 1 {
 			f.increaseIndent()
 			f.printNewLine()
-			f.decreaseIndent()
 		} else {
 			f.printSpace()
 		}
@@ -137,6 +191,15 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 				f.printSelectColumnComma()
 			}
 			ast.Walk(f, e)
+		}
+		if n.TrailingComments != nil {
+			for _, c := range *n.TrailingComments {
+				f.printSpace()
+				ast.Walk(f, &c)
+			}
+		}
+		if len(n.Items) > 1 {
+			f.decreaseIndent()
 		}
 		break
 	case *ast.WhereClause:
@@ -285,12 +348,12 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		}
 		break
 	case *ast.WindowFrameBound:
-        for i, k := range n.BoundKeyword {
-            if i > 0 {
-                f.printSpace()
-            }
+		for i, k := range n.BoundKeyword {
+			if i > 0 {
+				f.printSpace()
+			}
 			ast.Walk(f, &k)
-        }
+		}
 		if n.Expression != nil {
 			f.printSpace()
 			ast.Walk(f, n.Expression)
@@ -611,7 +674,19 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		ast.Walk(f, n.Subquery)
 		break
 	case *ast.Keyword:
+		if n.LeadingComments != nil {
+			for _, c := range *n.LeadingComments {
+				ast.Walk(f, &c)
+				f.printNewLine()
+			}
+		}
 		f.printKeyword(n.TokenLiteral())
+		if n.TrailingComments != nil {
+			for _, c := range *n.TrailingComments {
+				f.printSpace()
+				ast.Walk(f, &c)
+			}
+		}
 		break
 	case nil:
 		break
@@ -724,7 +799,7 @@ func (f *Formatter) printNewLine() {
 }
 
 func (f *Formatter) printSelectColumnComma() {
-	f.increaseIndent()
+	// f.increaseIndent()
 	if f.settings.IndentCommaLists == ICLNoSpaceAfterComma {
 		f.printNewLine()
 		f.formattedQuery += ","
@@ -735,7 +810,7 @@ func (f *Formatter) printSelectColumnComma() {
 		f.formattedQuery += ","
 		f.printNewLine()
 	}
-	f.decreaseIndent()
+	// f.decreaseIndent()
 }
 
 func (f *Formatter) printExpressionListComma() {

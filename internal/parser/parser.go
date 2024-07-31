@@ -3,6 +3,7 @@ package parser
 import (
 	"SequelGo/internal/ast"
 	"SequelGo/internal/lexer"
+
 	// "encoding/json"
 	"fmt"
 	"strings"
@@ -19,14 +20,15 @@ const (
 )
 
 type Parser struct {
-	logger       *zap.SugaredLogger
-	l            *lexer.Lexer
-	currentToken lexer.Token
-	peekToken    lexer.Token
-	peekToken2   lexer.Token
-	errorToken   ErrorToken
-	errors       []string
-	comments     []ast.Comment
+	logger           *zap.SugaredLogger
+	l                *lexer.Lexer
+	currentToken     lexer.Token
+	peekToken        lexer.Token
+	peekToken2       lexer.Token
+	errorToken       ErrorToken
+	errors           []string
+	trailingComments []ast.Comment
+	leadingComments  []ast.Comment
 }
 
 func NewParser(logger *zap.SugaredLogger, lexer *lexer.Lexer) *Parser {
@@ -43,8 +45,13 @@ func (p *Parser) nextToken() {
 	p.currentToken = p.peekToken
 	p.peekToken = p.peekToken2
 	p.peekToken2 = p.l.NextToken()
+
 	for p.peekToken2Is(lexer.TCommentLine) {
-		p.comments = append(p.comments, ast.NewComment(p.peekToken2))
+		if p.isLeadingComment(p.currentToken, p.peekToken2) {
+			p.leadingComments = append(p.leadingComments, ast.NewComment(p.peekToken2))
+		} else {
+			p.trailingComments = append(p.trailingComments, ast.NewComment(p.peekToken2))
+		}
 		p.peekToken2 = p.l.NextToken()
 	}
 	p.errorToken = ETNone
@@ -171,6 +178,26 @@ func (p *Parser) currentErrorString(expected string) error {
 	)
 }
 
+func (p *Parser) isLeadingComment(current, comment lexer.Token) bool {
+	return comment.Start.Line < current.Start.Line
+}
+
+func (p *Parser) isTrailingComment(current, comment lexer.Token) bool {
+	return comment.Start.Line == current.Start.Line && current.Start.Col < comment.Start.Col
+}
+
+func (p *Parser) popLeadingComments() []ast.Comment {
+	leading := p.leadingComments
+	p.leadingComments = nil
+	return leading
+}
+
+func (p *Parser) popTrailingComments() []ast.Comment {
+	trailing := p.trailingComments
+	p.trailingComments = nil
+	return trailing
+}
+
 func (p *Parser) Errors() []string {
 	return p.errors
 }
@@ -204,7 +231,5 @@ func (p *Parser) Parse() ast.Query {
 		p.nextToken()
 	}
 	// fmt.Printf("num of comments: %d\n", len(p.comments))
-	query.Comments = p.comments
-	p.comments = nil
 	return query
 }

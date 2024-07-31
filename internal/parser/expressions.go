@@ -8,11 +8,14 @@ import (
 
 func (p *Parser) parseExpression(precedence Precedence) (ast.Expression, error) {
 	startPosition := p.currentToken.Start
+	leading := p.popLeadingComments()
 	leftExpr, err := p.parsePrefixExpression()
 	endPosition := p.currentToken.End
 	if err != nil {
 		return nil, err
 	}
+	leftExpr.SetLeadingComments(leading)
+	leftExpr.SetTrailingComments(p.popTrailingComments())
 	leftExpr.SetSpan(ast.NewSpanFromLexerPosition(startPosition, endPosition))
 
 	// parse infix sql expressions using stacks to keep track of precedence
@@ -20,11 +23,14 @@ func (p *Parser) parseExpression(precedence Precedence) (ast.Expression, error) 
 		p.nextToken()
 
 		startPosition = p.currentToken.Start
+		leading := p.popLeadingComments()
 		leftExpr, err = p.parseInfixExpression(leftExpr)
 		if err != nil {
 			return nil, err
 		}
 		endPosition = p.currentToken.End
+		leftExpr.SetLeadingComments(leading)
+		leftExpr.SetTrailingComments(p.popTrailingComments())
 		leftExpr.SetSpan(ast.NewSpanFromLexerPosition(startPosition, endPosition))
 	}
 

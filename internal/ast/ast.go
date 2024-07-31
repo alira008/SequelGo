@@ -10,6 +10,10 @@ type Node interface {
 	TokenLiteral() string
 	SetSpan(span Span)
 	GetSpan() Span
+	SetLeadingComments(comments []Comment)
+	SetTrailingComments(comments []Comment)
+	// GetLeadingComments() []Comment
+	// GetTrailingComments() []Comment
 }
 
 type Position struct {
@@ -32,12 +36,15 @@ type Expression interface {
 
 type Query struct {
 	Span
-	Statements []Statement
-	Comments   []Comment
+	LeadingComments  *[]Comment
+	TrailingComments *[]Comment
+	Statements       []Statement
 }
 
 type Comment struct {
 	Span
+	LeadingComments  *[]Comment
+	TrailingComments *[]Comment
 	Value string
 }
 
@@ -61,8 +68,8 @@ func NewSpan(Start, End Position) Span {
 }
 func NewComment(token lexer.Token) Comment {
 	return Comment{
-		Span: NewSpanFromLexerPosition(token.Start, token.End),
-		Value:    token.Value,
+		Span:  NewSpanFromLexerPosition(token.Start, token.End),
+		Value: token.Value,
 	}
 }
 
@@ -71,6 +78,11 @@ func (c *Comment) SetSpan(span Span) { c.Span = span }
 
 func (q Query) GetSpan() Span   { return q.Span }
 func (c Comment) GetSpan() Span { return c.Span }
+
+func (q *Query) SetLeadingComments(comments []Comment) { q.LeadingComments = &comments }
+func (q *Query) SetTrailingComments(comments []Comment) { q.TrailingComments = &comments }
+func (c *Comment) SetLeadingComments(comments []Comment) { c.LeadingComments = &comments }
+func (c *Comment) SetTrailingComments(comments []Comment) { c.TrailingComments = &comments }
 
 func (q *Query) TokenLiteral() string {
 	str := strings.Builder{}
