@@ -114,8 +114,6 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 			if p.peekToken.Type == lexer.TAs {
 				p.nextToken()
 				kw := ast.NewKeywordFromToken(p.currentToken)
-				kw.SetLeadingComments(p.popLeadingComments())
-				kw.SetTrailingComments(p.popTrailingComments())
 				expr.AsKeyword = &kw
 			}
 

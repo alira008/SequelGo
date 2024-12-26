@@ -10,10 +10,6 @@ type Node interface {
 	TokenLiteral() string
 	SetSpan(span Span)
 	GetSpan() Span
-	SetLeadingComments(comments []Comment)
-	SetTrailingComments(comments []Comment)
-	GetLeadingComments() *[]Comment
-	GetTrailingComments() *[]Comment
 }
 
 type Position struct {

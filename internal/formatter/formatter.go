@@ -86,31 +86,11 @@ func (f *Formatter) printLeadingComments(node ast.Node) {
 	if node == nil {
 		return
 	}
-	leadingComments := node.GetLeadingComments()
-	if leadingComments == nil {
-		return
-	}
-
-	for _, c := range *leadingComments {
-		ast.Walk(f, &c)
-		f.printNewLine()
-	}
 }
 
 func (f *Formatter) printTrailingComments(node ast.Node) {
 	if node == nil {
 		return
-	}
-	trailingComments := node.GetTrailingComments()
-	if trailingComments == nil {
-		return
-	}
-	for i, c := range *trailingComments {
-		if i > 0 {
-			f.printNewLine()
-		}
-		f.printSpace()
-		ast.Walk(f, &c)
 	}
 }
 

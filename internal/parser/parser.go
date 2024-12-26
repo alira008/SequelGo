@@ -30,7 +30,7 @@ type Parser struct {
 	trailingComments []ast.Comment
 	leadingComments  []ast.Comment
 	afterComments    []ast.Comment
-	Comments    []ast.Comment
+	Comments         []ast.Comment
 }
 
 func NewParser(logger *zap.SugaredLogger, lexer *lexer.Lexer) *Parser {
@@ -56,7 +56,7 @@ func (p *Parser) nextToken() {
 		} else {
 			p.afterComments = append(p.afterComments, ast.NewComment(p.peekToken2))
 		}
-        p.Comments = append(p.Comments, ast.NewComment(p.peekToken2))
+		p.Comments = append(p.Comments, ast.NewComment(p.peekToken2))
 		p.peekToken2 = p.l.NextToken()
 	}
 	p.errorToken = ETNone
@@ -92,6 +92,16 @@ func (p *Parser) peekToken2IsAny(t []lexer.TokenType) bool {
 	}
 
 	return false
+}
+
+func (p *Parser) consumeKeyword(t lexer.TokenType) (*ast.Keyword, error) {
+	if p.peekToken.Type == t {
+		p.nextToken()
+		return nil, fmt.Errorf("expected keyword, %s", t.String())
+	}
+
+	p.errorToken = ETPeek
+	return nil, fmt.Errorf("expected keyword, %s", t.String())
 }
 
 func (p *Parser) expectPeek(t lexer.TokenType) error {
