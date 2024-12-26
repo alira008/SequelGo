@@ -32,18 +32,26 @@ type Expression interface {
 
 type Query struct {
 	Span
-	LeadingComments  *[]Comment
-	TrailingComments *[]Comment
 	Statements       []Statement
 }
 
 type Comment struct {
 	Span
-	LeadingComments  *[]Comment
-	TrailingComments *[]Comment
 	Value            string
 }
 
+func NewSpanFromToken(token lexer.Token) Span {
+	return Span{
+		StartPosition: Position{
+			Line: uint64(token.Start.Line),
+			Col:  uint64(token.Start.Col),
+		},
+		EndPosition: Position{
+			Line: uint64(token.End.Line),
+			Col:  uint64(token.End.Col),
+		},
+	}
+}
 func NewSpanFromLexerPosition(Start, End lexer.Position) Span {
 	return Span{
 		StartPosition: Position{
@@ -74,18 +82,6 @@ func (c *Comment) SetSpan(span Span) { c.Span = span }
 
 func (q Query) GetSpan() Span   { return q.Span }
 func (c Comment) GetSpan() Span { return c.Span }
-
-func (q *Query) SetLeadingComments(comments []Comment)   { q.LeadingComments = &comments }
-func (c *Comment) SetLeadingComments(comments []Comment) { c.LeadingComments = &comments }
-
-func (c *Comment) SetTrailingComments(comments []Comment) { c.TrailingComments = &comments }
-func (q *Query) SetTrailingComments(comments []Comment)   { q.TrailingComments = &comments }
-
-func (q *Query) GetLeadingComments() *[]Comment   { return q.LeadingComments }
-func (c *Comment) GetLeadingComments() *[]Comment { return c.LeadingComments }
-
-func (c *Comment) GetTrailingComments() *[]Comment { return c.TrailingComments }
-func (q *Query) GetTrailingComments() *[]Comment   { return q.TrailingComments }
 
 func (q *Query) TokenLiteral() string {
 	str := strings.Builder{}

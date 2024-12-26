@@ -38,7 +38,6 @@ func (f *Formatter) Format(input string) (string, error) {
 		return "", fmt.Errorf(strings.Join(p.Errors(), "\n"))
 	}
 	f.comments = p.Comments
-	f.associateCommentsWithNodes(&query)
 	ast.Walk(f, &query)
     fmt.Println("comments ",f.comments)
 	if len(f.comments) > 0 {
@@ -95,7 +94,6 @@ func (f *Formatter) printTrailingComments(node ast.Node) {
 }
 
 func (f *Formatter) Visit(node ast.Node) ast.Visitor {
-	// f.printLeadingComments(node)
 	f.printCommentsBeforeNode(node)
 
 	switch n := node.(type) {
@@ -119,9 +117,9 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 			f.printSpace()
 			ast.Walk(f, n.AllKeyword)
 		}
-		if n.Distinct != nil {
+		if n.DistinctKeyword != nil {
 			f.printSpace()
-			ast.Walk(f, n.Distinct)
+			ast.Walk(f, n.DistinctKeyword)
 		}
 		if n.Top != nil {
 			ast.Walk(f, n.Top)

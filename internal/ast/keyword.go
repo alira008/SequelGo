@@ -2,12 +2,13 @@ package ast
 
 import (
 	"SequelGo/internal/lexer"
+	"fmt"
 	"strings"
 )
 
 type Keyword struct {
 	Span
-	Type             KeywordType
+	Type KeywordType
 }
 
 func NewKeywordFromToken(token lexer.Token) Keyword {
@@ -21,10 +22,21 @@ func NewKeywordFromToken(token lexer.Token) Keyword {
 	}
 }
 
-func (k Keyword) expressionNode()                         {}
-func (k *Keyword) SetSpan(span Span)                      { k.Span = span }
-func (k Keyword) GetSpan() Span                           { return k.Span }
-func (k Keyword) TokenLiteral() string                    { return k.Type.String() }
+func NewKeywordFromTokenNew(token lexer.Token) (*Keyword, error) {
+	keywordType, ok := Keywords[strings.ToLower(token.Value)]
+	if !ok {
+		return nil, fmt.Errorf("token (%s) is not a keyword", token.Value)
+	}
+	return &Keyword{
+		Span: NewSpanFromLexerPosition(token.Start, token.End),
+		Type: keywordType,
+	}, nil
+}
+
+func (k Keyword) expressionNode()      {}
+func (k *Keyword) SetSpan(span Span)   { k.Span = span }
+func (k Keyword) GetSpan() Span        { return k.Span }
+func (k Keyword) TokenLiteral() string { return k.Type.String() }
 
 type KeywordType uint8
 

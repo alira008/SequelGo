@@ -598,7 +598,7 @@ func TestDistinctTopArg(t *testing.T) {
 	select_statement := ast.SelectStatement{
 		SelectBody: &ast.SelectBody{
 			SelectKeyword: ast.Keyword{Type: ast.KSelect},
-			Distinct:      &ast.Keyword{Type: ast.KDistinct},
+			DistinctKeyword:      &ast.Keyword{Type: ast.KDistinct},
 			Top: &ast.TopArg{
 				TopKeyword:     ast.Keyword{Type: ast.KTop},
 				PercentKeyword: &ast.Keyword{Type: ast.KPercent},

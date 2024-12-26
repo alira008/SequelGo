@@ -36,8 +36,8 @@ func Walk(v Visitor, node Node) {
 		break
 	case *SelectBody:
 		Walk(v, &n.SelectKeyword)
-		if n.Distinct != nil {
-			Walk(v, n.Distinct)
+		if n.DistinctKeyword != nil {
+			Walk(v, n.DistinctKeyword)
 		}
 		if n.AllKeyword != nil {
 			Walk(v, n.AllKeyword)

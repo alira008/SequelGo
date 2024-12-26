@@ -20,17 +20,13 @@ const (
 )
 
 type Parser struct {
-	logger           *zap.SugaredLogger
-	l                *lexer.Lexer
-	currentToken     lexer.Token
-	peekToken        lexer.Token
-	peekToken2       lexer.Token
-	errorToken       ErrorToken
-	errors           []string
-	trailingComments []ast.Comment
-	leadingComments  []ast.Comment
-	afterComments    []ast.Comment
-	Comments         []ast.Comment
+	logger        *zap.SugaredLogger
+	l             *lexer.Lexer
+	peekToken     lexer.Token
+	peekToken2    lexer.Token
+	errors        []string
+	afterComments []ast.Comment
+	Comments      []ast.Comment
 }
 
 func NewParser(logger *zap.SugaredLogger, lexer *lexer.Lexer) *Parser {
@@ -38,32 +34,18 @@ func NewParser(logger *zap.SugaredLogger, lexer *lexer.Lexer) *Parser {
 
 	parser.nextToken()
 	parser.nextToken()
-	parser.nextToken()
 
 	return parser
 }
 
 func (p *Parser) nextToken() {
-	p.currentToken = p.peekToken
 	p.peekToken = p.peekToken2
 	p.peekToken2 = p.l.NextToken()
 
 	for p.peekToken2Is(lexer.TCommentLine) {
-		if p.isLeadingComment(p.currentToken, p.peekToken2) {
-			p.leadingComments = append(p.leadingComments, ast.NewComment(p.peekToken2))
-		} else if p.isTrailingComment(p.currentToken, p.peekToken2) {
-			p.trailingComments = append(p.trailingComments, ast.NewComment(p.peekToken2))
-		} else {
-			p.afterComments = append(p.afterComments, ast.NewComment(p.peekToken2))
-		}
 		p.Comments = append(p.Comments, ast.NewComment(p.peekToken2))
 		p.peekToken2 = p.l.NextToken()
 	}
-	p.errorToken = ETNone
-}
-
-func (p *Parser) currentTokenIs(t lexer.TokenType) bool {
-	return p.currentToken.Type == t
 }
 
 func (p *Parser) peekTokenIs(t lexer.TokenType) bool {
@@ -94,45 +76,84 @@ func (p *Parser) peekToken2IsAny(t []lexer.TokenType) bool {
 	return false
 }
 
+func (p *Parser) peekPrecedence() Precedence{
+    return checkPrecedence(p.peekToken.Type)
+}
+
 func (p *Parser) consumeKeyword(t lexer.TokenType) (*ast.Keyword, error) {
-	if p.peekToken.Type == t {
-		p.nextToken()
+	if p.peekToken.Type != t {
 		return nil, fmt.Errorf("expected keyword, %s", t.String())
 	}
 
-	p.errorToken = ETPeek
-	return nil, fmt.Errorf("expected keyword, %s", t.String())
+	kw, err := ast.NewKeywordFromTokenNew(p.peekToken)
+	if err != nil {
+		return nil, err
+	}
+	p.nextToken()
+
+	return kw, nil
+}
+
+func (p *Parser) consumeToken(t lexer.TokenType) (*lexer.Token, error) {
+	if p.peekToken.Type != t {
+		return nil, fmt.Errorf("expected token, %s", t.String())
+	}
+
+    token := p.peekToken
+	p.nextToken()
+
+	return &token, nil
+}
+
+func (p *Parser) maybeKeyword(t lexer.TokenType) *ast.Keyword {
+	if p.peekToken.Type != t {
+		return nil
+	}
+
+	kw, err := ast.NewKeywordFromTokenNew(p.peekToken)
+	if err != nil {
+		return nil
+	}
+	p.nextToken()
+
+	return kw
 }
 
 func (p *Parser) expectPeek(t lexer.TokenType) error {
 	if p.peekToken.Type == t {
-		p.nextToken()
 		return nil
 	}
 
-	p.errorToken = ETPeek
 	return p.peekError(t)
 }
 
 func (p *Parser) expectPeekMany(ts []lexer.TokenType) error {
 	for _, t := range ts {
 		if p.peekToken.Type == t {
-			p.nextToken()
 			return nil
 		}
 	}
 
-	p.errorToken = ETPeek
 	return p.peekErrorMany(ts)
 }
 
+func (p *Parser) expectTokenMany(ts []lexer.TokenType) (lexer.Token, error) {
+	for _, t := range ts {
+		if p.peekToken.Type == t {
+			token := p.peekToken
+			return token, nil
+		}
+	}
+
+	return lexer.Token{}, p.peekErrorMany(ts)
+}
+
 func (p *Parser) peekError(t lexer.TokenType) error {
-	p.errorToken = ETPeek
 	arrows := ""
-	for i := 0; i < p.currentToken.Start.Col-1; i++ {
+	for i := 0; i < p.peekToken.Start.Col-1; i++ {
 		arrows += " "
 	}
-	for i := p.currentToken.Start.Col; i <= p.currentToken.End.Col; i++ {
+	for i := p.peekToken.Start.Col; i <= p.peekToken.End.Col; i++ {
 		arrows += "^"
 	}
 	return fmt.Errorf(
@@ -159,7 +180,6 @@ func (p *Parser) peekErrorMany(ts []lexer.TokenType) error {
 		expectedTokenTypes = append(expectedTokenTypes, fmt.Sprintf("%s", t.String()))
 	}
 
-	p.errorToken = ETPeek
 	arrows := ""
 	for i := 0; i < p.peekToken.Start.Col-1; i++ {
 		arrows += " "
@@ -176,13 +196,12 @@ func (p *Parser) peekErrorMany(ts []lexer.TokenType) error {
 	)
 }
 
-func (p *Parser) currentErrorString(expected string) error {
-	p.errorToken = ETCurrent
+func (p *Parser) peekErrorString(expected string) error {
 	arrows := ""
-	for i := 0; i < p.currentToken.Start.Col-1; i++ {
+	for i := 0; i < p.peekToken.Start.Col-1; i++ {
 		arrows += " "
 	}
-	for i := p.currentToken.Start.Col; i <= p.currentToken.End.Col; i++ {
+	for i := p.peekToken.Start.Col; i <= p.peekToken.End.Col; i++ {
 		arrows += "^"
 	}
 	return fmt.Errorf(
@@ -193,29 +212,6 @@ func (p *Parser) currentErrorString(expected string) error {
 	)
 }
 
-func (p *Parser) isLeadingComment(current, comment lexer.Token) bool {
-	return comment.Start.Line < current.Start.Line
-}
-
-func (p *Parser) isTrailingComment(current, comment lexer.Token) bool {
-	return comment.Start.Line == current.Start.Line && comment.Start.Col > current.Start.Col
-}
-
-func (p *Parser) popLeadingComments() []ast.Comment {
-	leading := p.leadingComments
-	if leading != nil {
-		p.leadingComments = p.afterComments
-		p.afterComments = nil
-	}
-	return leading
-}
-
-func (p *Parser) popTrailingComments() []ast.Comment {
-	trailing := p.trailingComments
-	p.trailingComments = nil
-	return trailing
-}
-
 func (p *Parser) Errors() []string {
 	return p.errors
 }
@@ -223,20 +219,14 @@ func (p *Parser) Errors() []string {
 func (p *Parser) Parse() ast.Query {
 	query := ast.Query{}
 
-	for p.currentToken.Type != lexer.TEndOfFile {
-		startPosition := p.currentToken.Start
+	for p.peekToken.Type != lexer.TEndOfFile {
+		startPosition := p.peekToken.Start
 		stmt, err := p.parseStatement()
-		endPosition := p.currentToken.End
+		endPosition := p.peekToken.End
 
 		if err != nil {
-			var errMsg string
-			if p.errorToken == ETCurrent {
-				errMsg = fmt.Sprintf("[Error Line: %d Col: %d]: %s", p.currentToken.End.Line,
-					p.currentToken.End.Col+1, err.Error())
-			} else {
-				errMsg = fmt.Sprintf("[Error Line: %d Col: %d]: %s", p.peekToken.End.Line,
-					p.peekToken.End.Col+1, err.Error())
-			}
+			errMsg := fmt.Sprintf("[Error Line: %d Col: %d]: %s", p.peekToken.End.Line,
+				p.peekToken.End.Col+1, err.Error())
 			p.errors = append(p.errors, errMsg)
 			p.nextToken()
 			continue
@@ -249,4 +239,64 @@ func (p *Parser) Parse() ast.Query {
 		p.nextToken()
 	}
 	return query
+}
+
+var select_item_type_start = []lexer.TokenType{
+	lexer.TIdentifier,
+	lexer.TQuotedIdentifier,
+	lexer.TNumericLiteral,
+	lexer.TStringLiteral,
+	lexer.TLocalVariable,
+	lexer.TLeftParen,
+	lexer.TCase,
+	lexer.TAsterisk,
+	lexer.TMinus,
+	lexer.TPlus,
+}
+
+func (p *Parser) expectSelectItemStart() error {
+	if p.peekToken.Type.IsBuiltinFunction() {
+		return nil
+	}
+
+	for _, t := range select_item_type_start {
+		if p.peekToken.Type == t {
+			return nil
+		}
+	}
+
+	errorString := ""
+	for i, t := range select_item_type_start {
+		if i > 0 {
+			errorString += ", "
+		}
+		errorString += fmt.Sprintf("%s", t.String())
+	}
+
+    return fmt.Errorf("%s", errorString)
+}
+
+var table_source_start = []lexer.TokenType{
+	lexer.TIdentifier,
+	lexer.TQuotedIdentifier,
+	lexer.TLocalVariable,
+	lexer.TLeftParen,
+}
+
+func (p *Parser) expectTableSourceStart() error {
+	for _, t := range table_source_start {
+		if p.peekToken.Type == t {
+			return nil
+		}
+	}
+
+	errorString := ""
+	for i, t := range table_source_start {
+		if i > 0 {
+			errorString += ", "
+		}
+		errorString += fmt.Sprintf("%s", t.String())
+	}
+
+    return fmt.Errorf("%s", errorString)
 }

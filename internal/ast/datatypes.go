@@ -16,8 +16,6 @@ var DataTypeTokenTypes = []lexer.TokenType{
 
 type DataType struct {
 	Span
-	LeadingComments    *[]Comment
-	TrailingComments   *[]Comment
 	Kind               DataTypeKind
 	FloatPrecision     *uint32
 	DecimalNumericSize *NumericSize
@@ -26,8 +24,6 @@ type DataType struct {
 
 type NumericSize struct {
 	Span
-	LeadingComments  *[]Comment
-	TrailingComments *[]Comment
 	Precision        uint32
 	Scale            *uint32
 }
@@ -110,18 +106,6 @@ func (ns NumericSize) GetSpan() Span { return ns.Span }
 
 func (dt *DataType) SetSpan(span Span)    { dt.Span = span }
 func (ns *NumericSize) SetSpan(span Span) { ns.Span = span }
-
-func (dt *DataType) SetLeadingComments(comments []Comment)    { dt.LeadingComments = &comments }
-func (ns *NumericSize) SetLeadingComments(comments []Comment) { ns.LeadingComments = &comments }
-
-func (dt *DataType) SetTrailingComments(comments []Comment)    { dt.TrailingComments = &comments }
-func (ns *NumericSize) SetTrailingComments(comments []Comment) { ns.TrailingComments = &comments }
-
-func (dt *DataType) GetLeadingComments() *[]Comment    { return dt.LeadingComments }
-func (ns *NumericSize) GetLeadingComments() *[]Comment { return ns.LeadingComments }
-
-func (dt *DataType) GetTrailingComments() *[]Comment    { return dt.TrailingComments }
-func (ns *NumericSize) GetTrailingComments() *[]Comment { return ns.TrailingComments }
 
 type DataTypeKind uint8
 

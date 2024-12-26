@@ -4,32 +4,32 @@ import (
 	"SequelGo/internal/ast"
 	"SequelGo/internal/lexer"
 
-	// "fmt"
+	"fmt"
 	"strconv"
 )
 
 func (p *Parser) parseStatement() (ast.Statement, error) {
-	switch p.currentToken.Type {
+	switch p.peekToken.Type {
 	case lexer.TSelect:
-		startPosition := p.currentToken.Start
+		startPosition := p.peekToken.Start
 		body, err := p.parseSelectBody()
 		if err != nil {
 			return nil, err
 		}
 
 		return &ast.SelectStatement{
-			Span:       ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+			Span:       ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End),
 			SelectBody: &body,
 		}, nil
 	case lexer.TWith:
-		startPosition := p.currentToken.Start
+		startPosition := p.peekToken.Start
 		select_statement, err := p.parseSelectStatement()
 
 		if err != nil {
 			return nil, err
 		}
 
-		select_statement.Span = ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End)
+		select_statement.Span = ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End)
 		return select_statement, nil
 	default:
 		return nil, nil
@@ -39,8 +39,11 @@ func (p *Parser) parseStatement() (ast.Statement, error) {
 
 func (p *Parser) parseSelectStatement() (*ast.SelectStatement, error) {
 	p.logger.Debugln("parsing select statement with cte")
-	startPositionSelectStatement := p.currentToken.Start
-	withKeyword := ast.NewKeywordFromToken(p.currentToken)
+	startPositionSelectStatement := p.peekToken.Start
+	withKeyword, err := p.consumeKeyword(lexer.TWith)
+	if err != nil {
+		return nil, err
+	}
 	ctes := []ast.CommonTableExpression{}
 	for !p.peekTokenIs(lexer.TSelect) {
 		if len(ctes) > 0 {
@@ -48,14 +51,14 @@ func (p *Parser) parseSelectStatement() (*ast.SelectStatement, error) {
 				return nil, err
 			}
 		}
-		startPosition := p.currentToken.Start
+		startPosition := p.peekToken.Start
 
 		// check for expression name
 		if err := p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier, lexer.TQuotedIdentifier}); err != nil {
 			return nil, err
 		}
 
-		cteName := p.currentToken.Value
+		cteName := p.peekToken.Value
 		var exprList *ast.ExprExpressionList
 
 		if p.peekTokenIs(lexer.TLeftParen) {
@@ -73,16 +76,12 @@ func (p *Parser) parseSelectStatement() (*ast.SelectStatement, error) {
 			p.nextToken()
 		}
 
-		if err := p.expectPeek(lexer.TAs); err != nil {
-			return nil, err
-		}
-		asKeyword := ast.NewKeywordFromToken(p.currentToken)
+		asKeyword, err := p.consumeKeyword(lexer.TAs)
+        if err != nil {
+            return nil, err
+        }
 
-		if err := p.expectPeek(lexer.TLeftParen); err != nil {
-			return nil, err
-		}
-
-		if err := p.expectPeek(lexer.TSelect); err != nil {
+		if _, err := p.consumeToken(lexer.TLeftParen); err != nil {
 			return nil, err
 		}
 
@@ -92,19 +91,19 @@ func (p *Parser) parseSelectStatement() (*ast.SelectStatement, error) {
 		}
 
 		if selectBody.OrderByClause != nil && len(selectBody.OrderByClause.Expressions) > 0 && selectBody.Top == nil {
-			return nil, p.currentErrorString("Order by is not allowed in cte query unless top clause is specified")
+			return nil, p.peekErrorString("Order by is not allowed in cte query unless top clause is specified")
 		}
 
-		if err := p.expectPeek(lexer.TRightParen); err != nil {
+		if _, err := p.consumeToken(lexer.TRightParen); err != nil {
 			return nil, err
 		}
-		endPosition := p.currentToken.End
+		endPosition := p.peekToken.End
 
 		cte := ast.CommonTableExpression{
 			Span:      ast.NewSpanFromLexerPosition(startPosition, endPosition),
 			Name:      cteName,
 			Columns:   exprList,
-			AsKeyword: asKeyword,
+			AsKeyword: *asKeyword,
 			Query:     selectBody,
 		}
 		ctes = append(ctes, cte)
@@ -115,85 +114,80 @@ func (p *Parser) parseSelectStatement() (*ast.SelectStatement, error) {
 	}
 
 	p.logger.Debugln("select body of select statement with cte")
-	if p.currentTokenIs(lexer.TSelect) {
+	if p.peekTokenIs(lexer.TSelect) {
 		selectBody, err := p.parseSelectBody()
 		if err != nil {
 			return nil, err
 		}
 		return &ast.SelectStatement{
-			WithKeyword: &withKeyword,
+			WithKeyword: withKeyword,
 			CTE:         &ctes,
 			SelectBody:  &selectBody,
 			Span: ast.NewSpanFromLexerPosition(
 				startPositionSelectStatement,
-				p.currentToken.End,
+				p.peekToken.End,
 			),
 		}, nil
 	}
 	return &ast.SelectStatement{}, nil
 }
 
-func (p *Parser) parseTopArg() (*ast.TopArg, error) {
-	p.nextToken()
+func (p *Parser) parseTopArg(topKw ast.Keyword) (*ast.TopArg, error) {
 	topArg := ast.TopArg{}
-	topKw := ast.NewKeywordFromToken(p.currentToken)
 	topArg.TopKeyword = topKw
-	startPosition := p.currentToken.Start
-	p.logger.Debug(p.currentToken)
+	startPosition := p.peekToken.Start
 	p.logger.Debug(p.peekToken)
 
 	if err := p.expectPeek(lexer.TNumericLiteral); err != nil {
 		return nil, err
 	}
 	expr := &ast.ExprNumberLiteral{
-		Value: p.currentToken.Value,
-		Span:  ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+		Value: p.peekToken.Value,
+		Span:  ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End),
 	}
-	expr.SetLeadingComments(p.popLeadingComments())
-	expr.SetTrailingComments(p.popTrailingComments())
 	topArg.Quantity = expr
 
 	if p.peekTokenIs(lexer.TPercent) {
 		p.nextToken()
-		kw := ast.NewKeywordFromToken(p.currentToken)
+		kw := ast.NewKeywordFromToken(p.peekToken)
 		topArg.PercentKeyword = &kw
 	}
 
 	if p.peekTokenIs(lexer.TWith) {
 		p.nextToken()
-		withKw := ast.NewKeywordFromToken(p.currentToken)
+		withKw := ast.NewKeywordFromToken(p.peekToken)
 
 		err := p.expectPeek(lexer.TTies)
 		if err != nil {
 			return nil, err
 		}
-		tiesKw := ast.NewKeywordFromToken(p.currentToken)
+		tiesKw := ast.NewKeywordFromToken(p.peekToken)
 		topArg.WithTiesKeyword = &[2]ast.Keyword{withKw, tiesKw}
 	}
 
-	topArg.Span = ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End)
+	topArg.Span = ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End)
 	return &topArg, nil
 }
 
 func (p *Parser) parseSelectBody() (ast.SelectBody, error) {
 	stmt := ast.SelectBody{}
-	startPositionSelectBody := p.currentToken.Start
-	stmt.SelectKeyword = ast.NewKeywordFromToken(p.currentToken)
-	if p.peekTokenIs(lexer.TDistinct) {
-		p.nextToken()
-		kw := ast.NewKeywordFromToken(p.currentToken)
-		stmt.Distinct = &kw
+	startPositionSelectBody := p.peekToken.Start
+	kw, err := p.consumeKeyword(lexer.TSelect)
+	if err != nil {
+		return stmt, err
+	}
+	stmt.SelectKeyword = *kw
+	if kw := p.maybeKeyword(lexer.TDistinct); kw != nil {
+		stmt.DistinctKeyword = kw
 	}
 
 	// check for optional all keyword
-	if p.peekTokenIs(lexer.TAll) {
-		p.nextToken()
-		kw := ast.NewKeywordFromToken(p.currentToken)
-		stmt.AllKeyword = &kw
+	if kw := p.maybeKeyword(lexer.TAll); kw != nil {
+		stmt.AllKeyword = kw
 	}
 
-	if p.peekTokenIs(lexer.TTop) {
-		topArg, err := p.parseTopArg()
+	if kw := p.maybeKeyword(lexer.TTop); kw != nil {
+		topArg, err := p.parseTopArg(*kw)
 		if err != nil {
 			return stmt, err
 		}
@@ -246,16 +240,15 @@ func (p *Parser) parseSelectBody() (ast.SelectBody, error) {
 
 	stmt.Span = ast.NewSpanFromLexerPosition(
 		startPositionSelectBody,
-		p.currentToken.End,
+		p.peekToken.End,
 	)
 
-	stmt.SetTrailingComments(p.popTrailingComments())
 	return stmt, nil
 }
 
 func (p *Parser) parseSelectSubquery() (ast.ExprSubquery, error) {
 	stmt := ast.ExprSubquery{}
-	startPositionSubquery := p.currentToken.Start
+	startPositionSubquery := p.peekToken.Start
 	p.logger.Debug("parsing subquery")
 
 	selectBody, err := p.parseSelectBody()
@@ -265,7 +258,7 @@ func (p *Parser) parseSelectSubquery() (ast.ExprSubquery, error) {
 	stmt.SelectBody = selectBody
 	stmt.Span = ast.NewSpanFromLexerPosition(
 		startPositionSubquery,
-		p.currentToken.End,
+		p.peekToken.End,
 	)
 
 	return stmt, nil
@@ -273,20 +266,10 @@ func (p *Parser) parseSelectSubquery() (ast.ExprSubquery, error) {
 
 func (p *Parser) parseSelectItems() (*ast.SelectItems, error) {
 	selectItems := ast.SelectItems{}
-	selectItems.SetLeadingComments(p.popLeadingComments())
-	startPositionSelectItems := p.currentToken.Start
-	p.logger.Debug(p.currentToken)
+	startPositionSelectItems := p.peekToken.Start
 	p.logger.Debug(p.peekToken)
 	for {
-		err := p.expectPeekMany(append([]lexer.TokenType{lexer.TIdentifier,
-			lexer.TNumericLiteral,
-			lexer.TStringLiteral,
-			lexer.TAsterisk,
-			lexer.TLocalVariable,
-			lexer.TLeftParen,
-			lexer.TMinus,
-			lexer.TPlus,
-			lexer.TQuotedIdentifier}, ast.BuiltinFunctionsTokenType...))
+		err := p.expectSelectItemStart()
 		if err != nil {
 			return nil, err
 		}
@@ -298,18 +281,57 @@ func (p *Parser) parseSelectItems() (*ast.SelectItems, error) {
 		switch v := expr.(type) {
 		case *ast.ExprSubquery:
 			if len(v.SelectItems.Items) > 1 {
-				return nil, p.currentErrorString("Subquery must contain only one column")
+				return nil, p.peekErrorString("Subquery must contain only one column")
 			}
-			if v.GroupByClause != nil && len(v.GroupByClause.Items) > 1 && v.Distinct != nil {
-				return nil, p.currentErrorString("The 'DISTINCT' keyword can't be used with subqueries that include 'GROUP BY'")
+			if v.GroupByClause != nil && len(v.GroupByClause.Items) > 1 && v.DistinctKeyword != nil {
+				return nil, p.peekErrorString("The 'DISTINCT' keyword can't be used with subqueries that include 'GROUP BY'")
 			}
 			if v.OrderByClause != nil && len(v.OrderByClause.Expressions) > 1 && v.Top == nil {
-				return nil, p.currentErrorString("'ORDER BY' can only be specified when 'TOP' is also specified")
+				return nil, p.peekErrorString("'ORDER BY' can only be specified when 'TOP' is also specified")
 			}
 			break
 		}
-		selectItems.Items = append(selectItems.Items, expr)
 
+		asKw := p.maybeKeyword(lexer.TAs)
+
+		if p.peekTokenIsAny([]lexer.TokenType{
+			lexer.TIdentifier,
+			lexer.TQuotedIdentifier,
+			lexer.TStringLiteral,
+		}) {
+			var alias ast.Expression
+			if p.peekTokenIs(lexer.TIdentifier) {
+				alias = &ast.ExprIdentifier{
+					Value: p.peekToken.Value,
+					Span:  ast.NewSpanFromToken(p.peekToken),
+				}
+			} else if p.peekTokenIs(lexer.TStringLiteral) {
+				alias = &ast.ExprStringLiteral{
+					Value: p.peekToken.Value,
+					Span:  ast.NewSpanFromToken(p.peekToken),
+				}
+			} else if p.peekTokenIs(lexer.TQuotedIdentifier) {
+				alias = &ast.ExprQuotedIdentifier{
+					Value: p.peekToken.Value,
+					Span:  ast.NewSpanFromToken(p.peekToken),
+				}
+			}
+
+			p.nextToken()
+
+			selectItem := &ast.ExprWithAlias{
+				Expression: expr,
+				AsKeyword:  asKw,
+				Alias:      alias,
+			}
+			selectItems.Items = append(selectItems.Items, selectItem)
+		} else if asKw == nil {
+			selectItems.Items = append(selectItems.Items, expr)
+		} else {
+			return nil, fmt.Errorf("Missing alias after \"As\" keyword")
+		}
+
+		p.logger.Debug(p.peekToken)
 		if p.peekToken.Type != lexer.TComma {
 			break
 		}
@@ -317,21 +339,20 @@ func (p *Parser) parseSelectItems() (*ast.SelectItems, error) {
 		p.nextToken()
 	}
 
-	selectItems.SetSpan(ast.NewSpanFromLexerPosition(startPositionSelectItems, p.currentToken.End))
-	selectItems.SetTrailingComments(p.popTrailingComments())
+	selectItems.SetSpan(ast.NewSpanFromLexerPosition(startPositionSelectItems, p.peekToken.End))
 	return &selectItems, nil
 }
 
 func (p *Parser) parseTableArg() (*ast.TableArg, error) {
-	err := p.expectPeek(lexer.TFrom)
+	fromKeyword, err := p.consumeKeyword(lexer.TFrom)
 	if err != nil {
 		p.logger.Debug("from err")
 		return nil, err
 	}
-	fromKeyword := ast.NewKeywordFromToken(p.currentToken)
-	startPosition := p.currentToken.Start
+	startPosition := p.peekToken.Start
 	p.logger.Debug("parsing table arg")
-	p.logger.Debug(p.currentToken)
+	p.logger.Debug(p.peekToken)
+	p.logger.Debug(p.peekToken)
 
 	tableSource, err := p.parseTableSource()
 	if err != nil {
@@ -343,9 +364,9 @@ func (p *Parser) parseTableArg() (*ast.TableArg, error) {
 		p.peekTokenIs(lexer.TRight) ||
 		p.peekTokenIs(lexer.TFull) {
 		return &ast.TableArg{
-			FromKeyword: fromKeyword,
+			FromKeyword: *fromKeyword,
 			Table:       tableSource,
-			Span:        ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+			Span:        ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End),
 		}, nil
 	}
 
@@ -355,16 +376,16 @@ func (p *Parser) parseTableArg() (*ast.TableArg, error) {
 	}
 
 	return &ast.TableArg{
-		FromKeyword: fromKeyword,
+		FromKeyword: *fromKeyword,
 		Table:       tableSource,
 		Joins:       joins,
-		Span:        ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+		Span:        ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End),
 	}, nil
 }
 
 func (p *Parser) parseTableSource() (*ast.TableSource, error) {
-	startPosition := p.currentToken.Start
-	err := p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier, lexer.TLocalVariable, lexer.TLeftParen})
+	startPosition := p.peekToken.Start
+	err := p.expectTableSourceStart()
 	if err != nil {
 		return nil, err
 	}
@@ -373,7 +394,8 @@ func (p *Parser) parseTableSource() (*ast.TableSource, error) {
 	if err != nil {
 		return nil, err
 	}
-	baseNode := ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End)
+	p.logger.Debugf("source %v", source)
+	baseNode := ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End)
 	switch v := source.(type) {
 	case *ast.ExprIdentifier, *ast.ExprCompoundIdentifier, *ast.ExprLocalVariable:
 		return &ast.TableSource{
@@ -412,7 +434,7 @@ func (p *Parser) parseTableSource() (*ast.TableSource, error) {
 			Span:   baseNode,
 		}, err
 	default:
-		return nil, p.currentErrorString("expected Table Name or Function or Subquery")
+		return nil, p.peekErrorString("expected Table Name or Function or Subquery")
 	}
 
 }
@@ -421,25 +443,25 @@ func (p *Parser) parseJoins() ([]ast.Join, error) {
 	joins := []ast.Join{}
 
 	for {
-		startPosition := p.currentToken.Start
+		startPosition := p.peekToken.Start
 		var joinType ast.JoinType
 		var joinTypeKeyword []ast.Keyword
 		var joinKeyword ast.Keyword
 		if p.peekTokenIs(lexer.TInner) {
 			p.nextToken()
-			joinTypeKeyword = append(joinTypeKeyword, ast.NewKeywordFromToken(p.currentToken))
+			joinTypeKeyword = append(joinTypeKeyword, ast.NewKeywordFromToken(p.peekToken))
 			if err := p.expectPeek(lexer.TJoin); err != nil {
 				return nil, err
 			}
 			joinType = ast.JTInner
-			joinKeyword = ast.NewKeywordFromToken(p.currentToken)
+			joinKeyword = ast.NewKeywordFromToken(p.peekToken)
 		} else if p.peekTokenIs(lexer.TLeft) {
 			p.nextToken()
-			joinTypeKeyword = append(joinTypeKeyword, ast.NewKeywordFromToken(p.currentToken))
+			joinTypeKeyword = append(joinTypeKeyword, ast.NewKeywordFromToken(p.peekToken))
 			if p.peekTokenIs(lexer.TOuter) {
 				p.nextToken()
 				joinType = ast.JTLeftOuter
-				joinTypeKeyword = append(joinTypeKeyword, ast.NewKeywordFromToken(p.currentToken))
+				joinTypeKeyword = append(joinTypeKeyword, ast.NewKeywordFromToken(p.peekToken))
 			} else if p.peekTokenIs(lexer.TJoin) {
 				joinType = ast.JTLeft
 			}
@@ -447,14 +469,14 @@ func (p *Parser) parseJoins() ([]ast.Join, error) {
 			if err := p.expectPeek(lexer.TJoin); err != nil {
 				return nil, err
 			}
-			joinKeyword = ast.NewKeywordFromToken(p.currentToken)
+			joinKeyword = ast.NewKeywordFromToken(p.peekToken)
 		} else if p.peekTokenIs(lexer.TRight) {
 			p.nextToken()
-			joinTypeKeyword = append(joinTypeKeyword, ast.NewKeywordFromToken(p.currentToken))
+			joinTypeKeyword = append(joinTypeKeyword, ast.NewKeywordFromToken(p.peekToken))
 			if p.peekTokenIs(lexer.TOuter) {
 				p.nextToken()
 				joinType = ast.JTRightOuter
-				joinTypeKeyword = append(joinTypeKeyword, ast.NewKeywordFromToken(p.currentToken))
+				joinTypeKeyword = append(joinTypeKeyword, ast.NewKeywordFromToken(p.peekToken))
 			} else if p.peekTokenIs(lexer.TJoin) {
 				joinType = ast.JTRight
 			}
@@ -462,14 +484,14 @@ func (p *Parser) parseJoins() ([]ast.Join, error) {
 			if err := p.expectPeek(lexer.TJoin); err != nil {
 				return nil, err
 			}
-			joinKeyword = ast.NewKeywordFromToken(p.currentToken)
+			joinKeyword = ast.NewKeywordFromToken(p.peekToken)
 		} else if p.peekTokenIs(lexer.TFull) {
 			p.nextToken()
-			joinTypeKeyword = append(joinTypeKeyword, ast.NewKeywordFromToken(p.currentToken))
+			joinTypeKeyword = append(joinTypeKeyword, ast.NewKeywordFromToken(p.peekToken))
 			if p.peekTokenIs(lexer.TOuter) {
 				p.nextToken()
 				joinType = ast.JTFullOuter
-				joinTypeKeyword = append(joinTypeKeyword, ast.NewKeywordFromToken(p.currentToken))
+				joinTypeKeyword = append(joinTypeKeyword, ast.NewKeywordFromToken(p.peekToken))
 			} else if p.peekTokenIs(lexer.TJoin) {
 				joinType = ast.JTFull
 			}
@@ -477,7 +499,7 @@ func (p *Parser) parseJoins() ([]ast.Join, error) {
 			if err := p.expectPeek(lexer.TJoin); err != nil {
 				return nil, err
 			}
-			joinKeyword = ast.NewKeywordFromToken(p.currentToken)
+			joinKeyword = ast.NewKeywordFromToken(p.peekToken)
 		} else {
 			break
 		}
@@ -490,7 +512,7 @@ func (p *Parser) parseJoins() ([]ast.Join, error) {
 		if err := p.expectPeek(lexer.TOn); err != nil {
 			return nil, err
 		}
-		onKeyword := ast.NewKeywordFromToken(p.currentToken)
+		onKeyword := ast.NewKeywordFromToken(p.peekToken)
 		p.nextToken()
 
 		searchCondition, err := p.parseExpression(PrecedenceLowest)
@@ -505,7 +527,7 @@ func (p *Parser) parseJoins() ([]ast.Join, error) {
 			Table:           tableSource,
 			OnKeyword:       &onKeyword,
 			Condition:       searchCondition,
-			Span:            ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+			Span:            ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End),
 		})
 	}
 
@@ -514,10 +536,10 @@ func (p *Parser) parseJoins() ([]ast.Join, error) {
 
 func (p *Parser) parseWhereExpression() (*ast.WhereClause, error) {
 	whereClause := ast.WhereClause{}
-	startPosition := p.currentToken.Start
+	startPosition := p.peekToken.Start
 	// go to where token
 	p.nextToken()
-	whereClause.WhereKeyword = ast.NewKeywordFromToken(p.currentToken)
+	whereClause.WhereKeyword = ast.NewKeywordFromToken(p.peekToken)
 	p.logger.Debug("parsing where")
 
 	p.nextToken()
@@ -541,26 +563,25 @@ func (p *Parser) parseWhereExpression() (*ast.WhereClause, error) {
 		*ast.ExprAnyLogicalOperator:
 		break
 	default:
-		p.errorToken = ETCurrent
-		return nil, p.currentErrorString("expected expression after 'WHERE' keyword")
+		return nil, p.peekErrorString("expected expression after 'WHERE' keyword")
 	}
 	p.logger.Debugf("expr: %s\n", expr)
 	whereClause.Clause = expr
-	whereClause.Clause.SetSpan(ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End))
+	whereClause.Clause.SetSpan(ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End))
 	return &whereClause, nil
 }
 
 func (p *Parser) parseGroupByClause() (*ast.GroupByClause, error) {
 	p.nextToken()
 	groupByClause := ast.GroupByClause{}
-	startPosition := p.currentToken.Start
+	startPosition := p.peekToken.Start
 	items := []ast.Expression{}
-	groupKw := ast.NewKeywordFromToken(p.currentToken)
+	groupKw := ast.NewKeywordFromToken(p.peekToken)
 	err := p.expectPeek(lexer.TBy)
 	if err != nil {
 		return nil, err
 	}
-	byKw := ast.NewKeywordFromToken(p.currentToken)
+	byKw := ast.NewKeywordFromToken(p.peekToken)
 	groupByClause.GroupByKeyword = [2]ast.Keyword{groupKw, byKw}
 
 	p.logger.Debug("parsing group by clause")
@@ -591,14 +612,14 @@ func (p *Parser) parseGroupByClause() (*ast.GroupByClause, error) {
 	p.nextToken()
 
 	groupByClause.Items = items
-	groupByClause.SetSpan(ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End))
+	groupByClause.SetSpan(ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End))
 	return &groupByClause, nil
 }
 
 func (p *Parser) parseHavingExpression() (*ast.HavingClause, error) {
 	p.nextToken()
-	havingClause := ast.HavingClause{HavingKeyword: ast.NewKeywordFromToken(p.currentToken)}
-	startPosition := p.currentToken.Start
+	havingClause := ast.HavingClause{HavingKeyword: ast.NewKeywordFromToken(p.peekToken)}
+	startPosition := p.peekToken.Start
 	p.logger.Debug("parsing having")
 
 	p.nextToken()
@@ -623,22 +644,22 @@ func (p *Parser) parseHavingExpression() (*ast.HavingClause, error) {
 		*ast.ExprAnyLogicalOperator:
 		break
 	default:
-		return nil, p.currentErrorString("expected expression after 'HAVING' keyword")
+		return nil, p.peekErrorString("expected expression after 'HAVING' keyword")
 	}
 	havingClause.Clause = expr
-	havingClause.Clause.SetSpan(ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End))
+	havingClause.Clause.SetSpan(ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End))
 	return &havingClause, nil
 }
 
 func (p *Parser) parseOrderByClause() (*ast.OrderByClause, error) {
 	p.nextToken()
-	orderKeyword := ast.NewKeywordFromToken(p.currentToken)
-	startPosition := p.currentToken.Start
+	orderKeyword := ast.NewKeywordFromToken(p.peekToken)
+	startPosition := p.peekToken.Start
 	err := p.expectPeek(lexer.TBy)
 	if err != nil {
 		return nil, err
 	}
-	byKeyword := ast.NewKeywordFromToken(p.currentToken)
+	byKeyword := ast.NewKeywordFromToken(p.peekToken)
 	p.logger.Debug("parsing order by clause")
 	args, err := p.parseOrderByArgs()
 	if err != nil {
@@ -648,7 +669,7 @@ func (p *Parser) parseOrderByClause() (*ast.OrderByClause, error) {
 	orderByClause := &ast.OrderByClause{
 		OrderByKeyword: [2]ast.Keyword{orderKeyword, byKeyword},
 		Expressions:    args,
-		Span:           ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+		Span:           ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End),
 	}
 
 	if !p.peekTokenIs(lexer.TOffset) {
@@ -661,9 +682,7 @@ func (p *Parser) parseOrderByClause() (*ast.OrderByClause, error) {
 	}
 
 	orderByClause.OffsetFetch = offsetFetchClause
-	orderByClause.Span = ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End)
-	orderByClause.SetLeadingComments(p.popLeadingComments())
-	orderByClause.SetTrailingComments(p.popTrailingComments())
+	orderByClause.Span = ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End)
 
 	return orderByClause, nil
 }
@@ -672,7 +691,7 @@ func (p *Parser) parseOrderByArgs() ([]ast.OrderByArg, error) {
 	items := []ast.OrderByArg{}
 
 	for {
-		startPosition := p.currentToken.Start
+		startPosition := p.peekToken.Start
 		err := p.expectPeekMany([]lexer.TokenType{
 			lexer.TIdentifier,
 			lexer.TNumericLiteral,
@@ -689,27 +708,27 @@ func (p *Parser) parseOrderByArgs() ([]ast.OrderByArg, error) {
 		}
 		if p.peekTokenIs(lexer.TAsc) {
 			p.nextToken()
-			orderKeyword := ast.NewKeywordFromToken(p.currentToken)
+			orderKeyword := ast.NewKeywordFromToken(p.peekToken)
 			items = append(items, ast.OrderByArg{
 				Column:       expr,
 				Type:         ast.OBAsc,
 				OrderKeyword: &orderKeyword,
-				Span:         ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+				Span:         ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End),
 			})
 		} else if p.peekTokenIs(lexer.TDesc) {
 			p.nextToken()
-			orderKeyword := ast.NewKeywordFromToken(p.currentToken)
+			orderKeyword := ast.NewKeywordFromToken(p.peekToken)
 			items = append(items, ast.OrderByArg{
 				Column:       expr,
 				Type:         ast.OBDesc,
 				OrderKeyword: &orderKeyword,
-				Span:         ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+				Span:         ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End),
 			})
 		} else {
 			items = append(items, ast.OrderByArg{
 				Column: expr,
 				Type:   ast.OBNone,
-				Span:   ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+				Span:   ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End),
 			})
 		}
 
@@ -725,9 +744,8 @@ func (p *Parser) parseOrderByArgs() ([]ast.OrderByArg, error) {
 
 func (p *Parser) parseOffsetFetchClause() (*ast.OffsetFetchClause, error) {
 	p.logger.Debug("parsing offset fetch clause")
-	startPosition := p.currentToken.Start
+	startPosition := p.peekToken.Start
 	p.nextToken()
-	leading := p.popLeadingComments()
 
 	offset, err := p.parseOffset()
 	if err != nil {
@@ -735,12 +753,10 @@ func (p *Parser) parseOffsetFetchClause() (*ast.OffsetFetchClause, error) {
 	}
 	offsetFetchClause := ast.OffsetFetchClause{
 		Offset: offset,
-		Span:   ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+		Span:   ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End),
 	}
-	offsetFetchClause.SetLeadingComments(leading)
 
 	if !p.peekTokenIs(lexer.TFetch) {
-		offsetFetchClause.SetTrailingComments(p.popTrailingComments())
 		return &offsetFetchClause, nil
 	}
 
@@ -751,19 +767,16 @@ func (p *Parser) parseOffsetFetchClause() (*ast.OffsetFetchClause, error) {
 	}
 
 	offsetFetchClause.Fetch = &fetch
-	offsetFetchClause.Span = ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End)
-	offsetFetchClause.SetTrailingComments(p.popTrailingComments())
+	offsetFetchClause.Span = ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End)
 
 	return &offsetFetchClause, nil
 }
 
 func (p *Parser) parseOffset() (ast.OffsetArg, error) {
-	startPosition := p.currentToken.Start
-	offsetKeyword := ast.NewKeywordFromToken(p.currentToken)
+	startPosition := p.peekToken.Start
+	offsetKeyword := ast.NewKeywordFromToken(p.peekToken)
 	p.nextToken()
 	offsetArg := ast.OffsetArg{OffsetKeyword: offsetKeyword}
-	offsetArg.SetLeadingComments(p.popLeadingComments())
-	offsetArg.SetTrailingComments(p.popTrailingComments())
 	offset, err := p.parseExpression(PrecedenceLowest)
 	if err != nil {
 		return offsetArg, err
@@ -775,9 +788,9 @@ func (p *Parser) parseOffset() (ast.OffsetArg, error) {
 	}
 
 	offsetArg.Value = offset
-	offsetArg.Span = ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End)
-	offsetArg.RowOrRowsKeyword = ast.NewKeywordFromToken(p.currentToken)
-	switch p.currentToken.Type {
+	offsetArg.Span = ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End)
+	offsetArg.RowOrRowsKeyword = ast.NewKeywordFromToken(p.peekToken)
+	switch p.peekToken.Type {
 	case lexer.TRow:
 		offsetArg.RowOrRows = ast.RRRow
 		return offsetArg, nil
@@ -785,21 +798,19 @@ func (p *Parser) parseOffset() (ast.OffsetArg, error) {
 		offsetArg.RowOrRows = ast.RRRows
 		return offsetArg, nil
 	default:
-		return offsetArg, p.currentErrorString("Expected 'ROW' or 'ROWS' after offset expression")
+		return offsetArg, p.peekErrorString("Expected 'ROW' or 'ROWS' after offset expression")
 	}
 }
 
 func (p *Parser) parseFetch() (ast.FetchArg, error) {
-	startPosition := p.currentToken.Start
-	fetchArg := ast.FetchArg{FetchKeyword: ast.NewKeywordFromToken(p.currentToken)}
-	fetchArg.SetLeadingComments(p.popLeadingComments())
-	fetchArg.SetTrailingComments(p.popTrailingComments())
+	startPosition := p.peekToken.Start
+	fetchArg := ast.FetchArg{FetchKeyword: ast.NewKeywordFromToken(p.peekToken)}
 	if err := p.expectPeekMany([]lexer.TokenType{lexer.TFirst, lexer.TNext}); err != nil {
 		return fetchArg, err
 	}
 
-	fetchArg.NextOrFirstKeyword = ast.NewKeywordFromToken(p.currentToken)
-	switch p.currentToken.Type {
+	fetchArg.NextOrFirstKeyword = ast.NewKeywordFromToken(p.peekToken)
+	switch p.peekToken.Type {
 	case lexer.TFirst:
 		fetchArg.NextOrFirst = ast.NFFirst
 		break
@@ -820,8 +831,8 @@ func (p *Parser) parseFetch() (ast.FetchArg, error) {
 		return fetchArg, err
 	}
 
-	fetchArg.RowOrRowsKeyword = ast.NewKeywordFromToken(p.currentToken)
-	switch p.currentToken.Type {
+	fetchArg.RowOrRowsKeyword = ast.NewKeywordFromToken(p.peekToken)
+	switch p.peekToken.Type {
 	case lexer.TRow:
 		fetchArg.RowOrRows = ast.RRRow
 		break
@@ -833,16 +844,16 @@ func (p *Parser) parseFetch() (ast.FetchArg, error) {
 	if err = p.expectPeek(lexer.TOnly); err != nil {
 		return fetchArg, err
 	}
-	fetchArg.OnlyKeyword = ast.NewKeywordFromToken(p.currentToken)
-	fetchArg.Span = ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End)
+	fetchArg.OnlyKeyword = ast.NewKeywordFromToken(p.peekToken)
+	fetchArg.Span = ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End)
 
 	return fetchArg, nil
 }
 
 func (p *Parser) parseOverClause() (*ast.FunctionOverClause, error) {
 	p.nextToken()
-	startPosition := p.currentToken.Start
-	overKeyword := ast.NewKeywordFromToken(p.currentToken)
+	startPosition := p.peekToken.Start
+	overKeyword := ast.NewKeywordFromToken(p.peekToken)
 	if err := p.expectPeek(lexer.TLeftParen); err != nil {
 		return nil, err
 	}
@@ -851,11 +862,11 @@ func (p *Parser) parseOverClause() (*ast.FunctionOverClause, error) {
 
 	if p.peekTokenIs(lexer.TPartition) {
 		p.nextToken()
-		partitionKeyword := ast.NewKeywordFromToken(p.currentToken)
+		partitionKeyword := ast.NewKeywordFromToken(p.peekToken)
 		if err := p.expectPeek(lexer.TBy); err != nil {
 			return nil, err
 		}
-		byKeyword := ast.NewKeywordFromToken(p.currentToken)
+		byKeyword := ast.NewKeywordFromToken(p.peekToken)
 		expressions, err := p.parsePartitionClause()
 		if err != nil {
 			return nil, err
@@ -866,11 +877,11 @@ func (p *Parser) parseOverClause() (*ast.FunctionOverClause, error) {
 
 	if p.peekTokenIs(lexer.TOrder) {
 		p.nextToken()
-		orderKeyword := ast.NewKeywordFromToken(p.currentToken)
+		orderKeyword := ast.NewKeywordFromToken(p.peekToken)
 		if err := p.expectPeek(lexer.TBy); err != nil {
 			return nil, err
 		}
-		byKeyword := ast.NewKeywordFromToken(p.currentToken)
+		byKeyword := ast.NewKeywordFromToken(p.peekToken)
 		args, err := p.parseOrderByArgs()
 		if err != nil {
 			return nil, err
@@ -891,7 +902,7 @@ func (p *Parser) parseOverClause() (*ast.FunctionOverClause, error) {
 	if err != nil {
 		return nil, err
 	}
-	functionOverClause.Span = ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End)
+	functionOverClause.Span = ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End)
 
 	return &functionOverClause, nil
 }
@@ -919,14 +930,14 @@ func (p *Parser) parsePartitionClause() ([]ast.Expression, error) {
 	}
 
 	if len(args) == 0 {
-		return nil, p.currentErrorString("PARTITION BY items in PARTITION BY expression")
+		return nil, p.peekErrorString("PARTITION BY items in PARTITION BY expression")
 	}
 
 	return args, nil
 }
 
 func (p *Parser) parseWindowFrameClause() (*ast.WindowFrameClause, error) {
-	startPosition := p.currentToken.Start
+	startPosition := p.peekToken.Start
 	var rowsOrRangeType ast.RowsOrRangeType
 	if p.peekTokenIs(lexer.TRows) {
 		rowsOrRangeType = ast.RRTRows
@@ -934,52 +945,52 @@ func (p *Parser) parseWindowFrameClause() (*ast.WindowFrameClause, error) {
 		rowsOrRangeType = ast.RRTRange
 	}
 	p.nextToken()
-	rowsOrRangeKeyword := ast.NewKeywordFromToken(p.currentToken)
+	rowsOrRangeKeyword := ast.NewKeywordFromToken(p.peekToken)
 	var betweenKeyword *ast.Keyword
 
 	var windowFrameStart ast.WindowFrameBound
 	var windowFrameEnd ast.WindowFrameBound
 	followingNeeded := false
 	// parse between
-	p.logger.Debug("p.currentToken.Value: ", p.currentToken.Value)
+	p.logger.Debug("p.peekToken.Value: ", p.peekToken.Value)
 	p.logger.Debug("p.peekToken.Value: ", p.peekToken.Value)
 	if p.peekTokenIs(lexer.TBetween) {
 		followingNeeded = true
 		p.nextToken()
-		betweenKeywordTemp := ast.NewKeywordFromToken(p.currentToken)
+		betweenKeywordTemp := ast.NewKeywordFromToken(p.peekToken)
 		betweenKeyword = &betweenKeywordTemp
 	}
-	p.logger.Debug("p.currentToken.Value: ", p.currentToken.Value)
+	p.logger.Debug("p.peekToken.Value: ", p.peekToken.Value)
 	p.logger.Debug("p.peekToken.Value: ", p.peekToken.Value)
 	var boundKeywordStart []ast.Keyword
 	if p.peekTokenIs(lexer.TUnbounded) {
 		p.nextToken()
-        boundKeyword := ast.NewKeywordFromToken(p.currentToken)
+		boundKeyword := ast.NewKeywordFromToken(p.peekToken)
 		boundKeywordStart = append(boundKeywordStart, boundKeyword)
 
 		if err := p.expectPeek(lexer.TPreceding); err != nil {
 			return nil, err
 		}
-        boundKeyword2 := ast.NewKeywordFromToken(p.currentToken)
+		boundKeyword2 := ast.NewKeywordFromToken(p.peekToken)
 		boundKeywordStart = append(boundKeywordStart, boundKeyword2)
 		windowFrameStart = ast.WindowFrameBound{
 			BoundKeyword: boundKeywordStart,
 			Type:         ast.WFBTUnboundedPreceding,
-			Span:         ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+			Span:         ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End),
 		}
 	} else if p.peekTokenIs(lexer.TCurrent) {
 		p.nextToken()
-        boundKeyword := ast.NewKeywordFromToken(p.currentToken)
+		boundKeyword := ast.NewKeywordFromToken(p.peekToken)
 		boundKeywordStart = append(boundKeywordStart, boundKeyword)
 		if err := p.expectPeek(lexer.TRow); err != nil {
 			return nil, err
 		}
-        boundKeyword2 := ast.NewKeywordFromToken(p.currentToken)
+		boundKeyword2 := ast.NewKeywordFromToken(p.peekToken)
 		boundKeywordStart = append(boundKeywordStart, boundKeyword2)
 		windowFrameStart = ast.WindowFrameBound{
 			BoundKeyword: boundKeywordStart,
 			Type:         ast.WFBTCurrentRow,
-			Span:         ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+			Span:         ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End),
 		}
 	} else if p.peekTokenIs(lexer.TNumericLiteral) {
 		p.nextToken()
@@ -991,16 +1002,16 @@ func (p *Parser) parseWindowFrameClause() (*ast.WindowFrameClause, error) {
 		if err := p.expectPeek(lexer.TPreceding); err != nil {
 			return nil, err
 		}
-        boundKeyword := ast.NewKeywordFromToken(p.currentToken)
+		boundKeyword := ast.NewKeywordFromToken(p.peekToken)
 		boundKeywordStart = append(boundKeywordStart, boundKeyword)
 		windowFrameStart = ast.WindowFrameBound{
 			BoundKeyword: boundKeywordStart,
 			Type:         ast.WFBTPreceding,
 			Expression:   expr,
-			Span:         ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+			Span:         ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End),
 		}
 	} else {
-		return nil, p.currentErrorString("Expected UNBOUNDED PRECEDING or CURRENT ROW or <NUMBER> PRECEDING")
+		return nil, p.peekErrorString("Expected UNBOUNDED PRECEDING or peek ROW or <NUMBER> PRECEDING")
 	}
 
 	if !followingNeeded {
@@ -1009,44 +1020,44 @@ func (p *Parser) parseWindowFrameClause() (*ast.WindowFrameClause, error) {
 			RowsOrRange:        rowsOrRangeType,
 			Start:              &windowFrameStart,
 			BetweenKeyword:     betweenKeyword,
-			Span:               ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+			Span:               ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End),
 		}, nil
 	}
 
-	startPositionFrameEnd := p.currentToken.Start
+	startPositionFrameEnd := p.peekToken.Start
 	if err := p.expectPeek(lexer.TAnd); err != nil {
 		return nil, err
 	}
-	andKeyword := ast.NewKeywordFromToken(p.currentToken)
+	andKeyword := ast.NewKeywordFromToken(p.peekToken)
 
 	var boundKeywordEnd []ast.Keyword
 	if p.peekTokenIs(lexer.TUnbounded) {
 		p.nextToken()
-        boundKeyword := ast.NewKeywordFromToken(p.currentToken)
+		boundKeyword := ast.NewKeywordFromToken(p.peekToken)
 		boundKeywordEnd = append(boundKeywordEnd, boundKeyword)
 		if err := p.expectPeek(lexer.TFollowing); err != nil {
 			return nil, err
 		}
-        boundKeyword2 := ast.NewKeywordFromToken(p.currentToken)
+		boundKeyword2 := ast.NewKeywordFromToken(p.peekToken)
 		boundKeywordEnd = append(boundKeywordEnd, boundKeyword2)
 		windowFrameEnd = ast.WindowFrameBound{
 			Type:         ast.WFBTUnboundedFollowing,
 			BoundKeyword: boundKeywordEnd,
-			Span:         ast.NewSpanFromLexerPosition(startPositionFrameEnd, p.currentToken.End),
+			Span:         ast.NewSpanFromLexerPosition(startPositionFrameEnd, p.peekToken.End),
 		}
 	} else if p.peekTokenIs(lexer.TCurrent) {
 		p.nextToken()
-        boundKeyword := ast.NewKeywordFromToken(p.currentToken)
+		boundKeyword := ast.NewKeywordFromToken(p.peekToken)
 		boundKeywordEnd = append(boundKeywordEnd, boundKeyword)
 		if err := p.expectPeek(lexer.TRow); err != nil {
 			return nil, err
 		}
-        boundKeyword2 := ast.NewKeywordFromToken(p.currentToken)
+		boundKeyword2 := ast.NewKeywordFromToken(p.peekToken)
 		boundKeywordEnd = append(boundKeywordEnd, boundKeyword2)
 		windowFrameEnd = ast.WindowFrameBound{
 			BoundKeyword: boundKeywordEnd,
 			Type:         ast.WFBTCurrentRow,
-			Span:         ast.NewSpanFromLexerPosition(startPositionFrameEnd, p.currentToken.End),
+			Span:         ast.NewSpanFromLexerPosition(startPositionFrameEnd, p.peekToken.End),
 		}
 	} else if p.peekTokenIs(lexer.TNumericLiteral) {
 		p.nextToken()
@@ -1057,16 +1068,16 @@ func (p *Parser) parseWindowFrameClause() (*ast.WindowFrameClause, error) {
 		if err := p.expectPeek(lexer.TFollowing); err != nil {
 			return nil, err
 		}
-        boundKeyword := ast.NewKeywordFromToken(p.currentToken)
+		boundKeyword := ast.NewKeywordFromToken(p.peekToken)
 		boundKeywordEnd = append(boundKeywordEnd, boundKeyword)
 		windowFrameEnd = ast.WindowFrameBound{
 			Type:         ast.WFBTFollowing,
 			BoundKeyword: boundKeywordEnd,
 			Expression:   expr,
-			Span:         ast.NewSpanFromLexerPosition(startPositionFrameEnd, p.currentToken.End),
+			Span:         ast.NewSpanFromLexerPosition(startPositionFrameEnd, p.peekToken.End),
 		}
 	} else {
-		return nil, p.currentErrorString("Expected UNBOUNDED FOLLOWING or CURRENT ROW or <NUMBER> FOLLOWING")
+		return nil, p.peekErrorString("Expected UNBOUNDED FOLLOWING or peek ROW or <NUMBER> FOLLOWING")
 	}
 
 	return &ast.WindowFrameClause{
@@ -1076,12 +1087,12 @@ func (p *Parser) parseWindowFrameClause() (*ast.WindowFrameClause, error) {
 		BetweenKeyword:     betweenKeyword,
 		AndKeyword:         &andKeyword,
 		End:                &windowFrameEnd,
-		Span:               ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+		Span:               ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End),
 	}, nil
 }
 
 func (p *Parser) parseExpressionList() (ast.ExprExpressionList, error) {
-	startPosition := p.currentToken.Start
+	startPosition := p.peekToken.Start
 	expressionList := ast.ExprExpressionList{}
 
 	for {
@@ -1107,70 +1118,70 @@ func (p *Parser) parseExpressionList() (ast.ExprExpressionList, error) {
 		p.nextToken()
 	}
 
-	expressionList.Span = ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End)
+	expressionList.Span = ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End)
 	return expressionList, nil
 }
 
 func (p *Parser) parseNumericSize() (*ast.NumericSize, error) {
-	startPosition := p.currentToken.Start
+	startPosition := p.peekToken.Start
 	if err := p.expectPeek(lexer.TLeftParen); err != nil {
 		return nil, err
 	}
 
 	if err := p.expectPeek(lexer.TNumericLiteral); err != nil {
-		return nil, p.currentErrorString("Expected a numeric literal for casting expression")
+		return nil, p.peekErrorString("Expected a numeric literal for casting expression")
 	}
 
 	// parse precision
-	precision, err := strconv.ParseUint(p.currentToken.Value, 10, 32)
+	precision, err := strconv.ParseUint(p.peekToken.Value, 10, 32)
 	if err != nil {
-		return nil, p.currentErrorString("could not convert numeric literal to uint32")
+		return nil, p.peekErrorString("could not convert numeric literal to uint32")
 	}
 	precision32 := uint32(precision)
 	if p.peekTokenIs(lexer.TRightParen) {
 		p.nextToken()
 		return &ast.NumericSize{
 			Precision: precision32,
-			Span:      ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+			Span:      ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End),
 		}, nil
 	}
 
 	// parse scale
 	if err := p.expectPeek(lexer.TComma); err != nil {
-		return nil, p.currentErrorString("Expected a comma before scale")
+		return nil, p.peekErrorString("Expected a comma before scale")
 	}
 
 	p.nextToken()
 
 	if err := p.expectPeek(lexer.TNumericLiteral); err != nil {
-		return nil, p.currentErrorString("Expected a numeric literal for scale when casting expression")
+		return nil, p.peekErrorString("Expected a numeric literal for scale when casting expression")
 	}
 
-	scale, err := strconv.ParseUint(p.currentToken.Value, 10, 32)
+	scale, err := strconv.ParseUint(p.peekToken.Value, 10, 32)
 	if err != nil {
-		return nil, p.currentErrorString("could not convert numeric literal to uint32")
+		return nil, p.peekErrorString("could not convert numeric literal to uint32")
 	}
 	scale32 := uint32(scale)
 
 	if err := p.expectPeek(lexer.TRightParen); err != nil {
-		return nil, p.currentErrorString("Expected a right parenthesis after scale")
+		return nil, p.peekErrorString("Expected a right parenthesis after scale")
 	}
 
 	return &ast.NumericSize{
 		Precision: precision32,
 		Scale:     &scale32,
-		Span:      ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+		Span:      ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End),
 	}, nil
 }
 
 func (p *Parser) parseDataType() (*ast.DataType, error) {
-	startPosition := p.currentToken.Start
+	startPosition := p.peekToken.Start
 	if err := p.expectPeekMany(ast.DataTypeTokenTypes); err != nil {
 		return nil, err
 	}
 
 	var dataType ast.DataType
-	switch p.currentToken.Type {
+	switch p.peekToken.Type {
 	case lexer.TInt:
 		dataType = ast.DataType{Kind: ast.DTInt}
 		break
@@ -1196,16 +1207,16 @@ func (p *Parser) parseDataType() (*ast.DataType, error) {
 			return nil, err
 		}
 		if err := p.expectPeek(lexer.TNumericLiteral); err != nil {
-			return nil, p.currentErrorString("Expected a numeric literal for casting expression")
+			return nil, p.peekErrorString("Expected a numeric literal for casting expression")
 		}
-		size, err := strconv.ParseUint(p.currentToken.Value, 10, 32)
+		size, err := strconv.ParseUint(p.peekToken.Value, 10, 32)
 		if err != nil {
-			return nil, p.currentErrorString("could not convert numeric literal to uint32")
+			return nil, p.peekErrorString("could not convert numeric literal to uint32")
 		}
 		size32 := uint32(size)
 		dataType.FloatPrecision = &size32
 		if err := p.expectPeek(lexer.TRightParen); err != nil {
-			return nil, p.currentErrorString("Expected a numeric literal for casting expression")
+			return nil, p.peekErrorString("Expected a numeric literal for casting expression")
 		}
 		break
 	case lexer.TReal:
@@ -1252,29 +1263,29 @@ func (p *Parser) parseDataType() (*ast.DataType, error) {
 			return nil, err
 		}
 		if err := p.expectPeek(lexer.TNumericLiteral); err != nil {
-			return nil, p.currentErrorString("Expected a numeric literal for casting expression")
+			return nil, p.peekErrorString("Expected a numeric literal for casting expression")
 		}
-		size, err := strconv.ParseUint(p.currentToken.Value, 10, 32)
+		size, err := strconv.ParseUint(p.peekToken.Value, 10, 32)
 		if err != nil {
-			return nil, p.currentErrorString("could not convert numeric literal to uint32")
+			return nil, p.peekErrorString("could not convert numeric literal to uint32")
 		}
 		size32 := uint32(size)
 		dataType.FloatPrecision = &size32
 		if err := p.expectPeek(lexer.TRightParen); err != nil {
-			return nil, p.currentErrorString("Expected a numeric literal for casting expression")
+			return nil, p.peekErrorString("Expected a numeric literal for casting expression")
 		}
 		break
 	default:
-		return nil, p.currentErrorString("Expected a Builtin Datatype")
+		return nil, p.peekErrorString("Expected a Builtin Datatype")
 	}
 
-	dataType.Span = ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End)
+	dataType.Span = ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End)
 	return &dataType, nil
 }
 
 func (p *Parser) parseCast() (*ast.ExprCast, error) {
-	startPosition := p.currentToken.Start
-	castKeyword := ast.NewKeywordFromToken(p.currentToken)
+	startPosition := p.peekToken.Start
+	castKeyword := ast.NewKeywordFromToken(p.peekToken)
 	if err := p.expectPeek(lexer.TLeftParen); err != nil {
 		return nil, err
 	}
@@ -1290,14 +1301,14 @@ func (p *Parser) parseCast() (*ast.ExprCast, error) {
 	if err := p.expectPeek(lexer.TAs); err != nil {
 		return nil, err
 	}
-	asKeyword := ast.NewKeywordFromToken(p.currentToken)
+	asKeyword := ast.NewKeywordFromToken(p.peekToken)
 
 	dt, err := p.parseDataType()
 	if err != nil {
 		return nil, err
 	}
 	p.logger.Debug(dt.TokenLiteral())
-	p.logger.Debug(p.currentToken)
+	p.logger.Debug(p.peekToken)
 	p.logger.Debug(p.peekToken)
 	if err := p.expectPeek(lexer.TRightParen); err != nil {
 		return nil, err
@@ -1308,48 +1319,49 @@ func (p *Parser) parseCast() (*ast.ExprCast, error) {
 		Expression:  expr,
 		AsKeyword:   asKeyword,
 		DataType:    *dt,
-		Span:        ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+		Span:        ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End),
 	}, nil
 }
 
 func (p *Parser) parseCompoundIdentifier(expr ast.Expression) (*ast.ExprCompoundIdentifier, error) {
 	if p.peekToken.Type == lexer.TPeriod {
 		// we are dealing with a qualified identifier
-		startPositionCompound := p.currentToken.Start
+		startPositionCompound := p.peekToken.Start
 		compound := &[]ast.Expression{expr}
 		p.logger.Debug("parsing compound identifier")
 
 		// go to period token
 		p.nextToken()
-		p.logger.Debug("current token: ", p.currentToken)
+		p.logger.Debug("peek token: ", p.peekToken)
 
 		for {
-			startPosition := p.currentToken.Start
-			err := p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier, lexer.TQuotedIdentifier, lexer.TAsterisk})
+			err := p.expectSelectItemStart()
 			if err != nil {
 				return nil, err
 			}
-			p.logger.Debug("current token: ", p.currentToken)
+			p.logger.Debug("peek token: ", p.peekToken)
 
-			if p.currentToken.Type == lexer.TAsterisk {
+			if p.peekToken.Type == lexer.TAsterisk {
 				expr := &ast.ExprStar{
-					Span: ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+					Span: ast.NewSpanFromToken(p.peekToken),
 				}
 				*compound = append(*compound, expr)
 				break
-			} else if p.currentToken.Type == lexer.TQuotedIdentifier {
+			} else if p.peekToken.Type == lexer.TQuotedIdentifier {
 				expr := &ast.ExprQuotedIdentifier{
-					Value: p.currentToken.Value,
-					Span:  ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+					Value: p.peekToken.Value,
+					Span:  ast.NewSpanFromToken(p.peekToken),
 				}
 				*compound = append(*compound, expr)
 			} else {
 				expr := &ast.ExprIdentifier{
-					Value: p.currentToken.Value,
-					Span:  ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+					Value: p.peekToken.Value,
+					Span:  ast.NewSpanFromToken(p.peekToken),
 				}
 				*compound = append(*compound, expr)
 			}
+
+			p.nextToken()
 
 			if p.peekToken.Type != lexer.TPeriod {
 				break
@@ -1360,7 +1372,7 @@ func (p *Parser) parseCompoundIdentifier(expr ast.Expression) (*ast.ExprCompound
 
 		return &ast.ExprCompoundIdentifier{
 			Identifiers: *compound,
-			Span:        ast.NewSpanFromLexerPosition(startPositionCompound, p.currentToken.End),
+			Span:        ast.NewSpanFromLexerPosition(startPositionCompound, p.peekToken.End),
 		}, nil
 	}
 
@@ -1369,7 +1381,7 @@ func (p *Parser) parseCompoundIdentifier(expr ast.Expression) (*ast.ExprCompound
 
 func (p *Parser) parseFunction() (*ast.ExprFunction, error) {
 	var funcType ast.FuncType
-	switch p.currentToken.Type {
+	switch p.peekToken.Type {
 	case lexer.TDenseRank:
 		funcType = ast.FuncDenseRank
 	case lexer.TRank:
@@ -1456,8 +1468,8 @@ func (p *Parser) parseFunction() (*ast.ExprFunction, error) {
 	p.logger.Debug("in function parse")
 	function := &ast.ExprFunction{
 		Type: funcType,
-		Name: &ast.ExprIdentifier{Value: p.currentToken.Value},
-		Span: ast.NewSpanFromLexerPosition(p.currentToken.Start, p.currentToken.End),
+		Name: &ast.ExprIdentifier{Value: p.peekToken.Value},
+		Span: ast.NewSpanFromLexerPosition(p.peekToken.Start, p.peekToken.End),
 	}
 
 	return function, nil
@@ -1467,7 +1479,7 @@ func (p *Parser) parseFunctionArgs() (*[]ast.Expression, error) {
 	args := []ast.Expression{}
 	p.logger.Debug("parsing function args")
 	for {
-		startPosition := p.currentToken.Start
+		startPosition := p.peekToken.Start
 		err := p.expectPeekMany(append([]lexer.TokenType{
 			lexer.TIdentifier,
 			lexer.TNumericLiteral,
@@ -1479,31 +1491,31 @@ func (p *Parser) parseFunctionArgs() (*[]ast.Expression, error) {
 			return nil, err
 		}
 
-		if p.currentToken.Type == lexer.TLocalVariable {
+		if p.peekToken.Type == lexer.TLocalVariable {
 			args = append(args, &ast.ExprLocalVariable{
-				Value: p.currentToken.Value,
-				Span:  ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+				Value: p.peekToken.Value,
+				Span:  ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End),
 			})
-		} else if p.currentToken.Type == lexer.TQuotedIdentifier {
+		} else if p.peekToken.Type == lexer.TQuotedIdentifier {
 			args = append(args, &ast.ExprQuotedIdentifier{
-				Value: p.currentToken.Value,
-				Span:  ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+				Value: p.peekToken.Value,
+				Span:  ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End),
 			})
-		} else if p.currentToken.Type == lexer.TStringLiteral {
+		} else if p.peekToken.Type == lexer.TStringLiteral {
 			args = append(args, &ast.ExprStringLiteral{
-				Value: p.currentToken.Value,
-				Span:  ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+				Value: p.peekToken.Value,
+				Span:  ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End),
 			})
-		} else if p.currentToken.Type == lexer.TNumericLiteral {
+		} else if p.peekToken.Type == lexer.TNumericLiteral {
 			args = append(args, &ast.ExprNumberLiteral{
-				Value: p.currentToken.Value,
-				Span:  ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+				Value: p.peekToken.Value,
+				Span:  ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End),
 			})
-		} else if p.currentTokenIs(lexer.TIdentifier) {
+		} else if p.peekTokenIs(lexer.TIdentifier) {
 			// check if we have a compound identifier
 			identifier := &ast.ExprIdentifier{
-				Value: p.currentToken.Value,
-				Span:  ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+				Value: p.peekToken.Value,
+				Span:  ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End),
 			}
 			compoundIdentifier, err := p.parseCompoundIdentifier(identifier)
 			if err != nil {
@@ -1512,7 +1524,7 @@ func (p *Parser) parseFunctionArgs() (*[]ast.Expression, error) {
 
 			// we have a compoundIdentifier
 			if compoundIdentifier != nil {
-				compoundIdentifierPosition := p.currentToken.End
+				compoundIdentifierPosition := p.peekToken.End
 				if p.peekTokenIs(lexer.TLeftParen) {
 					function := &ast.ExprFunction{
 						Type: ast.FuncUserDefined,
@@ -1533,7 +1545,7 @@ func (p *Parser) parseFunctionArgs() (*[]ast.Expression, error) {
 				function := &ast.ExprFunction{
 					Type: ast.FuncUserDefined,
 					Name: identifier,
-					Span: ast.NewSpanFromLexerPosition(startPosition, p.currentToken.End),
+					Span: ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End),
 				}
 
 				functionCall, err := p.parseFunctionCall(function)
@@ -1621,7 +1633,7 @@ func (p *Parser) parseFunctionCall(function *ast.ExprFunction) (*ast.ExprFunctio
 }
 
 func (p *Parser) parseBetweenLogicalOperator(left ast.Expression, notKw *ast.Keyword) (*ast.ExprBetweenLogicalOperator, error) {
-	betweenKeyword := ast.NewKeywordFromToken(p.currentToken)
+	betweenKeyword := ast.NewKeywordFromToken(p.peekToken)
 	p.nextToken()
 
 	begin, err := p.parsePrefixExpression()
@@ -1632,7 +1644,7 @@ func (p *Parser) parseBetweenLogicalOperator(left ast.Expression, notKw *ast.Key
 	if err := p.expectPeek(lexer.TAnd); err != nil {
 		return nil, err
 	}
-	andKeyword := ast.NewKeywordFromToken(p.currentToken)
+	andKeyword := ast.NewKeywordFromToken(p.peekToken)
 
 	p.nextToken()
 	end, err := p.parsePrefixExpression()
@@ -1689,7 +1701,7 @@ func (p *Parser) parseInExpressionListLogicalOperator(left ast.Expression, inKey
 }
 
 func (p *Parser) parseInLogicalOperator(left ast.Expression, notKw *ast.Keyword) (ast.Expression, error) {
-	inKeyword := ast.NewKeywordFromToken(p.currentToken)
+	inKeyword := ast.NewKeywordFromToken(p.peekToken)
 	p.expectPeek(lexer.TLeftParen)
 	if p.peekTokenIs(lexer.TSelect) {
 		inSubquery, err := p.parseInSubqueryLogicalOperator(left, inKeyword, notKw)
@@ -1709,6 +1721,5 @@ func (p *Parser) parseInLogicalOperator(left ast.Expression, notKw *ast.Keyword)
 
 		return inExpressionList, nil
 	}
-	p.errorToken = ETCurrent
-	return nil, p.currentErrorString("Expected (Subquery or Expression List) after 'IN' keyword")
+	return nil, p.peekErrorString("Expected (Subquery or Expression List) after 'IN' keyword")
 }
