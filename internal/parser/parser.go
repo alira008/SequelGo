@@ -23,9 +23,7 @@ type Parser struct {
 	logger        *zap.SugaredLogger
 	l             *lexer.Lexer
 	peekToken     lexer.Token
-	peekToken2    lexer.Token
 	errors        []string
-	afterComments []ast.Comment
 	Comments      []ast.Comment
 }
 
@@ -33,18 +31,16 @@ func NewParser(logger *zap.SugaredLogger, lexer *lexer.Lexer) *Parser {
 	parser := &Parser{logger: logger, l: lexer}
 
 	parser.nextToken()
-	parser.nextToken()
 
 	return parser
 }
 
 func (p *Parser) nextToken() {
-	p.peekToken = p.peekToken2
-	p.peekToken2 = p.l.NextToken()
+	p.peekToken = p.l.NextToken()
 
-	for p.peekToken2Is(lexer.TCommentLine) {
-		p.Comments = append(p.Comments, ast.NewComment(p.peekToken2))
-		p.peekToken2 = p.l.NextToken()
+	for p.peekTokenIs(lexer.TCommentLine) {
+		p.Comments = append(p.Comments, ast.NewComment(p.peekToken))
+		p.peekToken = p.l.NextToken()
 	}
 }
 
@@ -52,23 +48,9 @@ func (p *Parser) peekTokenIs(t lexer.TokenType) bool {
 	return p.peekToken.Type == t
 }
 
-func (p *Parser) peekToken2Is(t lexer.TokenType) bool {
-	return p.peekToken2.Type == t
-}
-
 func (p *Parser) peekTokenIsAny(t []lexer.TokenType) bool {
 	for _, token := range t {
 		if p.peekToken.Type == token {
-			return true
-		}
-	}
-
-	return false
-}
-
-func (p *Parser) peekToken2IsAny(t []lexer.TokenType) bool {
-	for _, token := range t {
-		if p.peekToken2.Type == token {
 			return true
 		}
 	}
