@@ -464,6 +464,7 @@ func (t TokenType) IsBuiltinFunction() bool {
 		TAcos,
 		TAsin,
 		TAtan,
+        TCast,
 		TCeiling,
 		TCos,
 		TCot,
