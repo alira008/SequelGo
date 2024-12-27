@@ -209,7 +209,7 @@ func (p *Parser) peekError(t lexer.TokenType) error {
 		arrows += "^"
 	}
 	return fmt.Errorf(
-		"expected (%s) got (%s) nstead\n%s\n%s",
+		"expected (%s) got (%s) instead\n%s\n%s",
 		t.String(),
 		p.peekToken.Type.String(),
 		p.l.CurrentLine(),
@@ -317,13 +317,15 @@ func (p *Parser) expectSelectItemStart() error {
 		}
 	}
 
-	errorString := ""
+	errorString := "expected "
+	// errorString := ""
 	for i, t := range select_item_type_start {
 		if i > 0 {
 			errorString += ", "
 		}
 		errorString += fmt.Sprintf("%s", t.String())
 	}
+	errorString += fmt.Sprintf(" got %s instead", p.peekToken.Value)
 
 	return fmt.Errorf("%s", errorString)
 }
@@ -342,13 +344,14 @@ func (p *Parser) expectTableSourceStart() error {
 		}
 	}
 
-	errorString := ""
+	errorString := "expected "
 	for i, t := range table_source_start {
 		if i > 0 {
 			errorString += ", "
 		}
 		errorString += fmt.Sprintf("%s", t.String())
 	}
+	errorString += fmt.Sprintf(" got %s instead", p.peekToken.Value)
 
 	return fmt.Errorf("%s", errorString)
 }
@@ -367,13 +370,14 @@ func (p *Parser) expectGroupByStart() error {
 		}
 	}
 
-	errorString := ""
+	errorString := "expected "
 	for i, t := range group_by_start {
 		if i > 0 {
 			errorString += ", "
 		}
 		errorString += fmt.Sprintf("%s", t.String())
 	}
+	errorString += fmt.Sprintf(" got %s instead", p.peekToken.Value)
 
 	return fmt.Errorf("%s", errorString)
 }
@@ -393,13 +397,14 @@ func (p *Parser) expectExpressionListStart() error {
 		}
 	}
 
-	errorString := ""
+	errorString := "expected "
 	for i, t := range expression_list_start {
 		if i > 0 {
 			errorString += ", "
 		}
 		errorString += fmt.Sprintf("%s", t.String())
 	}
+	errorString += fmt.Sprintf(" got %s instead", p.peekToken.Value)
 
 	return fmt.Errorf("%s", errorString)
 }
@@ -419,13 +424,14 @@ func (p *Parser) expectFunctionArgsStart() error {
 		}
 	}
 
-	errorString := ""
+	errorString := "expected "
 	for i, t := range function_args_start {
 		if i > 0 {
 			errorString += ", "
 		}
 		errorString += fmt.Sprintf("%s", t.String())
 	}
+	errorString += fmt.Sprintf(" got %s instead", p.peekToken.Value)
 
 	return fmt.Errorf("%s", errorString)
 }
