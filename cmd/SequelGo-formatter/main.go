@@ -57,7 +57,7 @@ func validStringEnums(cmd *cobra.Command, args []string) error {
 }
 
 func runFormatter(cmd *cobra.Command, args []string) {
-	logger, _ := zap.NewDevelopment()
+	logger, _ := zap.NewProduction()
 	defer logger.Sync()
 	sugar := logger.Sugar()
 
