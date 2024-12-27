@@ -230,8 +230,6 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 			ast.Walk(f, &k)
 			f.printSpace()
 		}
-		ast.Walk(f, &n.JoinKeyword)
-		f.printSpace()
 		ast.Walk(f, n.Table)
 		f.printSpace()
 		if n.OnKeyword != nil {
@@ -611,7 +609,6 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 				f.increaseIndent()
 				f.increaseIndent()
 				f.printNewLine()
-				f.decreaseIndent()
 			}
 			if i > 0 {
 				f.printInListComma()
@@ -619,6 +616,7 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 			ast.Walk(f, e)
 		}
 		if f.settings.IndentInLists {
+			f.decreaseIndent()
 			f.printNewLine()
 			f.decreaseIndent()
 		}

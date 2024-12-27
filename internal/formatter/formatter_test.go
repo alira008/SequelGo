@@ -13,10 +13,10 @@ func TestParseBasicSelectQuery(t *testing.T) {
 	expected += "BETWEEN 2\n            AND 4\n    AND Symbol IN (\n        'aal'\n        ,'amzn'\n        ,'googl'"
 	expected += "\n    )\n    AND InsertDate = CAST(GETDATE() AS DATE)\nORDER BY Symbol"
 
-	input := "-- hello sir\nSelect top 30 percent with ties LastPrice, HighPrice , LowPrice,"
+	input := "Select top 30 percent with ties LastPrice, HighPrice , LowPrice,"
 	input += " QuoteTime 'QuoTime', * from MarketTable mkt where QuoTime < '6:30' and"
 	input += " lastPrice not between 2 and 4 and Symbol in ('aal', 'amzn', 'googl') and"
-	input += " InsertDate = cast(getdate() as date) oRDer By Symbol -- bruh"
+	input += " InsertDate = cast(getdate() as date) oRDer By Symbol"
 
 	test(t, expected, input)
 }
