@@ -39,7 +39,6 @@ func (f *Formatter) Format(input string) (string, error) {
 	}
 	f.comments = p.Comments
 	ast.Walk(f, &query)
-    fmt.Println("comments ",f.comments)
 	if len(f.comments) > 0 {
 		f.printNewLine()
 		for i, c := range f.comments {
@@ -710,7 +709,7 @@ func (f *Formatter) associateCommentsWithNodes(node ast.Node) {
 		closestNode := f.findClosestNode(comment.GetSpan().StartPosition, nodes)
 		// fmt.Println("\tclosest node: ", closestNode.TokenLiteral(), "\n\tcomment: ", comment.TokenLiteral())
 		if closestNode != nil {
-            fmt.Println("closest node ", closestNode.TokenLiteral())
+			fmt.Println("closest node ", closestNode.TokenLiteral())
 			f.NodeToComments[closestNode] = append(f.NodeToComments[closestNode], comment)
 			commentsToRemove = append(commentsToRemove, &comment)
 		}
@@ -723,9 +722,9 @@ func (f *Formatter) associateCommentsWithNodes(node ast.Node) {
 			}
 		}
 		if index != -1 {
-            fmt.Println("index ", index)
-            f.comments[index] = f.comments[len(f.comments)-1]
-            f.comments = f.comments[:len(f.comments)-1]
+			fmt.Println("index ", index)
+			f.comments[index] = f.comments[len(f.comments)-1]
+			f.comments = f.comments[:len(f.comments)-1]
 			// left := f.comments[:index]
 			// right := f.comments[index+1:]
 			// f.comments = append(left, right...)
