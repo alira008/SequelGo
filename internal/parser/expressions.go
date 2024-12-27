@@ -66,19 +66,22 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 		}
 
 		// parsing compound identifiers
+		couldBeCompound := false
 		if p.peekTokenIsAny([]lexer.TokenType{lexer.TIdentifier, lexer.TQuotedIdentifier}) {
+			couldBeCompound = true
+		}
+		p.nextToken()
+
+		if couldBeCompound {
 			parsedCompoundIdentifier, err := p.parseCompoundIdentifier(newExpr)
 			if err != nil {
 				return nil, err
 			}
-
 			// we have a compoundIdentifier
 			if parsedCompoundIdentifier != nil {
 				newExpr = parsedCompoundIdentifier
 			}
 		}
-
-		p.nextToken()
 
 		// parsing user functions
 		if p.peekTokenIs(lexer.TLeftParen) {
@@ -145,6 +148,7 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 		return functionCall, nil
 	case lexer.TLeftParen:
 		// start of subquery
+		p.consumeToken(lexer.TLeftParen)
 		startPosition := p.peekToken.Start
 		if p.peekTokenIs(lexer.TSelect) {
 			subquery, err := p.parseSelectSubquery()
@@ -153,47 +157,9 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 			if err != nil {
 				return nil, err
 			}
-			p.expectPeek(lexer.TRightParen)
-
-			p.logger.Debug("parsing subquery alias")
-			p.logger.Debug(p.peekToken)
-			if (p.peekTokenIs(lexer.TAs) || p.peekTokenIs(lexer.TIdentifier) ||
-				p.peekTokenIs(lexer.TStringLiteral) || p.peekTokenIs(lexer.TQuotedIdentifier)) &&
-				!p.peekToken2IsAny(ast.DataTypeTokenTypes) {
-				p.logger.Debug("parsing subquery alias")
-				exprWithAlias := &ast.ExprWithAlias{
-					Expression: &subquery,
-				}
-
-				p.logger.Debug("parsing subquery alias")
-				if p.peekToken.Type == lexer.TAs {
-					kw, err := p.consumeKeyword(lexer.TAs)
-					if err != nil {
-						return nil, err
-					}
-					exprWithAlias.AsKeyword = kw
-				}
-
-				// needed in case we just parsed AS keyword
-				err := p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier, lexer.TStringLiteral, lexer.TQuotedIdentifier})
-				if err != nil {
-					return nil, err
-				}
-
-				alias, err := p.parseExpression(PrecedenceLowest)
-				if err != nil {
-					return nil, err
-				}
-
-				switch alias.(type) {
-				case *ast.ExprIdentifier, *ast.ExprStringLiteral, *ast.ExprQuotedIdentifier:
-					break
-				default:
-					err = fmt.Errorf("Expected (Identifier or StringLiteral or QuotedIdentifier) for Alias")
-					return nil, err
-				}
-				exprWithAlias.Alias = alias
-				return exprWithAlias, nil
+			_, err = p.consumeToken(lexer.TRightParen)
+			if err != nil {
+				return nil, err
 			}
 
 			return &subquery, nil
@@ -380,7 +346,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 		precedence := p.peekPrecedence()
 		p.nextToken()
 
-        if allKw := p.maybeKeyword(lexer.TAll); allKw != nil {
+		if allKw := p.maybeKeyword(lexer.TAll); allKw != nil {
 			right, err := p.parseExpression(precedence)
 			if err != nil {
 				return nil, err
@@ -395,7 +361,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 				}, nil
 			}
 			return nil, fmt.Errorf("sub query was not provided for All Expression")
-        } else if someKw := p.maybeKeyword(lexer.TSome); someKw != nil {
+		} else if someKw := p.maybeKeyword(lexer.TSome); someKw != nil {
 			right, err := p.parseExpression(precedence)
 			if err != nil {
 				return nil, err
@@ -410,7 +376,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 				}, nil
 			}
 			return nil, p.peekErrorString("(Subquery) was not provided for Some Expression")
-        } else if anyKw := p.maybeKeyword(lexer.TAny); anyKw != nil {
+		} else if anyKw := p.maybeKeyword(lexer.TAny); anyKw != nil {
 			right, err := p.parseExpression(precedence)
 			if err != nil {
 				return nil, err

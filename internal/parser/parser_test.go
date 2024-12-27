@@ -225,7 +225,7 @@ func TestParseBasicSelectQueryWithJoin(t *testing.T) {
 				},
 				Joins: []ast.Join{
 					{
-						JoinTypeKeyword: []ast.Keyword{{Type: ast.KInner}},
+						JoinTypeKeyword: []ast.Keyword{{Type: ast.KInner}, {Type: ast.KJoin}},
 						Type:            ast.JTInner,
 						Table: &ast.TableSource{
 							Type: ast.TSTTable,
@@ -316,8 +316,8 @@ func TestParseBuiltinFunctionCall(t *testing.T) {
 									BoundKeyword: []ast.Keyword{
 										{Type: ast.KPreceding},
 									},
-									Type:          ast.WFBTPreceding,
-									Expression:    &ast.ExprNumberLiteral{Value: "10"},
+									Type:       ast.WFBTPreceding,
+									Expression: &ast.ExprNumberLiteral{Value: "10"},
 								},
 								AndKeyword: &ast.Keyword{Type: ast.KAnd},
 								End: &ast.WindowFrameBound{
@@ -597,8 +597,8 @@ func TestParseSelectItemWithAlias(t *testing.T) {
 func TestDistinctTopArg(t *testing.T) {
 	select_statement := ast.SelectStatement{
 		SelectBody: &ast.SelectBody{
-			SelectKeyword: ast.Keyword{Type: ast.KSelect},
-			DistinctKeyword:      &ast.Keyword{Type: ast.KDistinct},
+			SelectKeyword:   ast.Keyword{Type: ast.KSelect},
+			DistinctKeyword: &ast.Keyword{Type: ast.KDistinct},
 			Top: &ast.TopArg{
 				TopKeyword:     ast.Keyword{Type: ast.KTop},
 				PercentKeyword: &ast.Keyword{Type: ast.KPercent},

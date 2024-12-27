@@ -113,7 +113,6 @@ func Walk(v Visitor, node Node) {
 		for _, k := range n.JoinTypeKeyword {
 			Walk(v, &k)
 		}
-		Walk(v, &n.JoinKeyword)
 		Walk(v, n.Table)
 		if n.OnKeyword != nil {
 			Walk(v, n.OnKeyword)

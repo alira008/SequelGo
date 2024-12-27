@@ -76,8 +76,8 @@ func (p *Parser) peekToken2IsAny(t []lexer.TokenType) bool {
 	return false
 }
 
-func (p *Parser) peekPrecedence() Precedence{
-    return checkPrecedence(p.peekToken.Type)
+func (p *Parser) peekPrecedence() Precedence {
+	return checkPrecedence(p.peekToken.Type)
 }
 
 func (p *Parser) consumeKeyword(t lexer.TokenType) (*ast.Keyword, error) {
@@ -94,15 +94,56 @@ func (p *Parser) consumeKeyword(t lexer.TokenType) (*ast.Keyword, error) {
 	return kw, nil
 }
 
+func (p *Parser) consumeKeywordAny(tokens []lexer.TokenType) (*ast.Keyword, error) {
+	for _, t := range tokens {
+		if p.peekTokenIs(t) {
+			kw, err := ast.NewKeywordFromTokenNew(p.peekToken)
+			if err != nil {
+				return nil, err
+			}
+			p.nextToken()
+			return kw, nil
+		}
+	}
+
+	errorString := "expected either keywords, "
+	for i, t := range tokens {
+		if i > 0 {
+			errorString += ", "
+		}
+		errorString += fmt.Sprintf("%s", t.String())
+	}
+	return nil, fmt.Errorf(errorString)
+}
+
 func (p *Parser) consumeToken(t lexer.TokenType) (*lexer.Token, error) {
 	if p.peekToken.Type != t {
 		return nil, fmt.Errorf("expected token, %s", t.String())
 	}
 
-    token := p.peekToken
+	token := p.peekToken
 	p.nextToken()
 
 	return &token, nil
+}
+
+func (p *Parser) consumeTokenAny(tokens []lexer.TokenType) (*lexer.Token, error) {
+	for _, t := range tokens {
+		if p.peekTokenIs(t) {
+            token := p.peekToken
+			p.nextToken()
+            return &token, nil
+		}
+	}
+
+	errorString := "expected either tokens, "
+	for i, t := range tokens {
+		if i > 0 {
+			errorString += ", "
+		}
+		errorString += fmt.Sprintf("%s", t.String())
+	}
+	return nil, fmt.Errorf(errorString)
 }
 
 func (p *Parser) maybeKeyword(t lexer.TokenType) *ast.Keyword {
@@ -117,6 +158,17 @@ func (p *Parser) maybeKeyword(t lexer.TokenType) *ast.Keyword {
 	p.nextToken()
 
 	return kw
+}
+
+func (p *Parser) maybeToken(t lexer.TokenType) *lexer.Token {
+	if p.peekToken.Type != t {
+		return nil
+	}
+
+	token := p.peekToken
+	p.nextToken()
+
+	return &token
 }
 
 func (p *Parser) expectPeek(t lexer.TokenType) error {
@@ -273,7 +325,7 @@ func (p *Parser) expectSelectItemStart() error {
 		errorString += fmt.Sprintf("%s", t.String())
 	}
 
-    return fmt.Errorf("%s", errorString)
+	return fmt.Errorf("%s", errorString)
 }
 
 var table_source_start = []lexer.TokenType{
@@ -298,5 +350,82 @@ func (p *Parser) expectTableSourceStart() error {
 		errorString += fmt.Sprintf("%s", t.String())
 	}
 
-    return fmt.Errorf("%s", errorString)
+	return fmt.Errorf("%s", errorString)
+}
+
+var group_by_start = []lexer.TokenType{
+	lexer.TIdentifier,
+	lexer.TQuotedIdentifier,
+	lexer.TLocalVariable,
+	lexer.TNumericLiteral,
+}
+
+func (p *Parser) expectGroupByStart() error {
+	for _, t := range group_by_start {
+		if p.peekToken.Type == t {
+			return nil
+		}
+	}
+
+	errorString := ""
+	for i, t := range group_by_start {
+		if i > 0 {
+			errorString += ", "
+		}
+		errorString += fmt.Sprintf("%s", t.String())
+	}
+
+	return fmt.Errorf("%s", errorString)
+}
+
+var expression_list_start = []lexer.TokenType{
+	lexer.TIdentifier,
+	lexer.TQuotedIdentifier,
+	lexer.TLocalVariable,
+	lexer.TNumericLiteral,
+	lexer.TStringLiteral,
+}
+
+func (p *Parser) expectExpressionListStart() error {
+	for _, t := range expression_list_start {
+		if p.peekToken.Type == t {
+			return nil
+		}
+	}
+
+	errorString := ""
+	for i, t := range expression_list_start {
+		if i > 0 {
+			errorString += ", "
+		}
+		errorString += fmt.Sprintf("%s", t.String())
+	}
+
+	return fmt.Errorf("%s", errorString)
+}
+
+var function_args_start = append([]lexer.TokenType{
+	lexer.TIdentifier,
+	lexer.TQuotedIdentifier,
+	lexer.TLocalVariable,
+	lexer.TNumericLiteral,
+	lexer.TStringLiteral,
+}, ast.BuiltinFunctionsTokenType...)
+
+func (p *Parser) expectFunctionArgsStart() error {
+	for _, t := range function_args_start {
+		if p.peekToken.Type == t {
+			return nil
+		}
+	}
+
+	errorString := ""
+	for i, t := range function_args_start {
+		if i > 0 {
+			errorString += ", "
+		}
+		errorString += fmt.Sprintf("%s", t.String())
+	}
+
+	return fmt.Errorf("%s", errorString)
 }

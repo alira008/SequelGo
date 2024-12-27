@@ -118,7 +118,6 @@ type TableSource struct {
 type Join struct {
 	Span
 	JoinTypeKeyword  []Keyword
-	JoinKeyword      Keyword
 	Type             JoinType
 	Table            *TableSource
 	OnKeyword        *Keyword
