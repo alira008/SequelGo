@@ -718,7 +718,8 @@ func (f *Formatter) printSelectColumnComma() {
 		f.printNewLine()
 		f.queuedChars += ", "
 	} else if f.settings.IndentCommaLists == ICLTrailingComma {
-		f.queuedChars += ","
+		f.formattedQuery += ","
+		f.printNewLine()
 	}
 }
 
