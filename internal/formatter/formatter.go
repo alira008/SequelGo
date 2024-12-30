@@ -15,15 +15,16 @@ type Formatter struct {
 	settings       Settings
 	indentLevel    uint32
 	formattedQuery string
+	queuedChars    string
 	currentLine    uint64
-	comments       []ast.Comment
+	mappedComments MappedComments
 }
 
 func NewFormatter(settings Settings, logger *zap.SugaredLogger) Formatter {
 	return Formatter{
-		settings:       settings,
-		logger:         logger,
-		currentLine:    1,
+		settings:    settings,
+		logger:      logger,
+		currentLine: 1,
 	}
 }
 
@@ -34,16 +35,51 @@ func (f *Formatter) Format(input string) (string, error) {
 	if len(p.Errors()) > 0 {
 		return "", fmt.Errorf(strings.Join(p.Errors(), "\n"))
 	}
+	f.mappedComments = mapComments(&query, p.Comments)
 	ast.Walk(f, &query)
+	f.printCommentsEnd()
+	f.mappedComments = MappedComments{}
 
 	return f.formattedQuery, nil
 }
 
+func (f *Formatter) printCommentsBefore(node ast.Node) {
+	commentsBefore := f.mappedComments.CommentsBefore[node]
+	for _, comment := range commentsBefore {
+		f.formattedQuery += fmt.Sprintf("-- %s", comment.Value)
+		f.printNewLine()
+	}
+}
+
+func (f *Formatter) printCommentsSameLine(node ast.Node) {
+	commentsSameLine := f.mappedComments.CommentsSameLine[node]
+	for _, comment := range commentsSameLine {
+		f.printIndent()
+		f.formattedQuery += fmt.Sprintf("-- %s", comment.Value)
+	}
+}
+
+func (f *Formatter) printCommentsEnd() {
+	for _, comment := range f.mappedComments.CommentsEnd {
+		f.printNewLine()
+		f.formattedQuery += fmt.Sprintf("-- %s", comment.Value)
+	}
+}
+
+func (f *Formatter) printQueuedChars() {
+	f.formattedQuery += f.queuedChars
+	f.queuedChars = ""
+}
+
 func (f *Formatter) Visit(node ast.Node) ast.Visitor {
+	if node == nil {
+		return nil
+	}
+
+	f.printCommentsBefore(node)
+	f.printQueuedChars()
+
 	switch n := node.(type) {
-	case *ast.Comment:
-		f.formattedQuery += fmt.Sprintf("-- %s", n.Value)
-		break
 	case *ast.Query:
 		for i, s := range n.Statements {
 			if i > 0 {
@@ -117,6 +153,9 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 			}
 			ast.Walk(f, e)
 		}
+		break
+	case *ast.ExprBuiltInFunctionName:
+		f.printKeyword(n.Value)
 		break
 	case *ast.SelectItems:
 		if len(n.Items) > 1 {
@@ -283,7 +322,7 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		if n.Type == ast.FuncUserDefined {
 			ast.Walk(f, n.Name)
 		} else {
-			f.printKeyword(n.Name.TokenLiteral())
+			ast.Walk(f, n.Name)
 		}
 		break
 	case *ast.WindowFrameBound:
@@ -325,10 +364,15 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 	case *ast.FunctionOverClause:
 		f.increaseIndent()
 		f.increaseIndent()
-		f.printNewLine()
+		f.printSpace()
 		ast.Walk(f, &n.OverKeyword)
 		f.printSpace()
 		f.formattedQuery += "("
+		if n.PartitionByKeyword == nil && n.OrderByKeyword != nil {
+			f.printNewLine()
+		} else if n.PartitionByKeyword != nil && n.OrderByKeyword != nil {
+			f.printNewLine()
+		}
 		if n.PartitionByKeyword != nil {
 			for _, k := range n.PartitionByKeyword {
 				ast.Walk(f, &k)
@@ -352,12 +396,14 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 				f.printSpace()
 			}
 		}
+		f.increaseIndent()
 		for i, e := range n.OrderByClause {
 			if i > 0 {
-				f.printSpace()
+				f.printSelectColumnComma()
 			}
 			ast.Walk(f, &e)
 		}
+		f.decreaseIndent()
 		if n.WindowFrameClause != nil {
 			ast.Walk(f, n.WindowFrameClause)
 		}
@@ -407,55 +453,42 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 		switch n.Kind {
 		case ast.DTInt:
 			f.printKeyword("INT")
-			break
 		case ast.DTBigInt:
 			f.printKeyword("BIGINT")
-			break
 		case ast.DTTinyInt:
 			f.printKeyword("TINYINT")
-			break
 		case ast.DTSmallInt:
 			f.printKeyword("SMALLINT")
-			break
 		case ast.DTBit:
 			f.printKeyword("BIT")
-			break
 		case ast.DTFloat:
 			f.printKeyword("FLOAT")
 			if n.FloatPrecision != nil {
 				f.formattedQuery += fmt.Sprintf("(%d)", *n.FloatPrecision)
 			}
-			break
 		case ast.DTReal:
 			f.printKeyword("REAL")
-			break
 		case ast.DTDate:
 			f.printKeyword("DATE")
-			break
 		case ast.DTDatetime:
 			f.printKeyword("DATETIME")
-			break
 		case ast.DTTime:
 			f.printKeyword("TIME")
-			break
 		case ast.DTDecimal:
 			f.printKeyword("DECIMAL")
 			if n.DecimalNumericSize != nil {
 				ast.Walk(f, n.DecimalNumericSize)
 			}
-			break
 		case ast.DTNumeric:
 			f.printKeyword("NUMERIC")
 			if n.DecimalNumericSize != nil {
 				ast.Walk(f, n.DecimalNumericSize)
 			}
-			break
 		case ast.DTVarchar:
 			f.printKeyword("VARCHAR")
 			if n.VarcharLength != nil {
 				f.formattedQuery += fmt.Sprintf("(%d)", *n.VarcharLength)
 			}
-			break
 		}
 		break
 	case *ast.NumericSize:
@@ -615,12 +648,10 @@ func (f *Formatter) Visit(node ast.Node) ast.Visitor {
 	case *ast.Keyword:
 		f.printKeyword(n.TokenLiteral())
 		break
-	case nil:
-		break
 	default:
 		return f
 	}
-
+	f.printCommentsSameLine(node)
 	return nil
 }
 
@@ -680,18 +711,15 @@ func (f *Formatter) printNewLine() {
 }
 
 func (f *Formatter) printSelectColumnComma() {
-	// f.increaseIndent()
 	if f.settings.IndentCommaLists == ICLNoSpaceAfterComma {
 		f.printNewLine()
-		f.formattedQuery += ","
+		f.queuedChars += ","
 	} else if f.settings.IndentCommaLists == ICLSpaceAfterComma {
 		f.printNewLine()
-		f.formattedQuery += ", "
+		f.queuedChars += ", "
 	} else if f.settings.IndentCommaLists == ICLTrailingComma {
-		f.formattedQuery += ","
-		f.printNewLine()
+		f.queuedChars += ","
 	}
-	// f.decreaseIndent()
 }
 
 func (f *Formatter) printExpressionListComma() {

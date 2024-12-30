@@ -28,27 +28,27 @@ var BuiltinFunctionsTokenType = []lexer.TokenType{
 
 type ExprStringLiteral struct {
 	Span
-	Value            string
+	Value string
 }
 
 type ExprNumberLiteral struct {
 	Span
-	Value            string
+	Value string
 }
 
 type ExprLocalVariable struct {
 	Span
-	Value            string
+	Value string
 }
 
 type ExprIdentifier struct {
 	Span
-	Value            string
+	Value string
 }
 
 type ExprQuotedIdentifier struct {
 	Span
-	Value            string
+	Value string
 }
 
 type ExprStar struct {
@@ -57,37 +57,42 @@ type ExprStar struct {
 
 type ExprWithAlias struct {
 	Span
-	Expression       Expression
-	AsKeyword        *Keyword
-	Alias            Expression
+	Expression Expression
+	AsKeyword  *Keyword
+	Alias      Expression
 }
 
 type ExprCompoundIdentifier struct {
 	Span
-	Identifiers      []Expression
+	Identifiers []Expression
+}
+
+type ExprBuiltInFunctionName struct {
+	Span
+	Value string
 }
 
 type SelectItems struct {
 	Span
-	Items            []Expression
+	Items []Expression
 }
 
 type WhereClause struct {
 	Span
-	WhereKeyword     Keyword
-	Clause           Expression
+	WhereKeyword Keyword
+	Clause       Expression
 }
 
 type HavingClause struct {
 	Span
-	HavingKeyword    Keyword
-	Clause           Expression
+	HavingKeyword Keyword
+	Clause        Expression
 }
 
 type GroupByClause struct {
 	Span
-	GroupByKeyword   [2]Keyword
-	Items            []Expression
+	GroupByKeyword [2]Keyword
+	Items          []Expression
 }
 
 type ExprSubquery struct {
@@ -96,52 +101,52 @@ type ExprSubquery struct {
 
 type TopArg struct {
 	Span
-	TopKeyword       Keyword
-	WithTiesKeyword  *[2]Keyword
-	PercentKeyword   *Keyword
-	Quantity         Expression
+	TopKeyword      Keyword
+	WithTiesKeyword *[2]Keyword
+	PercentKeyword  *Keyword
+	Quantity        Expression
 }
 
 type TableArg struct {
 	Span
-	FromKeyword      Keyword
-	Table            *TableSource
-	Joins            []Join
+	FromKeyword Keyword
+	Table       *TableSource
+	Joins       []Join
 }
 
 type TableSource struct {
 	Span
-	Type             TableSourceType
-	Source           Expression
+	Type   TableSourceType
+	Source Expression
 }
 
 type Join struct {
 	Span
-	JoinTypeKeyword  []Keyword
-	Type             JoinType
-	Table            *TableSource
-	OnKeyword        *Keyword
-	Condition        Expression
+	JoinTypeKeyword []Keyword
+	Type            JoinType
+	Table           *TableSource
+	OnKeyword       *Keyword
+	Condition       Expression
 }
 
 type OrderByClause struct {
 	Span
-	OrderByKeyword   [2]Keyword
-	Expressions      []OrderByArg
-	OffsetFetch      *OffsetFetchClause
+	OrderByKeyword [2]Keyword
+	Expressions    []OrderByArg
+	OffsetFetch    *OffsetFetchClause
 }
 
 type OffsetFetchClause struct {
 	Span
-	Offset           OffsetArg
-	Fetch            *FetchArg
+	Offset OffsetArg
+	Fetch  *FetchArg
 }
 
 type OrderByArg struct {
 	Span
-	Column           Expression
-	OrderKeyword     *Keyword
-	Type             OrderByType
+	Column       Expression
+	OrderKeyword *Keyword
+	Type         OrderByType
 }
 
 type OffsetArg struct {
@@ -165,7 +170,7 @@ type FetchArg struct {
 
 type ExprExpressionList struct {
 	Span
-	List             []Expression
+	List []Expression
 }
 
 type FunctionOverClause struct {
@@ -190,38 +195,38 @@ type WindowFrameClause struct {
 
 type WindowFrameBound struct {
 	Span
-	BoundKeyword     []Keyword
-	Type             WindowFrameBoundType
-	Expression       Expression
+	BoundKeyword []Keyword
+	Type         WindowFrameBoundType
+	Expression   Expression
 }
 
 type ExprFunction struct {
 	Span
-	Type             FuncType
-	Name             Expression
+	Type FuncType
+	Name Expression
 }
 
 type ExprFunctionCall struct {
 	Span
-	Name             *ExprFunction
-	Args             []Expression
-	OverClause       *FunctionOverClause
+	Name       *ExprFunction
+	Args       []Expression
+	OverClause *FunctionOverClause
 }
 
 type ExprCast struct {
 	Span
-	CastKeyword      Keyword
-	Expression       Expression
-	AsKeyword        Keyword
-	DataType         DataType
+	CastKeyword Keyword
+	Expression  Expression
+	AsKeyword   Keyword
+	DataType    DataType
 }
 
 type CommonTableExpression struct {
 	Span
-	Name             string
-	Columns          *ExprExpressionList
-	AsKeyword        Keyword
-	Query            SelectBody
+	Name      string
+	Columns   *ExprExpressionList
+	AsKeyword Keyword
+	Query     SelectBody
 }
 
 func (e ExprStringLiteral) expressionNode()       {}
@@ -232,6 +237,7 @@ func (e ExprQuotedIdentifier) expressionNode()    {}
 func (e ExprStar) expressionNode()                {}
 func (e ExprWithAlias) expressionNode()           {}
 func (e ExprCompoundIdentifier) expressionNode()  {}
+func (e ExprBuiltInFunctionName) expressionNode() {}
 func (si SelectItems) expressionNode()            {}
 func (w WhereClause) expressionNode()             {}
 func (h HavingClause) expressionNode()            {}
@@ -293,6 +299,9 @@ func (e ExprCompoundIdentifier) TokenLiteral() string {
 		str.WriteString(item.TokenLiteral())
 	}
 	return str.String()
+}
+func (e ExprBuiltInFunctionName) TokenLiteral() string {
+	return e.Value
 }
 func (si SelectItems) TokenLiteral() string {
 	return expressionListToString(si.Items, ", ")
@@ -716,6 +725,7 @@ func (e *ExprQuotedIdentifier) SetSpan(span Span)    { e.Span = span }
 func (e *ExprStar) SetSpan(span Span)                { e.Span = span }
 func (e *ExprWithAlias) SetSpan(span Span)           { e.Span = span }
 func (e *ExprCompoundIdentifier) SetSpan(span Span)  { e.Span = span }
+func (e *ExprBuiltInFunctionName) SetSpan(span Span) { e.Span = span }
 func (si *SelectItems) SetSpan(span Span)            { si.Span = span }
 func (w *WhereClause) SetSpan(span Span)             { w.Span = span }
 func (h *HavingClause) SetSpan(span Span)            { h.Span = span }
@@ -747,6 +757,7 @@ func (e ExprQuotedIdentifier) GetSpan() Span     { return e.Span }
 func (e ExprStar) GetSpan() Span                 { return e.Span }
 func (e ExprWithAlias) GetSpan() Span            { return e.Span }
 func (e ExprCompoundIdentifier) GetSpan() Span   { return e.Span }
+func (e ExprBuiltInFunctionName) GetSpan() Span  { return e.Span }
 func (si SelectItems) GetSpan() Span             { return si.Span }
 func (w WhereClause) GetSpan() Span              { return w.Span }
 func (h HavingClause) GetSpan() Span             { return h.Span }

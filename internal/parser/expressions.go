@@ -256,6 +256,10 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 
 func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, error) {
 	p.logger.Debug("parsing infix expression, ", p.peekToken.String())
+	startPosition := ast.Position{
+		Line: uint64(p.peekToken.Start.Line),
+		Col:  uint64(p.peekToken.Start.Col),
+	}
 	switch p.peekToken.Type {
 	case lexer.TAnd:
 		precedence := p.peekPrecedence()
@@ -271,6 +275,10 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 			Left:       left,
 			AndKeyword: *andKw,
 			Right:      right,
+			Span: ast.Span{
+				StartPosition: startPosition,
+				EndPosition:   right.GetSpan().EndPosition,
+			},
 		}, nil
 	case lexer.TOr:
 		precedence := p.peekPrecedence()
@@ -286,6 +294,10 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 			Left:      left,
 			OrKeyword: *orKw,
 			Right:     right,
+			Span: ast.Span{
+				StartPosition: startPosition,
+				EndPosition:   right.GetSpan().EndPosition,
+			},
 		}, nil
 	case lexer.TPlus,
 		lexer.TMinus,
@@ -317,6 +329,10 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 			Left:     left,
 			Operator: operator,
 			Right:    right,
+			Span: ast.Span{
+				StartPosition: startPosition,
+				EndPosition:   right.GetSpan().EndPosition,
+			},
 		}, nil
 	case lexer.TEqual,
 		lexer.TNotEqualBang,
@@ -358,6 +374,10 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 					ScalarExpression:   left,
 					ComparisonOperator: operator,
 					Subquery:           v,
+					Span: ast.Span{
+						StartPosition: startPosition,
+						EndPosition:   right.GetSpan().EndPosition,
+					},
 				}, nil
 			}
 			return nil, fmt.Errorf("sub query was not provided for All Expression")
@@ -373,6 +393,10 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 					ScalarExpression:   left,
 					ComparisonOperator: operator,
 					Subquery:           v,
+					Span: ast.Span{
+						StartPosition: startPosition,
+						EndPosition:   right.GetSpan().EndPosition,
+					},
 				}, nil
 			}
 			return nil, p.peekErrorString("(Subquery) was not provided for Some Expression")
@@ -388,6 +412,10 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 					ScalarExpression:   left,
 					ComparisonOperator: operator,
 					Subquery:           v,
+					Span: ast.Span{
+						StartPosition: startPosition,
+						EndPosition:   right.GetSpan().EndPosition,
+					},
 				}, nil
 			}
 			return nil, p.peekErrorString("(Subquery) was not provided for Any Expression")
@@ -402,6 +430,10 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 			Left:     left,
 			Operator: operator,
 			Right:    right,
+			Span: ast.Span{
+				StartPosition: startPosition,
+				EndPosition:   right.GetSpan().EndPosition,
+			},
 		}, nil
 	case lexer.TBetween:
 		betweenOp, err := p.parseBetweenLogicalOperator(left, nil)
@@ -431,6 +463,10 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 			LikeKeyword:     *likeKw,
 			MatchExpression: left,
 			Pattern:         right,
+			Span: ast.Span{
+				StartPosition: startPosition,
+				EndPosition:   right.GetSpan().EndPosition,
+			},
 		}, nil
 	case lexer.TNot:
 		notKw, err := p.consumeKeyword(lexer.TNot)
@@ -467,6 +503,10 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 				MatchExpression: left,
 				NotKeyword:      notKw,
 				Pattern:         right,
+				Span: ast.Span{
+					StartPosition: startPosition,
+					EndPosition:   right.GetSpan().EndPosition,
+				},
 			}, nil
 		} else {
 			return nil, p.peekErrorString("(BETWEEN Expression or IN Expression or LIKE Expression) after 'Test Expression NOT' Expression")

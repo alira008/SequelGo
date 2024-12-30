@@ -82,6 +82,8 @@ func Walk(v Visitor, node Node) {
 	case *ExprCompoundIdentifier:
 		walkList(v, n.Identifiers)
 		break
+	case *ExprBuiltInFunctionName:
+		break
 	case *SelectItems:
 		walkList(v, n.Items)
 		break

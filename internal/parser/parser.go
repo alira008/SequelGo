@@ -20,11 +20,11 @@ const (
 )
 
 type Parser struct {
-	logger        *zap.SugaredLogger
-	l             *lexer.Lexer
-	peekToken     lexer.Token
-	errors        []string
-	Comments      []ast.Comment
+	logger    *zap.SugaredLogger
+	l         *lexer.Lexer
+	peekToken lexer.Token
+	errors    []string
+	Comments  []ast.Comment
 }
 
 func NewParser(logger *zap.SugaredLogger, lexer *lexer.Lexer) *Parser {
@@ -112,9 +112,9 @@ func (p *Parser) consumeToken(t lexer.TokenType) (*lexer.Token, error) {
 func (p *Parser) consumeTokenAny(tokens []lexer.TokenType) (*lexer.Token, error) {
 	for _, t := range tokens {
 		if p.peekTokenIs(t) {
-            token := p.peekToken
+			token := p.peekToken
 			p.nextToken()
-            return &token, nil
+			return &token, nil
 		}
 	}
 
@@ -252,8 +252,9 @@ func (p *Parser) Errors() []string {
 
 func (p *Parser) Parse() ast.Query {
 	query := ast.Query{}
+	queryStartPosition := p.peekToken.Start
 
-	for p.peekToken.Type != lexer.TEndOfFile {
+	for !p.peekTokenIs(lexer.TEndOfFile) {
 		startPosition := p.peekToken.Start
 		stmt, err := p.parseStatement()
 		endPosition := p.peekToken.End
@@ -272,6 +273,8 @@ func (p *Parser) Parse() ast.Query {
 
 		p.nextToken()
 	}
+	queryEndPosition := p.peekToken.End
+	query.SetSpan(ast.NewSpanFromLexerPosition(queryStartPosition, queryEndPosition))
 	return query
 }
 

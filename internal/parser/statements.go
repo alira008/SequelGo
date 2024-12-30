@@ -319,6 +319,10 @@ func (p *Parser) parseSelectItems() (*ast.SelectItems, error) {
 				AsKeyword:  asKw,
 				Alias:      alias,
 			}
+			selectItem.SetSpan(ast.Span{
+				StartPosition: expr.GetSpan().StartPosition,
+				EndPosition:   alias.GetSpan().EndPosition,
+			})
 			selectItems.Items = append(selectItems.Items, selectItem)
 		} else if asKw == nil {
 			selectItems.Items = append(selectItems.Items, expr)
@@ -549,7 +553,7 @@ func (p *Parser) parseWhereExpression() (*ast.WhereClause, error) {
 	}
 	p.logger.Debugf("expr: %s\n", expr)
 	whereClause.Clause = expr
-	whereClause.Clause.SetSpan(ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End))
+	whereClause.SetSpan(ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End))
 	return &whereClause, nil
 }
 
@@ -1137,13 +1141,13 @@ func (p *Parser) parseNumericSize() (*ast.NumericSize, error) {
 
 func (p *Parser) parseDataType() (*ast.DataType, error) {
 	startPosition := p.peekToken.Start
-    p.logger.Debugf("peek token: %s", p.peekToken.Value)
-    token, err := p.consumeTokenAny(ast.DataTypeTokenTypes)
+	p.logger.Debugf("peek token: %s", p.peekToken.Value)
+	token, err := p.consumeTokenAny(ast.DataTypeTokenTypes)
 	if err != nil {
 		return nil, err
 	}
-    p.logger.Debugf("token: %s", token.Value)
-    p.logger.Debugf("peek token: %s", p.peekToken.Value)
+	p.logger.Debugf("token: %s", token.Value)
+	p.logger.Debugf("peek token: %s", p.peekToken.Value)
 	var dataType ast.DataType
 	switch token.Type {
 	case lexer.TInt:
@@ -1428,8 +1432,11 @@ func (p *Parser) parseFunction() (*ast.ExprFunction, error) {
 	p.logger.Debug("in function parse")
 	function := &ast.ExprFunction{
 		Type: funcType,
-		Name: &ast.ExprIdentifier{Value: p.peekToken.Value},
-		Span: ast.NewSpanFromLexerPosition(p.peekToken.Start, p.peekToken.End),
+		Name: &ast.ExprBuiltInFunctionName{
+            Value: p.peekToken.Value,
+            Span: ast.NewSpanFromToken(p.peekToken),
+        },
+		Span: ast.NewSpanFromToken(p.peekToken),
 	}
 	p.nextToken()
 
@@ -1552,7 +1559,7 @@ func (p *Parser) parseFunctionCall(function *ast.ExprFunction) (*ast.ExprFunctio
 		args = *functionArgs
 	}
 
-	_, err = p.consumeToken(lexer.TRightParen)
+	rightParen, err := p.consumeToken(lexer.TRightParen)
 	if err != nil {
 		p.logger.Debug("expected right parenthesis, got ", p.peekToken.Value)
 		return nil, err
@@ -1562,6 +1569,13 @@ func (p *Parser) parseFunctionCall(function *ast.ExprFunction) (*ast.ExprFunctio
 		return &ast.ExprFunctionCall{
 			Name: function,
 			Args: args,
+			Span: ast.Span{
+				StartPosition: function.StartPosition,
+				EndPosition: ast.Position{
+					Line: uint64(rightParen.End.Line),
+					Col:  uint64(rightParen.End.Col),
+				},
+			},
 		}, nil
 	}
 
@@ -1576,6 +1590,10 @@ func (p *Parser) parseFunctionCall(function *ast.ExprFunction) (*ast.ExprFunctio
 		Name:       function,
 		Args:       args,
 		OverClause: overClause,
+		Span: ast.Span{
+			StartPosition: function.StartPosition,
+			EndPosition:   overClause.EndPosition,
+		},
 	}, nil
 }
 

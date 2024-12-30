@@ -59,7 +59,6 @@ func (ss SelectStatement) TokenLiteral() string {
 func (sb SelectBody) TokenLiteral() string {
 	var str strings.Builder
 	str.WriteString(fmt.Sprintf("%s ", sb.SelectKeyword.TokenLiteral()))
-
 	if sb.DistinctKeyword != nil {
 		str.WriteString(fmt.Sprintf("%s ", sb.DistinctKeyword.TokenLiteral()))
 	}
