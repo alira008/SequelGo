@@ -12,12 +12,8 @@ type Node interface {
 	GetSpan() Span
 }
 
-type Position struct {
-	Line, Col uint64
-}
-
 type Span struct {
-	StartPosition, EndPosition Position
+	StartPosition, EndPosition lexer.Position
 }
 
 type Statement interface {
@@ -42,29 +38,17 @@ type Comment struct {
 
 func NewSpanFromToken(token lexer.Token) Span {
 	return Span{
-		StartPosition: Position{
-			Line: uint64(token.Start.Line),
-			Col:  uint64(token.Start.Col),
-		},
-		EndPosition: Position{
-			Line: uint64(token.End.Line),
-			Col:  uint64(token.End.Col),
-		},
+		StartPosition: token.Start,
+		EndPosition: token.End,
 	}
 }
 func NewSpanFromLexerPosition(Start, End lexer.Position) Span {
 	return Span{
-		StartPosition: Position{
-			Line: uint64(Start.Line),
-			Col:  uint64(Start.Col),
-		},
-		EndPosition: Position{
-			Line: uint64(End.Line),
-			Col:  uint64(End.Col),
-		},
+		StartPosition: Start,
+		EndPosition: End,
 	}
 }
-func NewSpan(Start, End Position) Span {
+func NewSpan(Start, End lexer.Position) Span {
 	return Span{
 		StartPosition: Start,
 		EndPosition:   End,

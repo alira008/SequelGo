@@ -14,7 +14,7 @@ type Lexer struct {
 	col     int
 }
 
-func NewPosition(line, col int) Position {
+func NewPosition(line, col uint) Position {
 	return Position{Line: line, Col: col}
 }
 
@@ -43,8 +43,7 @@ func (l Lexer) CurrentLine() string {
 func (l *Lexer) NextToken() Token {
 	l.skipWhitespace()
 	token := Token{}
-	token.Start.Col = l.col
-	token.Start.Line = l.line
+	token.Start = NewPosition(uint(l.line), uint(l.col))
 	switch l.ch {
 	case ',':
 		token.Type = TComma
@@ -254,8 +253,8 @@ func (l *Lexer) NextToken() Token {
 		}
 	}
 
-	token.End.Col = l.col
-	token.End.Line = l.line
+	token.End.Col = uint(l.col)
+	token.End.Line = uint(l.line)
 
 	l.readChar()
 

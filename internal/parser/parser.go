@@ -184,8 +184,10 @@ func (p *Parser) expectTokenMany(ts []lexer.TokenType) (lexer.Token, error) {
 
 func (p *Parser) peekError(t lexer.TokenType) error {
 	arrows := ""
-	for i := 0; i < p.peekToken.Start.Col-1; i++ {
-		arrows += " "
+	if p.peekToken.Start.Col > 0 {
+		for i := uint(0); i < p.peekToken.Start.Col-1; i++ {
+			arrows += " "
+		}
 	}
 	for i := p.peekToken.Start.Col; i <= p.peekToken.End.Col; i++ {
 		arrows += "^"
@@ -215,8 +217,10 @@ func (p *Parser) peekErrorMany(ts []lexer.TokenType) error {
 	}
 
 	arrows := ""
-	for i := 0; i < p.peekToken.Start.Col-1; i++ {
-		arrows += " "
+	if p.peekToken.Start.Col > 0 {
+		for i := uint(0); i < p.peekToken.Start.Col-1; i++ {
+			arrows += " "
+		}
 	}
 	for i := p.peekToken.Start.Col; i <= p.peekToken.End.Col; i++ {
 		arrows += "^"
@@ -232,8 +236,10 @@ func (p *Parser) peekErrorMany(ts []lexer.TokenType) error {
 
 func (p *Parser) peekErrorString(expected string) error {
 	arrows := ""
-	for i := 0; i < p.peekToken.Start.Col-1; i++ {
-		arrows += " "
+	if p.peekToken.Start.Col > 0 {
+		for i := uint(0); i < p.peekToken.Start.Col-1; i++ {
+			arrows += " "
+		}
 	}
 	for i := p.peekToken.Start.Col; i <= p.peekToken.End.Col; i++ {
 		arrows += "^"

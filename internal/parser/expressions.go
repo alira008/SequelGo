@@ -256,10 +256,7 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 
 func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, error) {
 	p.logger.Debug("parsing infix expression, ", p.peekToken.String())
-	startPosition := ast.Position{
-		Line: uint64(p.peekToken.Start.Line),
-		Col:  uint64(p.peekToken.Start.Col),
-	}
+	startPosition := p.peekToken.Start
 	switch p.peekToken.Type {
 	case lexer.TAnd:
 		precedence := p.peekPrecedence()

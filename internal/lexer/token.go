@@ -8,8 +8,8 @@ type Token struct {
 }
 
 type Position struct {
-	Line int
-	Col  int
+	Line uint
+	Col  uint
 }
 
 type TokenType uint8

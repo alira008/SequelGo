@@ -34,7 +34,7 @@ func mapComments(root ast.Node, comments []ast.Comment) MappedComments {
 	}
 	for _, comment := range comments {
 		commentSpan := comment.Span
-		shortestDistance := uint64(math.MaxUint64)
+		shortestDistance := uint(math.MaxUint)
 		var closestNode ast.Node
 
 		// check if comment is on same line

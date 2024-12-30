@@ -1571,10 +1571,7 @@ func (p *Parser) parseFunctionCall(function *ast.ExprFunction) (*ast.ExprFunctio
 			Args: args,
 			Span: ast.Span{
 				StartPosition: function.StartPosition,
-				EndPosition: ast.Position{
-					Line: uint64(rightParen.End.Line),
-					Col:  uint64(rightParen.End.Col),
-				},
+				EndPosition: rightParen.End,
 			},
 		}, nil
 	}
