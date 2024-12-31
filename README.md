@@ -16,7 +16,7 @@ This formatter works like opinionated formatters like Prettier and
 ### Example run 1
 
 ```bash
-SequelGo-formatter -k UpperCase "select hello from testtable where too"
+SequelGo format -k UpperCase "select hello from testtable where too"
 ```
 
 #### Output
@@ -30,7 +30,7 @@ select hello from testtable where too
 ### Example run 2
 
 ```bash
-SequelGo-formatter -k LowerCase "Select top 30 percent with ties LastPrice, HighPrice , LowPrice, QuoteTime 'QuoTime' from MarketTable mkt where 'QuoTime' < '6:30' oRDer By Symbol"
+SequelGo format -k LowerCase "Select top 30 percent with ties LastPrice, HighPrice , LowPrice, QuoteTime 'QuoTime' from MarketTable mkt where 'QuoTime' < '6:30' oRDer By Symbol"
 ```
 
 #### Output
@@ -48,7 +48,7 @@ order by Symbol
 ### Example run 3
 
 ```bash 
-SequelGo-formatter -k UpperCase "Select top 30 percent with ties LastPrice, HighPrice , LowPrice, QuoteTime 'QuoTime' from MarketTable mkt where 'QuoTime' < '6:30' oRDer By Symbol"
+SequelGo format -k UpperCase "Select top 30 percent with ties LastPrice, HighPrice , LowPrice, QuoteTime 'QuoTime' from MarketTable mkt where 'QuoTime' < '6:30' oRDer By Symbol"
 ```
 
 #### Output
@@ -66,11 +66,26 @@ ORDER BY Symbol
 ### Help
 
 ```
-SequelGo-format is an opionated formatter that formats T-SQL
+SequelGo is a tool that has a command for an opionated formatter that formats T-SQL
+    code into a more readable format. It also provides a command to start a language server
+    that will make it easier to develop T-SQL queries
+
+Usage:
+  SequelGo [command]
+
+Available Commands:
+  format      Format T-SQL code
+  help        Help about any command
+
+Flags:
+  -h, --help   help for SequelGo
+```
+```
+SequelGo format is an opionated formatter that formats T-SQL
 code into a more readable format
 
 Usage:
-  SequelGo-format [flags] <sql to parse>
+  SequelGo format [flags] <sql to parse>
 
 Flags:
   -h, --help                      help for SequelGo-format
