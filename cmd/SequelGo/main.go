@@ -16,6 +16,7 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(formatCmd)
+	rootCmd.AddCommand(runLanguageServerCmd)
 	rootCmd.CompletionOptions.HiddenDefaultCmd = true
 }
 
