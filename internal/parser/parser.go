@@ -158,7 +158,7 @@ func (p *Parser) expectPeek(t lexer.TokenType) error {
 		return nil
 	}
 
-	return p.peekError(t)
+	return p.peekErrorString(t.String())
 }
 
 func (p *Parser) expectPeekMany(ts []lexer.TokenType) error {
@@ -180,25 +180,6 @@ func (p *Parser) expectTokenMany(ts []lexer.TokenType) (lexer.Token, error) {
 	}
 
 	return lexer.Token{}, p.peekErrorMany(ts)
-}
-
-func (p *Parser) peekError(t lexer.TokenType) error {
-	arrows := ""
-	if p.peekToken.Start.Col > 0 {
-		for i := uint(0); i < p.peekToken.Start.Col-1; i++ {
-			arrows += " "
-		}
-	}
-	for i := p.peekToken.Start.Col; i <= p.peekToken.End.Col; i++ {
-		arrows += "^"
-	}
-	return fmt.Errorf(
-		"expected (%s) got (%s) instead\n%s\n%s",
-		t.String(),
-		p.peekToken.Type.String(),
-		p.l.CurrentLine(),
-		arrows,
-	)
 }
 
 func (p *Parser) peekErrorMany(ts []lexer.TokenType) error {
@@ -245,8 +226,9 @@ func (p *Parser) peekErrorString(expected string) error {
 		arrows += "^"
 	}
 	return fmt.Errorf(
-		"expected (%s) got (%s) instead\n%s",
+		"expected (%s) got (%s) instead\n%s\n%s",
 		expected,
+        p.peekToken.Type.String(),
 		p.l.CurrentLine(),
 		arrows,
 	)
@@ -308,17 +290,7 @@ func (p *Parser) expectSelectItemStart() error {
 		}
 	}
 
-	errorString := "expected "
-	// errorString := ""
-	for i, t := range select_item_type_start {
-		if i > 0 {
-			errorString += ", "
-		}
-		errorString += fmt.Sprintf("%s", t.String())
-	}
-	errorString += fmt.Sprintf(" got %s instead", p.peekToken.Value)
-
-	return fmt.Errorf("%s", errorString)
+    return p.peekErrorMany(select_item_type_start)
 }
 
 var table_source_start = []lexer.TokenType{
@@ -335,16 +307,7 @@ func (p *Parser) expectTableSourceStart() error {
 		}
 	}
 
-	errorString := "expected "
-	for i, t := range table_source_start {
-		if i > 0 {
-			errorString += ", "
-		}
-		errorString += fmt.Sprintf("%s", t.String())
-	}
-	errorString += fmt.Sprintf(" got %s instead", p.peekToken.Value)
-
-	return fmt.Errorf("%s", errorString)
+    return p.peekErrorMany(table_source_start)
 }
 
 var group_by_start = []lexer.TokenType{
@@ -361,16 +324,7 @@ func (p *Parser) expectGroupByStart() error {
 		}
 	}
 
-	errorString := "expected "
-	for i, t := range group_by_start {
-		if i > 0 {
-			errorString += ", "
-		}
-		errorString += fmt.Sprintf("%s", t.String())
-	}
-	errorString += fmt.Sprintf(" got %s instead", p.peekToken.Value)
-
-	return fmt.Errorf("%s", errorString)
+    return p.peekErrorMany(group_by_start)
 }
 
 var expression_list_start = []lexer.TokenType{
@@ -388,16 +342,7 @@ func (p *Parser) expectExpressionListStart() error {
 		}
 	}
 
-	errorString := "expected "
-	for i, t := range expression_list_start {
-		if i > 0 {
-			errorString += ", "
-		}
-		errorString += fmt.Sprintf("%s", t.String())
-	}
-	errorString += fmt.Sprintf(" got %s instead", p.peekToken.Value)
-
-	return fmt.Errorf("%s", errorString)
+    return p.peekErrorMany(expression_list_start)
 }
 
 var function_args_start = append([]lexer.TokenType{
@@ -415,14 +360,5 @@ func (p *Parser) expectFunctionArgsStart() error {
 		}
 	}
 
-	errorString := "expected "
-	for i, t := range function_args_start {
-		if i > 0 {
-			errorString += ", "
-		}
-		errorString += fmt.Sprintf("%s", t.String())
-	}
-	errorString += fmt.Sprintf(" got %s instead", p.peekToken.Value)
-
-	return fmt.Errorf("%s", errorString)
+    return p.peekErrorMany(function_args_start)
 }

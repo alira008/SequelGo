@@ -406,7 +406,7 @@ func (p *Parser) parseTableSource() (*ast.TableSource, error) {
 	case *ast.ExprSubquery:
 		tableSourceType = ast.TSTDerived
 	default:
-		return nil, p.peekErrorString("expected Table Name or Function or Subquery")
+		return nil, p.peekErrorString("Table Name or Function or Subquery")
 	}
 
 	// check table alias
@@ -549,7 +549,7 @@ func (p *Parser) parseWhereExpression() (*ast.WhereClause, error) {
 		*ast.ExprAnyLogicalOperator:
 		break
 	default:
-		return nil, p.peekErrorString("expected expression after 'WHERE' keyword")
+		return nil, p.peekErrorString("expression after 'WHERE' keyword")
 	}
 	p.logger.Debugf("expr: %s\n", expr)
 	whereClause.Clause = expr
@@ -628,7 +628,7 @@ func (p *Parser) parseHavingExpression() (*ast.HavingClause, error) {
 		*ast.ExprAnyLogicalOperator:
 		break
 	default:
-		return nil, p.peekErrorString("expected expression after 'HAVING' keyword")
+		return nil, p.peekErrorString("expression after 'HAVING' keyword")
 	}
 	havingClause.Clause = expr
 	havingClause.Clause.SetSpan(ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End))
@@ -779,7 +779,7 @@ func (p *Parser) parseOffset() (ast.OffsetArg, error) {
 		offsetArg.RowOrRowsKeyword = *kw
 		return offsetArg, nil
 	default:
-		return offsetArg, p.peekErrorString("Expected 'ROW' or 'ROWS' after offset expression")
+		return offsetArg, p.peekErrorString("'ROW' or 'ROWS' after offset expression")
 	}
 }
 
@@ -988,7 +988,7 @@ func (p *Parser) parseWindowFrameClause() (*ast.WindowFrameClause, error) {
 			Span:         ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End),
 		}
 	} else {
-		return nil, p.peekErrorString("Expected UNBOUNDED PRECEDING or peek ROW or <NUMBER> PRECEDING")
+		return nil, p.peekErrorString("UNBOUNDED PRECEDING or peek ROW or <NUMBER> PRECEDING")
 	}
 
 	if !followingNeeded {
@@ -1049,7 +1049,7 @@ func (p *Parser) parseWindowFrameClause() (*ast.WindowFrameClause, error) {
 			Span:         ast.NewSpanFromLexerPosition(startPositionFrameEnd, p.peekToken.End),
 		}
 	} else {
-		return nil, p.peekErrorString("Expected UNBOUNDED FOLLOWING or peek ROW or <NUMBER> FOLLOWING")
+		return nil, p.peekErrorString("UNBOUNDED FOLLOWING or peek ROW or <NUMBER> FOLLOWING")
 	}
 
 	return &ast.WindowFrameClause{
@@ -1097,7 +1097,7 @@ func (p *Parser) parseNumericSize() (*ast.NumericSize, error) {
 	}
 
 	if err := p.expectPeek(lexer.TNumericLiteral); err != nil {
-		return nil, p.peekErrorString("Expected a numeric literal for casting expression")
+		return nil, p.peekErrorString("a numeric literal for casting expression")
 	}
 
 	// parse precision
@@ -1115,11 +1115,11 @@ func (p *Parser) parseNumericSize() (*ast.NumericSize, error) {
 
 	// parse scale
 	if _, err := p.consumeToken(lexer.TComma); err != nil {
-		return nil, p.peekErrorString("Expected a comma before scale")
+		return nil, p.peekErrorString("a comma before scale")
 	}
 
 	if err := p.expectPeek(lexer.TNumericLiteral); err != nil {
-		return nil, p.peekErrorString("Expected a numeric literal for scale when casting expression")
+		return nil, p.peekErrorString("a numeric literal for scale when casting expression")
 	}
 
 	scale, err := strconv.ParseUint(p.peekToken.Value, 10, 32)
@@ -1129,7 +1129,7 @@ func (p *Parser) parseNumericSize() (*ast.NumericSize, error) {
 	scale32 := uint32(scale)
 
 	if _, err := p.consumeToken(lexer.TRightParen); err != nil {
-		return nil, p.peekErrorString("Expected a right parenthesis after scale")
+		return nil, p.peekErrorString("a right parenthesis after scale")
 	}
 
 	return &ast.NumericSize{
@@ -1180,7 +1180,7 @@ func (p *Parser) parseDataType() (*ast.DataType, error) {
 		size32 := uint32(size)
 		dataType.FloatPrecision = &size32
 		if _, err := p.consumeToken(lexer.TRightParen); err != nil {
-			return nil, p.peekErrorString("Expected a numeric literal for casting expression")
+			return nil, p.peekErrorString("a numeric literal for casting expression")
 		}
 		break
 	case lexer.TReal:
@@ -1235,10 +1235,10 @@ func (p *Parser) parseDataType() (*ast.DataType, error) {
 		size32 := uint32(size)
 		dataType.FloatPrecision = &size32
 		if err := p.expectPeek(lexer.TRightParen); err != nil {
-			return nil, p.peekErrorString("Expected a numeric literal for casting expression")
+			return nil, p.peekErrorString("a numeric literal for casting expression")
 		}
 	default:
-		return nil, p.peekErrorString("Expected a Builtin Datatype")
+		return nil, p.peekErrorString("a Builtin Datatype")
 	}
 
 	dataType.Span = ast.NewSpanFromLexerPosition(startPosition, p.peekToken.End)
@@ -1561,7 +1561,7 @@ func (p *Parser) parseFunctionCall(function *ast.ExprFunction) (*ast.ExprFunctio
 
 	rightParen, err := p.consumeToken(lexer.TRightParen)
 	if err != nil {
-		p.logger.Debug("expected right parenthesis, got ", p.peekToken.Value)
+		p.logger.Debug("right parenthesis, got ", p.peekToken.Value)
 		return nil, err
 	}
 	// check for over clause
@@ -1691,5 +1691,5 @@ func (p *Parser) parseInLogicalOperator(left ast.Expression, notKw *ast.Keyword)
 
 		return inExpressionList, nil
 	}
-	return nil, p.peekErrorString("Expected (Subquery or Expression List) after 'IN' keyword")
+	return nil, p.peekErrorString("(Subquery or Expression List) after 'IN' keyword")
 }
