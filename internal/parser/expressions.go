@@ -147,13 +147,10 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 
 		return functionCall, nil
 	case lexer.TLeftParen:
-		// start of subquery
+		// start of subquery and expression list
 		p.consumeToken(lexer.TLeftParen)
-		startPosition := p.peekToken.Start
 		if p.peekTokenIs(lexer.TSelect) {
 			subquery, err := p.parseSelectSubquery()
-			endPosition := p.peekToken.End
-			subquery.Span = ast.NewSpanFromLexerPosition(startPosition, endPosition)
 			if err != nil {
 				return nil, err
 			}
@@ -174,7 +171,7 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 			if err != nil {
 				return nil, err
 			}
-			if err := p.expectPeek(lexer.TRightParen); err != nil {
+			if _, err := p.consumeToken(lexer.TRightParen); err != nil {
 				return nil, err
 			}
 			p.logger.Debug("stmt: ", stmt)
@@ -191,12 +188,16 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 			break
 		}
 
-		if err := p.expectPeek(lexer.TNumericLiteral); err != nil {
+		unaryOpToken, _ := p.consumeTokenAny([]lexer.TokenType{lexer.TPlus, lexer.TMinus})
+
+		numericLiteral, err := p.consumeToken(lexer.TNumericLiteral)
+		if err != nil {
 			return nil, err
 		}
 		newExpr = &ast.ExprUnaryOperator{
 			Operator: operator,
-			Right:    &ast.ExprNumberLiteral{Value: p.peekToken.Value},
+			Right:    &ast.ExprNumberLiteral{Value: numericLiteral.Value},
+			Span:     ast.NewSpanFromLexerPosition(unaryOpToken.Start, numericLiteral.End),
 		}
 		break
 	case lexer.TExists:
@@ -215,10 +216,11 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 			newExpr = &ast.ExprExistsLogicalOperator{
 				ExistsKeyword: *existsKw,
 				Subquery:      v,
+				Span:          ast.NewSpanFromLexerPosition(existsKw.StartPosition, v.EndPosition),
 			}
 			break
 		default:
-			return nil, fmt.Errorf("Expected subquery after 'EXISTS' keyword")
+			return nil, fmt.Errorf("subquery after 'EXISTS' keyword")
 		}
 		break
 	case lexer.TNot:
@@ -237,6 +239,7 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 		newExpr = &ast.ExprNotLogicalOperator{
 			Expression: expr,
 			NotKeyword: *notKw,
+			Span:       ast.NewSpanFromLexerPosition(notKw.StartPosition, expr.GetSpan().EndPosition),
 		}
 		break
 	case lexer.TCast:
@@ -256,7 +259,6 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 
 func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, error) {
 	p.logger.Debug("parsing infix expression, ", p.peekToken.String())
-	startPosition := p.peekToken.Start
 	switch p.peekToken.Type {
 	case lexer.TAnd:
 		precedence := p.peekPrecedence()
@@ -273,7 +275,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 			AndKeyword: *andKw,
 			Right:      right,
 			Span: ast.Span{
-				StartPosition: startPosition,
+				StartPosition: left.GetSpan().StartPosition,
 				EndPosition:   right.GetSpan().EndPosition,
 			},
 		}, nil
@@ -292,7 +294,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 			OrKeyword: *orKw,
 			Right:     right,
 			Span: ast.Span{
-				StartPosition: startPosition,
+				StartPosition: left.GetSpan().StartPosition,
 				EndPosition:   right.GetSpan().EndPosition,
 			},
 		}, nil
@@ -327,7 +329,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 			Operator: operator,
 			Right:    right,
 			Span: ast.Span{
-				StartPosition: startPosition,
+				StartPosition: left.GetSpan().StartPosition,
 				EndPosition:   right.GetSpan().EndPosition,
 			},
 		}, nil
@@ -372,7 +374,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 					ComparisonOperator: operator,
 					Subquery:           v,
 					Span: ast.Span{
-						StartPosition: startPosition,
+						StartPosition: left.GetSpan().StartPosition,
 						EndPosition:   right.GetSpan().EndPosition,
 					},
 				}, nil
@@ -391,7 +393,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 					ComparisonOperator: operator,
 					Subquery:           v,
 					Span: ast.Span{
-						StartPosition: startPosition,
+						StartPosition: left.GetSpan().StartPosition,
 						EndPosition:   right.GetSpan().EndPosition,
 					},
 				}, nil
@@ -410,7 +412,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 					ComparisonOperator: operator,
 					Subquery:           v,
 					Span: ast.Span{
-						StartPosition: startPosition,
+						StartPosition: left.GetSpan().StartPosition,
 						EndPosition:   right.GetSpan().EndPosition,
 					},
 				}, nil
@@ -428,7 +430,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 			Operator: operator,
 			Right:    right,
 			Span: ast.Span{
-				StartPosition: startPosition,
+				StartPosition: left.GetSpan().StartPosition,
 				EndPosition:   right.GetSpan().EndPosition,
 			},
 		}, nil
@@ -461,7 +463,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 			MatchExpression: left,
 			Pattern:         right,
 			Span: ast.Span{
-				StartPosition: startPosition,
+				StartPosition: left.GetSpan().StartPosition,
 				EndPosition:   right.GetSpan().EndPosition,
 			},
 		}, nil
@@ -501,7 +503,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 				NotKeyword:      notKw,
 				Pattern:         right,
 				Span: ast.Span{
-					StartPosition: startPosition,
+					StartPosition: left.GetSpan().StartPosition,
 					EndPosition:   right.GetSpan().EndPosition,
 				},
 			}, nil

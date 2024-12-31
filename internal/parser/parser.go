@@ -362,3 +362,19 @@ func (p *Parser) expectFunctionArgsStart() error {
 
     return p.peekErrorMany(function_args_start)
 }
+
+var compound_identifier_start = []lexer.TokenType{
+	lexer.TAsterisk,
+	lexer.TQuotedIdentifier,
+	lexer.TIdentifier,
+}
+
+func (p *Parser) expectCompoundIdentifierStart() error {
+	for _, t := range compound_identifier_start {
+		if p.peekToken.Type == t {
+			return nil
+		}
+	}
+
+    return p.peekErrorMany(compound_identifier_start)
+}
