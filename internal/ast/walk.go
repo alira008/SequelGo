@@ -36,8 +36,8 @@ func Walk(v Visitor, node Node) {
 		break
 	case *SelectBody:
 		Walk(v, &n.SelectKeyword)
-		if n.Distinct != nil {
-			Walk(v, n.Distinct)
+		if n.DistinctKeyword != nil {
+			Walk(v, n.DistinctKeyword)
 		}
 		if n.AllKeyword != nil {
 			Walk(v, n.AllKeyword)
@@ -82,6 +82,8 @@ func Walk(v Visitor, node Node) {
 	case *ExprCompoundIdentifier:
 		walkList(v, n.Identifiers)
 		break
+	case *ExprBuiltInFunctionName:
+		break
 	case *SelectItems:
 		walkList(v, n.Items)
 		break
@@ -113,7 +115,6 @@ func Walk(v Visitor, node Node) {
 		for _, k := range n.JoinTypeKeyword {
 			Walk(v, &k)
 		}
-		Walk(v, &n.JoinKeyword)
 		Walk(v, n.Table)
 		if n.OnKeyword != nil {
 			Walk(v, n.OnKeyword)

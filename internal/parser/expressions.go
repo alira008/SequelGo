@@ -7,82 +7,76 @@ import (
 )
 
 func (p *Parser) parseExpression(precedence Precedence) (ast.Expression, error) {
-	startPosition := p.currentToken.Start
-    leading := p.popLeadingComments()
 	leftExpr, err := p.parsePrefixExpression()
-	endPosition := p.currentToken.End
 	if err != nil {
 		return nil, err
 	}
-	trailing := p.popTrailingComments()
-	leftExpr.SetLeadingComments(leading)
-	leftExpr.SetTrailingComments(trailing)
-	leftExpr.SetSpan(ast.NewSpanFromLexerPosition(startPosition, endPosition))
 
 	// parse infix sql expressions using stacks to keep track of precedence
-	for precedence < checkPrecedence(p.peekToken.Type) {
-		p.nextToken()
-
-		startPosition = p.currentToken.Start
-		leading := p.popLeadingComments()
+	for precedence < p.peekPrecedence() {
 		leftExpr, err = p.parseInfixExpression(leftExpr)
 		if err != nil {
 			return nil, err
 		}
-		endPosition = p.currentToken.End
-		trailing := p.popTrailingComments()
-		leftExpr.SetLeadingComments(leading)
-		leftExpr.SetTrailingComments(trailing)
-		leftExpr.SetSpan(ast.NewSpanFromLexerPosition(startPosition, endPosition))
 	}
 
 	return leftExpr, nil
 }
 
 func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
-	p.logger.Debugf("parsing prefix expression. currentToken %s", p.currentToken)
+	p.logger.Debugf("parsing prefix expression. peekToken %s", p.peekToken.String())
 	var newExpr ast.Expression
-	switch p.currentToken.Type {
-	case lexer.TIdentifier, lexer.TNumericLiteral, lexer.TStringLiteral, lexer.TAsterisk, lexer.TLocalVariable, lexer.TQuotedIdentifier:
-		switch p.currentToken.Type {
+	switch p.peekToken.Type {
+	case lexer.TIdentifier,
+		lexer.TNumericLiteral,
+		lexer.TStringLiteral,
+		lexer.TAsterisk,
+		lexer.TLocalVariable,
+		lexer.TQuotedIdentifier:
+		switch p.peekToken.Type {
 		case lexer.TLocalVariable:
 			newExpr = &ast.ExprLocalVariable{
-				Value: p.currentToken.Value,
-				Span:  ast.NewSpanFromLexerPosition(p.currentToken.Start, p.currentToken.End),
+				Value: p.peekToken.Value,
+				Span:  ast.NewSpanFromToken(p.peekToken),
 			}
 		case lexer.TQuotedIdentifier:
 			newExpr = &ast.ExprQuotedIdentifier{
-				Value: p.currentToken.Value,
-				Span:  ast.NewSpanFromLexerPosition(p.currentToken.Start, p.currentToken.End),
+				Value: p.peekToken.Value,
+				Span:  ast.NewSpanFromToken(p.peekToken),
 			}
 		case lexer.TStringLiteral:
 			newExpr = &ast.ExprStringLiteral{
-				Value: p.currentToken.Value,
-				Span:  ast.NewSpanFromLexerPosition(p.currentToken.Start, p.currentToken.End),
+				Value: p.peekToken.Value,
+				Span:  ast.NewSpanFromToken(p.peekToken),
 			}
 		case lexer.TNumericLiteral:
 			newExpr = &ast.ExprNumberLiteral{
-				Value: p.currentToken.Value,
-				Span:  ast.NewSpanFromLexerPosition(p.currentToken.Start, p.currentToken.End),
+				Value: p.peekToken.Value,
+				Span:  ast.NewSpanFromToken(p.peekToken),
 			}
 		case lexer.TIdentifier:
 			newExpr = &ast.ExprIdentifier{
-				Value: p.currentToken.Value,
-				Span:  ast.NewSpanFromLexerPosition(p.currentToken.Start, p.currentToken.End),
+				Value: p.peekToken.Value,
+				Span:  ast.NewSpanFromToken(p.peekToken),
 			}
 		case lexer.TAsterisk:
 			newExpr = &ast.ExprStar{
-				Span: ast.NewSpanFromLexerPosition(p.currentToken.Start, p.currentToken.End),
+				Span: ast.NewSpanFromToken(p.peekToken),
 			}
 		}
 
 		// parsing compound identifiers
-		if p.currentTokenIs(lexer.TIdentifier) || p.currentTokenIs(lexer.TQuotedIdentifier) {
+		couldBeCompound := false
+		if p.peekTokenIsAny([]lexer.TokenType{lexer.TIdentifier, lexer.TQuotedIdentifier}) {
+			couldBeCompound = true
+		}
+		p.nextToken()
+
+		if couldBeCompound {
 			parsedCompoundIdentifier, err := p.parseCompoundIdentifier(newExpr)
 			if err != nil {
 				return nil, err
 			}
-
 			// we have a compoundIdentifier
 			if parsedCompoundIdentifier != nil {
 				newExpr = parsedCompoundIdentifier
@@ -95,7 +89,7 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 			function := &ast.ExprFunction{
 				Type: ast.FuncUserDefined,
 				Name: newExpr,
-				Span: ast.NewSpanFromLexerPosition(p.currentToken.Start, p.currentToken.End),
+				Span: ast.NewSpanFromToken(p.peekToken),
 			}
 
 			functionCall, err := p.parseFunctionCall(function)
@@ -104,60 +98,6 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 			}
 
 			newExpr = functionCall
-		}
-
-		if (p.peekTokenIs(lexer.TAs) || p.peekTokenIs(lexer.TIdentifier) ||
-			p.peekTokenIs(lexer.TStringLiteral) || p.peekTokenIs(lexer.TQuotedIdentifier)) &&
-			!p.peekToken2IsAny(ast.DataTypeTokenTypes) {
-			expr := &ast.ExprWithAlias{Expression: newExpr}
-
-			if p.peekToken.Type == lexer.TAs {
-				p.nextToken()
-				kw := ast.NewKeywordFromToken(p.currentToken)
-				kw.SetLeadingComments(p.popLeadingComments())
-				kw.SetTrailingComments(p.popTrailingComments())
-				expr.AsKeyword = &kw
-			}
-
-			// needed in case we just parsed AS keyword
-			err := p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier, lexer.TStringLiteral, lexer.TQuotedIdentifier})
-			if err != nil {
-				return nil, err
-			}
-			var alias ast.Expression
-			if p.currentTokenIs(lexer.TIdentifier) {
-				alias = &ast.ExprIdentifier{
-					Value: p.currentToken.Value,
-					Span:  ast.NewSpanFromLexerPosition(p.currentToken.Start, p.currentToken.End),
-				}
-			}else if p.currentTokenIs(lexer.TStringLiteral) {
-				alias = &ast.ExprStringLiteral{
-					Value: p.currentToken.Value,
-					Span:  ast.NewSpanFromLexerPosition(p.currentToken.Start, p.currentToken.End),
-				}
-			}else if p.currentTokenIs(lexer.TQuotedIdentifier) {
-				alias = &ast.ExprQuotedIdentifier{
-					Value: p.currentToken.Value,
-					Span:  ast.NewSpanFromLexerPosition(p.currentToken.Start, p.currentToken.End),
-				}
-			}
-            alias.SetLeadingComments(p.popLeadingComments())
-            alias.SetTrailingComments(p.popTrailingComments())
-
-			// alias, err := p.parseExpression(PrecedenceLowest)
-			// if err != nil {
-			// 	return nil, err
-			// }
-
-			// switch alias.(type) {
-			// case *ast.ExprIdentifier, *ast.ExprStringLiteral, *ast.ExprQuotedIdentifier:
-			// 	break
-			// default:
-			// 	err = p.currentErrorString("Expected (Identifier or StringLiteral or QuotedIdentifier) for Alias")
-			// 	return nil, err
-			// }
-			expr.Alias = alias
-			newExpr = expr
 		}
 	case lexer.TDenseRank,
 		lexer.TRank,
@@ -208,62 +148,28 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 		return functionCall, nil
 	case lexer.TLeftParen:
 		// start of subquery
-		startPosition := p.currentToken.Start
+		p.consumeToken(lexer.TLeftParen)
+		startPosition := p.peekToken.Start
 		if p.peekTokenIs(lexer.TSelect) {
-			p.nextToken()
 			subquery, err := p.parseSelectSubquery()
-			endPosition := p.currentToken.End
+			endPosition := p.peekToken.End
 			subquery.Span = ast.NewSpanFromLexerPosition(startPosition, endPosition)
 			if err != nil {
 				return nil, err
 			}
-			p.expectPeek(lexer.TRightParen)
-
-			p.logger.Debug("parsing subquery alias")
-			p.logger.Debug(p.peekToken)
-			if (p.peekTokenIs(lexer.TAs) || p.peekTokenIs(lexer.TIdentifier) ||
-				p.peekTokenIs(lexer.TStringLiteral) || p.peekTokenIs(lexer.TQuotedIdentifier)) &&
-				!p.peekToken2IsAny(ast.DataTypeTokenTypes) {
-				p.logger.Debug("parsing subquery alias")
-				exprWithAlias := &ast.ExprWithAlias{
-					Expression: &subquery,
-				}
-
-				p.logger.Debug("parsing subquery alias")
-				if p.peekToken.Type == lexer.TAs {
-					p.nextToken()
-					kw := ast.NewKeywordFromToken(p.currentToken)
-					exprWithAlias.AsKeyword = &kw
-				}
-
-				// needed in case we just parsed AS keyword
-				err := p.expectPeekMany([]lexer.TokenType{lexer.TIdentifier, lexer.TStringLiteral, lexer.TQuotedIdentifier})
-				if err != nil {
-					return nil, err
-				}
-
-				alias, err := p.parseExpression(PrecedenceLowest)
-				if err != nil {
-					return nil, err
-				}
-
-				switch alias.(type) {
-				case *ast.ExprIdentifier, *ast.ExprStringLiteral, *ast.ExprQuotedIdentifier:
-					break
-				default:
-					err = fmt.Errorf("Expected (Identifier or StringLiteral or QuotedIdentifier) for Alias")
-					return nil, err
-				}
-				exprWithAlias.Alias = alias
-				return exprWithAlias, nil
+			_, err = p.consumeToken(lexer.TRightParen)
+			if err != nil {
+				return nil, err
 			}
 
 			return &subquery, nil
-		} else if p.peekTokenIs(lexer.TIdentifier) ||
-			p.peekTokenIs(lexer.TLocalVariable) ||
-			p.peekTokenIs(lexer.TQuotedIdentifier) ||
-			p.peekTokenIs(lexer.TStringLiteral) ||
-			p.peekTokenIs(lexer.TNumericLiteral) {
+		} else if p.peekTokenIsAny([]lexer.TokenType{
+			lexer.TIdentifier,
+			lexer.TLocalVariable,
+			lexer.TQuotedIdentifier,
+			lexer.TStringLiteral,
+			lexer.TNumericLiteral,
+		}) {
 			stmt, err := p.parseExpressionList()
 			if err != nil {
 				return nil, err
@@ -276,7 +182,7 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 		}
 	case lexer.TPlus, lexer.TMinus:
 		var operator ast.UnaryOperatorType
-		switch p.currentToken.Type {
+		switch p.peekToken.Type {
 		case lexer.TPlus:
 			operator = ast.UnaryOpPlus
 			break
@@ -290,12 +196,14 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 		}
 		newExpr = &ast.ExprUnaryOperator{
 			Operator: operator,
-			Right:    &ast.ExprNumberLiteral{Value: p.currentToken.Value},
+			Right:    &ast.ExprNumberLiteral{Value: p.peekToken.Value},
 		}
 		break
 	case lexer.TExists:
-		existsKw := ast.NewKeywordFromToken(p.currentToken)
-		p.nextToken()
+		existsKw, err := p.consumeKeyword(lexer.TExists)
+		if err != nil {
+			return nil, err
+		}
 
 		expr, err := p.parseExpression(PrecedenceLowest)
 		if err != nil {
@@ -305,18 +213,19 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 		switch v := expr.(type) {
 		case *ast.ExprSubquery:
 			newExpr = &ast.ExprExistsLogicalOperator{
-				ExistsKeyword: existsKw,
+				ExistsKeyword: *existsKw,
 				Subquery:      v,
 			}
 			break
 		default:
-			p.errorToken = ETCurrent
 			return nil, fmt.Errorf("Expected subquery after 'EXISTS' keyword")
 		}
 		break
 	case lexer.TNot:
-		notKw := ast.NewKeywordFromToken(p.currentToken)
-		p.nextToken()
+		notKw, err := p.consumeKeyword(lexer.TNot)
+		if err != nil {
+			return nil, err
+		}
 
 		expr, err := p.parseExpression(PrecedenceLowest)
 		if err != nil {
@@ -327,7 +236,7 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 		// check if it is a subquery
 		newExpr = &ast.ExprNotLogicalOperator{
 			Expression: expr,
-			NotKeyword: notKw,
+			NotKeyword: *notKw,
 		}
 		break
 	case lexer.TCast:
@@ -338,8 +247,7 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 		p.logger.Debug(expr.TokenLiteral())
 		newExpr = expr
 	default:
-		p.errorToken = ETCurrent
-		return nil, p.currentErrorString(fmt.Sprintf("Unimplemented expression %s", p.currentToken.Type.String()))
+		return nil, p.peekErrorString(fmt.Sprintf("Unimplemented expression \"%s\"", p.peekToken.Type.String()))
 	}
 
 	return newExpr, nil
@@ -347,35 +255,46 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 }
 
 func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, error) {
-	p.logger.Debug("parsing infix expression, ", p.currentToken.String())
-	switch p.currentToken.Type {
+	p.logger.Debug("parsing infix expression, ", p.peekToken.String())
+	startPosition := p.peekToken.Start
+	switch p.peekToken.Type {
 	case lexer.TAnd:
-		andKw := ast.NewKeywordFromToken(p.currentToken)
-		precedence := checkPrecedence(p.currentToken.Type)
-		p.nextToken()
-
+		precedence := p.peekPrecedence()
+		andKw, err := p.consumeKeyword(lexer.TAnd)
+		if err != nil {
+			return nil, err
+		}
 		right, err := p.parseExpression(precedence)
 		if err != nil {
 			return nil, err
 		}
 		return &ast.ExprAndLogicalOperator{
 			Left:       left,
-			AndKeyword: andKw,
+			AndKeyword: *andKw,
 			Right:      right,
+			Span: ast.Span{
+				StartPosition: startPosition,
+				EndPosition:   right.GetSpan().EndPosition,
+			},
 		}, nil
 	case lexer.TOr:
-		orKw := ast.NewKeywordFromToken(p.currentToken)
-		precedence := checkPrecedence(p.currentToken.Type)
-		p.nextToken()
-
+		precedence := p.peekPrecedence()
+		orKw, err := p.consumeKeyword(lexer.TOr)
+		if err != nil {
+			return nil, err
+		}
 		right, err := p.parseExpression(precedence)
 		if err != nil {
 			return nil, err
 		}
 		return &ast.ExprOrLogicalOperator{
 			Left:      left,
-			OrKeyword: orKw,
+			OrKeyword: *orKw,
 			Right:     right,
+			Span: ast.Span{
+				StartPosition: startPosition,
+				EndPosition:   right.GetSpan().EndPosition,
+			},
 		}, nil
 	case lexer.TPlus,
 		lexer.TMinus,
@@ -383,7 +302,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 		lexer.TDivide,
 		lexer.TMod:
 		var operator ast.ArithmeticOperatorType
-		switch p.currentToken.Type {
+		switch p.peekToken.Type {
 		case lexer.TPlus:
 			operator = ast.ArithmeticOpPlus
 		case lexer.TMinus:
@@ -395,7 +314,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 		case lexer.TMod:
 			operator = ast.ArithmeticOpMod
 		}
-		precedence := checkPrecedence(p.currentToken.Type)
+		precedence := p.peekPrecedence()
 		p.nextToken()
 
 		right, err := p.parseExpression(precedence)
@@ -407,6 +326,10 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 			Left:     left,
 			Operator: operator,
 			Right:    right,
+			Span: ast.Span{
+				StartPosition: startPosition,
+				EndPosition:   right.GetSpan().EndPosition,
+			},
 		}, nil
 	case lexer.TEqual,
 		lexer.TNotEqualBang,
@@ -417,7 +340,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 		lexer.TLessThanEqual:
 
 		var operator ast.ComparisonOperatorType
-		switch p.currentToken.Type {
+		switch p.peekToken.Type {
 		case lexer.TEqual:
 			operator = ast.ComparisonOpEqual
 		case lexer.TNotEqualBang:
@@ -433,12 +356,10 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 		case lexer.TLessThanEqual:
 			operator = ast.ComparisonOpLessEqual
 		}
-		precedence := checkPrecedence(p.currentToken.Type)
+		precedence := p.peekPrecedence()
 		p.nextToken()
 
-		if p.currentTokenIs(lexer.TAll) {
-			allKw := ast.NewKeywordFromToken(p.currentToken)
-			p.nextToken()
+		if allKw := p.maybeKeyword(lexer.TAll); allKw != nil {
 			right, err := p.parseExpression(precedence)
 			if err != nil {
 				return nil, err
@@ -446,17 +367,18 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 			switch v := right.(type) {
 			case *ast.ExprSubquery:
 				return &ast.ExprAllLogicalOperator{
-					AllKeyword:         allKw,
+					AllKeyword:         *allKw,
 					ScalarExpression:   left,
 					ComparisonOperator: operator,
 					Subquery:           v,
+					Span: ast.Span{
+						StartPosition: startPosition,
+						EndPosition:   right.GetSpan().EndPosition,
+					},
 				}, nil
 			}
-			p.errorToken = ETCurrent
 			return nil, fmt.Errorf("sub query was not provided for All Expression")
-		} else if p.currentTokenIs(lexer.TSome) {
-			someKw := ast.NewKeywordFromToken(p.currentToken)
-			p.nextToken()
+		} else if someKw := p.maybeKeyword(lexer.TSome); someKw != nil {
 			right, err := p.parseExpression(precedence)
 			if err != nil {
 				return nil, err
@@ -464,17 +386,18 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 			switch v := right.(type) {
 			case *ast.ExprSubquery:
 				return &ast.ExprSomeLogicalOperator{
-					SomeKeyword:        someKw,
+					SomeKeyword:        *someKw,
 					ScalarExpression:   left,
 					ComparisonOperator: operator,
 					Subquery:           v,
+					Span: ast.Span{
+						StartPosition: startPosition,
+						EndPosition:   right.GetSpan().EndPosition,
+					},
 				}, nil
 			}
-			p.errorToken = ETCurrent
-			return nil, p.currentErrorString("(Subquery) was not provided for Some Expression")
-		} else if p.currentTokenIs(lexer.TAny) {
-			anyKw := ast.NewKeywordFromToken(p.currentToken)
-			p.nextToken()
+			return nil, p.peekErrorString("(Subquery) was not provided for Some Expression")
+		} else if anyKw := p.maybeKeyword(lexer.TAny); anyKw != nil {
 			right, err := p.parseExpression(precedence)
 			if err != nil {
 				return nil, err
@@ -482,14 +405,17 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 			switch v := right.(type) {
 			case *ast.ExprSubquery:
 				return &ast.ExprAnyLogicalOperator{
-					AnyKeyword:         anyKw,
+					AnyKeyword:         *anyKw,
 					ScalarExpression:   left,
 					ComparisonOperator: operator,
 					Subquery:           v,
+					Span: ast.Span{
+						StartPosition: startPosition,
+						EndPosition:   right.GetSpan().EndPosition,
+					},
 				}, nil
 			}
-			p.errorToken = ETCurrent
-			return nil, p.currentErrorString("(Subquery) was not provided for Any Expression")
+			return nil, p.peekErrorString("(Subquery) was not provided for Any Expression")
 		}
 
 		// parse the expression of the operator
@@ -501,6 +427,10 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 			Left:     left,
 			Operator: operator,
 			Right:    right,
+			Span: ast.Span{
+				StartPosition: startPosition,
+				EndPosition:   right.GetSpan().EndPosition,
+			},
 		}, nil
 	case lexer.TBetween:
 		betweenOp, err := p.parseBetweenLogicalOperator(left, nil)
@@ -515,9 +445,11 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 		}
 		return inLogicalOp, nil
 	case lexer.TLike:
-		likeKw := ast.NewKeywordFromToken(p.currentToken)
-		precedence := checkPrecedence(p.currentToken.Type)
-		p.nextToken()
+		precedence := p.peekPrecedence()
+		likeKw, err := p.consumeKeyword(lexer.TLike)
+		if err != nil {
+			return nil, err
+		}
 
 		right, err := p.parseExpression(precedence)
 		if err != nil {
@@ -525,30 +457,38 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 		}
 
 		return &ast.ExprLikeLogicalOperator{
-			LikeKeyword:     likeKw,
+			LikeKeyword:     *likeKw,
 			MatchExpression: left,
 			Pattern:         right,
+			Span: ast.Span{
+				StartPosition: startPosition,
+				EndPosition:   right.GetSpan().EndPosition,
+			},
 		}, nil
 	case lexer.TNot:
-		notKw := ast.NewKeywordFromToken(p.currentToken)
-		p.nextToken()
+		notKw, err := p.consumeKeyword(lexer.TNot)
+		if err != nil {
+			return nil, err
+		}
 
-		if p.currentTokenIs(lexer.TBetween) {
-			betweenOp, err := p.parseBetweenLogicalOperator(left, &notKw)
+		if p.peekTokenIs(lexer.TBetween) {
+			betweenOp, err := p.parseBetweenLogicalOperator(left, notKw)
 			if err != nil {
 				return nil, err
 			}
 			return betweenOp, nil
-		} else if p.currentTokenIs(lexer.TIn) {
-			inLogicalOp, err := p.parseInLogicalOperator(left, &notKw)
+		} else if p.peekTokenIs(lexer.TIn) {
+			inLogicalOp, err := p.parseInLogicalOperator(left, notKw)
 			if err != nil {
 				return nil, err
 			}
 			return inLogicalOp, nil
-		} else if p.currentTokenIs(lexer.TLike) {
-			likeKw := ast.NewKeywordFromToken(p.currentToken)
-			precedence := checkPrecedence(p.currentToken.Type)
-			p.nextToken()
+		} else if p.peekTokenIs(lexer.TLike) {
+			precedence := p.peekPrecedence()
+			likeKw, err := p.consumeKeyword(lexer.TLike)
+			if err != nil {
+				return nil, err
+			}
 
 			right, err := p.parseExpression(precedence)
 			if err != nil {
@@ -556,16 +496,18 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 			}
 
 			return &ast.ExprLikeLogicalOperator{
-				LikeKeyword:     likeKw,
+				LikeKeyword:     *likeKw,
 				MatchExpression: left,
-				NotKeyword:      &notKw,
+				NotKeyword:      notKw,
 				Pattern:         right,
+				Span: ast.Span{
+					StartPosition: startPosition,
+					EndPosition:   right.GetSpan().EndPosition,
+				},
 			}, nil
 		} else {
-			p.errorToken = ETCurrent
-			return nil, p.currentErrorString("(BETWEEN Expression or IN Expression or LIKE Expression) after 'Test Expression NOT' Expression")
+			return nil, p.peekErrorString("(BETWEEN Expression or IN Expression or LIKE Expression) after 'Test Expression NOT' Expression")
 		}
 	}
-	p.errorToken = ETCurrent
-	return nil, p.currentErrorString(fmt.Sprintf("Unimplemented expression %s", p.currentToken.Type.String()))
+	return nil, p.peekErrorString(fmt.Sprintf("Unimplemented expression %s", p.peekToken.Type.String()))
 }

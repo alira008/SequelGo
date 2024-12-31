@@ -7,16 +7,12 @@ import (
 
 type ExprUnaryOperator struct {
 	Span
-	LeadingComments  *[]Comment
-	TrailingComments *[]Comment
 	Right            Expression
 	Operator         UnaryOperatorType
 }
 
 type ExprComparisonOperator struct {
 	Span
-	LeadingComments  *[]Comment
-	TrailingComments *[]Comment
 	Left             Expression
 	Right            Expression
 	Operator         ComparisonOperatorType
@@ -24,8 +20,6 @@ type ExprComparisonOperator struct {
 
 type ExprArithmeticOperator struct {
 	Span
-	LeadingComments  *[]Comment
-	TrailingComments *[]Comment
 	Left             Expression
 	Right            Expression
 	Operator         ArithmeticOperatorType
@@ -33,8 +27,6 @@ type ExprArithmeticOperator struct {
 
 type ExprAndLogicalOperator struct {
 	Span
-	LeadingComments  *[]Comment
-	TrailingComments *[]Comment
 	AndKeyword       Keyword
 	Left             Expression
 	Right            Expression
@@ -42,8 +34,6 @@ type ExprAndLogicalOperator struct {
 
 type ExprAllLogicalOperator struct {
 	Span
-	LeadingComments    *[]Comment
-	TrailingComments   *[]Comment
 	AllKeyword         Keyword
 	ScalarExpression   Expression
 	ComparisonOperator ComparisonOperatorType
@@ -52,8 +42,6 @@ type ExprAllLogicalOperator struct {
 
 type ExprBetweenLogicalOperator struct {
 	Span
-	LeadingComments  *[]Comment
-	TrailingComments *[]Comment
 	BetweenKeyword   Keyword
 	TestExpression   Expression
 	NotKeyword       *Keyword
@@ -64,16 +52,12 @@ type ExprBetweenLogicalOperator struct {
 
 type ExprExistsLogicalOperator struct {
 	Span
-	LeadingComments  *[]Comment
-	TrailingComments *[]Comment
 	ExistsKeyword    Keyword
 	Subquery         *ExprSubquery
 }
 
 type ExprInSubqueryLogicalOperator struct {
 	Span
-	LeadingComments  *[]Comment
-	TrailingComments *[]Comment
 	InKeyword        Keyword
 	TestExpression   Expression
 	NotKeyword       *Keyword
@@ -82,8 +66,6 @@ type ExprInSubqueryLogicalOperator struct {
 
 type ExprInLogicalOperator struct {
 	Span
-	LeadingComments  *[]Comment
-	TrailingComments *[]Comment
 	InKeyword        Keyword
 	TestExpression   Expression
 	NotKeyword       *Keyword
@@ -92,8 +74,6 @@ type ExprInLogicalOperator struct {
 
 type ExprLikeLogicalOperator struct {
 	Span
-	LeadingComments  *[]Comment
-	TrailingComments *[]Comment
 	LikeKeyword      Keyword
 	MatchExpression  Expression
 	NotKeyword       *Keyword
@@ -102,16 +82,12 @@ type ExprLikeLogicalOperator struct {
 
 type ExprNotLogicalOperator struct {
 	Span
-	LeadingComments  *[]Comment
-	TrailingComments *[]Comment
 	NotKeyword       Keyword
 	Expression       Expression
 }
 
 type ExprOrLogicalOperator struct {
 	Span
-	LeadingComments  *[]Comment
-	TrailingComments *[]Comment
 	OrKeyword        Keyword
 	Left             Expression
 	Right            Expression
@@ -119,8 +95,6 @@ type ExprOrLogicalOperator struct {
 
 type ExprSomeLogicalOperator struct {
 	Span
-	LeadingComments    *[]Comment
-	TrailingComments   *[]Comment
 	SomeKeyword        Keyword
 	ScalarExpression   Expression
 	ComparisonOperator ComparisonOperatorType
@@ -129,8 +103,6 @@ type ExprSomeLogicalOperator struct {
 
 type ExprAnyLogicalOperator struct {
 	Span
-	LeadingComments    *[]Comment
-	TrailingComments   *[]Comment
 	AnyKeyword         Keyword
 	ScalarExpression   Expression
 	ComparisonOperator ComparisonOperatorType
@@ -342,114 +314,6 @@ func (e ExprNotLogicalOperator) GetSpan() Span        { return e.Span }
 func (e ExprOrLogicalOperator) GetSpan() Span         { return e.Span }
 func (e ExprSomeLogicalOperator) GetSpan() Span       { return e.Span }
 func (e ExprAnyLogicalOperator) GetSpan() Span        { return e.Span }
-
-func (e *ExprUnaryOperator) SetLeadingComments(comments []Comment) { e.LeadingComments = &comments }
-func (e *ExprComparisonOperator) SetLeadingComments(comments []Comment) {
-	e.LeadingComments = &comments
-}
-func (e *ExprArithmeticOperator) SetLeadingComments(comments []Comment) {
-	e.LeadingComments = &comments
-}
-func (e *ExprAndLogicalOperator) SetLeadingComments(comments []Comment) {
-	e.LeadingComments = &comments
-}
-func (e *ExprAllLogicalOperator) SetLeadingComments(comments []Comment) {
-	e.LeadingComments = &comments
-}
-func (e *ExprBetweenLogicalOperator) SetLeadingComments(comments []Comment) {
-	e.LeadingComments = &comments
-}
-func (e *ExprExistsLogicalOperator) SetLeadingComments(comments []Comment) {
-	e.LeadingComments = &comments
-}
-func (e *ExprInSubqueryLogicalOperator) SetLeadingComments(comments []Comment) {
-	e.LeadingComments = &comments
-}
-func (e *ExprInLogicalOperator) SetLeadingComments(comments []Comment) { e.LeadingComments = &comments }
-func (e *ExprLikeLogicalOperator) SetLeadingComments(comments []Comment) {
-	e.LeadingComments = &comments
-}
-func (e *ExprNotLogicalOperator) SetLeadingComments(comments []Comment) {
-	e.LeadingComments = &comments
-}
-func (e *ExprOrLogicalOperator) SetLeadingComments(comments []Comment) { e.LeadingComments = &comments }
-func (e *ExprSomeLogicalOperator) SetLeadingComments(comments []Comment) {
-	e.LeadingComments = &comments
-}
-func (e *ExprAnyLogicalOperator) SetLeadingComments(comments []Comment) {
-	e.LeadingComments = &comments
-}
-
-func (e *ExprUnaryOperator) SetTrailingComments(comments []Comment) { e.TrailingComments = &comments }
-func (e *ExprComparisonOperator) SetTrailingComments(comments []Comment) {
-	e.TrailingComments = &comments
-}
-func (e *ExprArithmeticOperator) SetTrailingComments(comments []Comment) {
-	e.TrailingComments = &comments
-}
-func (e *ExprAndLogicalOperator) SetTrailingComments(comments []Comment) {
-	e.TrailingComments = &comments
-}
-func (e *ExprAllLogicalOperator) SetTrailingComments(comments []Comment) {
-	e.TrailingComments = &comments
-}
-func (e *ExprBetweenLogicalOperator) SetTrailingComments(comments []Comment) {
-	e.TrailingComments = &comments
-}
-func (e *ExprExistsLogicalOperator) SetTrailingComments(comments []Comment) {
-	e.TrailingComments = &comments
-}
-func (e *ExprInSubqueryLogicalOperator) SetTrailingComments(comments []Comment) {
-	e.TrailingComments = &comments
-}
-func (e *ExprInLogicalOperator) SetTrailingComments(comments []Comment) {
-	e.TrailingComments = &comments
-}
-func (e *ExprLikeLogicalOperator) SetTrailingComments(comments []Comment) {
-	e.TrailingComments = &comments
-}
-func (e *ExprNotLogicalOperator) SetTrailingComments(comments []Comment) {
-	e.TrailingComments = &comments
-}
-func (e *ExprOrLogicalOperator) SetTrailingComments(comments []Comment) {
-	e.TrailingComments = &comments
-}
-func (e *ExprSomeLogicalOperator) SetTrailingComments(comments []Comment) {
-	e.TrailingComments = &comments
-}
-func (e *ExprAnyLogicalOperator) SetTrailingComments(comments []Comment) {
-	e.TrailingComments = &comments
-}
-
-func (e *ExprUnaryOperator) GetLeadingComments() *[]Comment             { return e.LeadingComments }
-func (e *ExprComparisonOperator) GetLeadingComments() *[]Comment        { return e.LeadingComments }
-func (e *ExprArithmeticOperator) GetLeadingComments() *[]Comment        { return e.LeadingComments }
-func (e *ExprAndLogicalOperator) GetLeadingComments() *[]Comment        { return e.LeadingComments }
-func (e *ExprAllLogicalOperator) GetLeadingComments() *[]Comment        { return e.LeadingComments }
-func (e *ExprBetweenLogicalOperator) GetLeadingComments() *[]Comment    { return e.LeadingComments }
-func (e *ExprExistsLogicalOperator) GetLeadingComments() *[]Comment     { return e.LeadingComments }
-func (e *ExprInSubqueryLogicalOperator) GetLeadingComments() *[]Comment { return e.LeadingComments }
-func (e *ExprInLogicalOperator) GetLeadingComments() *[]Comment         { return e.LeadingComments }
-func (e *ExprLikeLogicalOperator) GetLeadingComments() *[]Comment       { return e.LeadingComments }
-func (e *ExprNotLogicalOperator) GetLeadingComments() *[]Comment        { return e.LeadingComments }
-func (e *ExprOrLogicalOperator) GetLeadingComments() *[]Comment         { return e.LeadingComments }
-func (e *ExprSomeLogicalOperator) GetLeadingComments() *[]Comment       { return e.LeadingComments }
-func (e *ExprAnyLogicalOperator) GetLeadingComments() *[]Comment        { return e.LeadingComments }
-
-func (e *ExprUnaryOperator) GetTrailingComments() *[]Comment             { return e.TrailingComments }
-func (e *ExprComparisonOperator) GetTrailingComments() *[]Comment        { return e.TrailingComments }
-func (e *ExprArithmeticOperator) GetTrailingComments() *[]Comment        { return e.TrailingComments }
-func (e *ExprAndLogicalOperator) GetTrailingComments() *[]Comment        { return e.TrailingComments }
-func (e *ExprAllLogicalOperator) GetTrailingComments() *[]Comment        { return e.TrailingComments }
-func (e *ExprBetweenLogicalOperator) GetTrailingComments() *[]Comment    { return e.TrailingComments }
-func (e *ExprExistsLogicalOperator) GetTrailingComments() *[]Comment     { return e.TrailingComments }
-func (e *ExprInSubqueryLogicalOperator) GetTrailingComments() *[]Comment { return e.TrailingComments }
-func (e *ExprInLogicalOperator) GetTrailingComments() *[]Comment         { return e.TrailingComments }
-func (e *ExprLikeLogicalOperator) GetTrailingComments() *[]Comment       { return e.TrailingComments }
-func (e *ExprNotLogicalOperator) GetTrailingComments() *[]Comment        { return e.TrailingComments }
-func (e *ExprOrLogicalOperator) GetTrailingComments() *[]Comment         { return e.TrailingComments }
-func (e *ExprSomeLogicalOperator) GetTrailingComments() *[]Comment       { return e.TrailingComments }
-func (e *ExprAnyLogicalOperator) GetTrailingComments() *[]Comment        { return e.TrailingComments }
 
 type UnaryOperatorType uint8
 type ComparisonOperatorType uint8
