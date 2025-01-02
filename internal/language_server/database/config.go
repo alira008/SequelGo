@@ -15,10 +15,15 @@ type Config struct {
 	TrustCert bool   `json:"trust_cert"`
 }
 
-func GetConfig() (Config, error) {
+func errorf(format string, v ...interface{}) error {
+	errString := fmt.Sprintf(format, v...)
+    return fmt.Errorf("SequelGo: Unable to get database config: %s", errString)
+}
+
+func GetConfig() (*Config, error) {
 	userHomeDir, err := os.UserHomeDir()
 	if err != nil {
-		return Config{}, err
+		return nil, errorf(err.Error())
 	}
 
 	var configFilePath string
@@ -29,14 +34,14 @@ func GetConfig() (Config, error) {
 	}
 	fileBytes, err := os.ReadFile(configFilePath)
 	if err != nil {
-		return Config{}, fmt.Errorf("Could not open %s", configFilePath)
+		return nil, errorf("Could not open config file %s", configFilePath)
 	}
 
 	var config Config
 	err = json.Unmarshal(fileBytes, &config)
 	if err != nil {
-		return Config{}, err
+		return nil, errorf(err.Error())
 	}
-   
-	return config, err
+
+	return &config, err
 }
