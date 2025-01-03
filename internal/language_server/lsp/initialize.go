@@ -22,10 +22,15 @@ const (
 	TextDocumentSyncKindIncremental
 )
 
+type TextDocumentSyncOptions struct {
+	OpenClose bool                 `json:"openClose"`
+	Change    TextDocumentSyncKind `json:"change"`
+}
+
 type ServerCapabilities struct {
 	HoverProvider      bool               `json:"hoverProvider"`
 	CompletionProvider *CompletionOptions `json:"completionProvider"`
-	TextDocumentSync   TextDocumentSyncKind
+	TextDocumentSync   TextDocumentSyncOptions `json:"textDocumentSync"`
 }
 
 type ServerInfo struct {

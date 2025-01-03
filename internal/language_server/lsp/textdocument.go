@@ -1,13 +1,13 @@
 package lsp
 
 type DidOpenTextDocumentParams struct {
-	TextDocument TextDocumentItem
+	TextDocument TextDocumentItem `json:"textDocument"`
 }
 
 type TextDocumentItem struct {
 	Uri        string `json:"uri"`
 	LanguageId string `json:"languageId"`
-	Version    string `json:"version"`
+	Version    int    `json:"version"`
 	Text       string `json:"text"`
 }
 
@@ -35,19 +35,19 @@ type Position struct {
 }
 
 type TextDocumentPositionParams struct {
-	TextDocument TextDocumentIdentifier
-	Position     Position
+	TextDocument TextDocumentIdentifier `json:"textDocument"`
+	Position     Position               `json:"position"`
 }
 
 type HoverParams struct {
 	TextDocumentPositionParams
 }
 
-type MarkUpKind int
+type MarkUpKind string
 
 const (
-	MarkUpKindPlainText MarkUpKind = iota
-	MarkUpKindMarkdown
+	MarkUpKindPlainText MarkUpKind = "plaintext"
+	MarkUpKindMarkdown  MarkUpKind = "markdown"
 )
 
 type MarkupContent struct {

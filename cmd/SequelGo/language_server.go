@@ -21,7 +21,7 @@ var runLanguageServerCmd = &cobra.Command{
 func runLanguageServer(cmd *cobra.Command, args []string) {
 	logger, _ := zap.NewProduction()
 	defer logger.Sync()
-	_ = logger.Sugar()
+    sugarLogger := logger.Sugar()
 
 	dbConn, err := database.NewConnection()
 	if err != nil {
@@ -34,7 +34,7 @@ func runLanguageServer(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	server := language_server.NewServer(logger, dbConn)
+	server := language_server.NewServer(sugarLogger, dbConn)
 
 	h := jsonrpc2.HandlerWithError(server.Handle)
 	logger.Debug("SequelGo: reading on stdin, writing on stdout")

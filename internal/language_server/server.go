@@ -30,17 +30,20 @@ func NewServer(logger *zap.SugaredLogger, conn *database.Connection) *Server {
 	}
 }
 
-func (s *Server) openFile(uri string) {
-	s.documentMap[uri] = ""
-	s.astMap[uri] = ast.Query{}
+func (s *Server) openFile(uri, text string) {
+	s.documentMap[uri] = text
+	lexer := lexer.NewLexer(text)
+	parser := parser.NewParser(s.logger, lexer)
+	query := parser.Parse()
+	s.astMap[uri] = query
 }
 
 func (s *Server) updateFile(uri, text string) {
 	s.documentMap[uri] = text
 	lexer := lexer.NewLexer(text)
 	parser := parser.NewParser(s.logger, lexer)
-	ast := parser.Parse()
-	s.astMap[uri] = ast
+	query := parser.Parse()
+	s.astMap[uri] = query
 }
 
 func (s *Server) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
@@ -57,6 +60,8 @@ func (s *Server) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 		return s.handleTextDocumentDidOpen(ctx, conn, req)
 	case "textDocument/didChange":
 		return s.handleTextDocumentDidChange(ctx, conn, req)
+	case "textDocument/hover":
+		return s.handleTextDocumentHover(ctx, conn, req)
 	}
 	return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeMethodNotFound, Message: fmt.Sprintf("method not supported %s", req.Method)}
 }
@@ -73,8 +78,11 @@ func (s *Server) handleInitialize(_ context.Context, _ *jsonrpc2.Conn, req *json
 
 	result = lsp.InitializeResult{
 		Capabilities: lsp.ServerCapabilities{
-			TextDocumentSync: lsp.TextDocumentSyncKindFull,
-			HoverProvider:    true,
+			TextDocumentSync: lsp.TextDocumentSyncOptions{
+				OpenClose: true,
+				Change:    lsp.TextDocumentSyncKindFull,
+			},
+			HoverProvider: true,
 			CompletionProvider: &lsp.CompletionOptions{
 				TriggerCharacters: []string{"select", ".", ",", "from"},
 			},
@@ -94,7 +102,7 @@ func (s *Server) handleTextDocumentDidOpen(_ context.Context, _ *jsonrpc2.Conn, 
 		return nil, err
 	}
 
-	s.openFile(params.TextDocument.Uri)
+	s.openFile(params.TextDocument.Uri, params.TextDocument.Text)
 
 	return nil, nil
 }
